@@ -142,6 +142,46 @@ const ensureSquareSyncEnabled = (res: Response) => {
   return ensureSquareEnabled(res);
 };
 
+const getCronSecret = () => process.env.CRON_SECRET?.trim() || null;
+
+const extractCronAuth = (req: Request) => {
+  const headerValue = req.headers["authorization"] ?? req.headers["x-cron-secret"];
+  const raw =
+    typeof headerValue === "string"
+      ? headerValue
+      : Array.isArray(headerValue)
+        ? headerValue[0]
+        : null;
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return trimmed.toLowerCase().startsWith("bearer ") ? trimmed.slice(7).trim() : trimmed;
+};
+
+const ensureCronAuthorized = (req: Request, res: Response) => {
+  const secret = getCronSecret();
+  if (!secret) {
+    res.status(500).json({ message: "CRON_SECRET not configured" });
+    return false;
+  }
+  const provided = extractCronAuth(req);
+  if (!provided) {
+    res.status(401).json({ message: "Cron authorization required" });
+    return false;
+  }
+  const secretBuffer = Buffer.from(secret);
+  const providedBuffer = Buffer.from(provided);
+  if (secretBuffer.length !== providedBuffer.length) {
+    res.status(403).json({ message: "Invalid cron authorization" });
+    return false;
+  }
+  if (!timingSafeEqual(secretBuffer, providedBuffer)) {
+    res.status(403).json({ message: "Invalid cron authorization" });
+    return false;
+  }
+  return true;
+};
+
 const getSquareWebhookSignatureKey = () => {
   const key = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
   if (!key) {
@@ -1357,6 +1397,21 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
   });
 
   app.post("/api/square/catalog/sync", requireAdmin, async (_req, res) => {
+    if (!ensureSquareSyncEnabled(res)) {
+      return;
+    }
+    try {
+      const result = await importSquareCatalog();
+      res.json({ success: true, ...result });
+    } catch (_error) {
+      res.status(500).json({ success: false, message: "Failed to sync Square catalog" });
+    }
+  });
+
+  app.post("/api/cron/square-sync", async (req, res) => {
+    if (!ensureCronAuthorized(req, res)) {
+      return;
+    }
     if (!ensureSquareSyncEnabled(res)) {
       return;
     }

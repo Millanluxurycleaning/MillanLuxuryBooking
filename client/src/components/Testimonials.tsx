@@ -148,14 +148,17 @@ export function Testimonials() {
   }, [pageIndex, totalPages]);
 
   return (
-    <section id="testimonials" className="py-20 md:py-32 bg-card">
+    <section
+      id="testimonials"
+      className="py-20 md:py-32 text-white bg-[#184238] bg-[radial-gradient(1200px_circle_at_top,#245a4d_0%,#184238_45%,#102c27_100%)]"
+    >
       <div className="container mx-auto px-6 md:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="font-serif text-3xl md:text-5xl font-semibold mb-4">
+          <h2 className="font-serif text-4xl md:text-6xl font-semibold mb-4">
             What Clients Say
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground">
+          <p className="text-xl md:text-2xl text-emerald-100/75">
             Trusted by homeowners across Phoenix, AZ
           </p>
         </div>
@@ -178,7 +181,7 @@ export function Testimonials() {
         {/* Testimonials Carousel */}
         {!isLoading && !hasShapeError && (
           <div className="space-y-8 max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {pageItems.map((testimonial) => {
                 const reviewText = testimonial.review || testimonial.content || "";
                 const reviewerName = testimonial.name || testimonial.author || "Client";
@@ -189,12 +192,12 @@ export function Testimonials() {
                     className="hover-elevate transition-all duration-300 bg-[rgba(5,40,35,0.35)] text-white backdrop-blur-xl border border-emerald-100/20 shadow-[0_24px_70px_rgba(0,0,0,0.35)]"
                     data-testid={`card-testimonial-${testimonial.id}`}
                   >
-                    <CardContent className="pt-6">
+                    <CardContent className="pt-7 pb-6 px-6">
                       {/* Star Rating */}
                       <div className="flex gap-1 mb-4">
                         {typeof testimonial.rating === "number" && testimonial.rating > 0
                           ? [...Array(Math.min(testimonial.rating, 5))].map((_, i) => (
-                              <Star key={i} className="w-5 h-5 fill-amber-300 text-amber-300" />
+                              <Star key={i} className="w-6 h-6 fill-amber-300 text-amber-300" />
                             ))
                           : (
                             <div className="text-sm text-white/70">Rating unavailable</div>
@@ -202,7 +205,7 @@ export function Testimonials() {
                       </div>
 
                       {/* Review Text */}
-                      <p className="text-base italic text-white/80 mb-4 leading-relaxed">
+                      <p className="text-xl italic text-white/85 mb-4 leading-relaxed">
                         "{reviewText}"
                       </p>
 
@@ -224,8 +227,8 @@ export function Testimonials() {
                         )}
 
                       {/* Reviewer Name */}
-                      <p className="font-semibold text-sm text-white/70">
-                      - {reviewerName}
+                      <p className="font-semibold text-lg text-white/70">
+                        - {reviewerName}
                       </p>
                     </CardContent>
                   </Card>
@@ -243,7 +246,7 @@ export function Testimonials() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-white/70">
                   {pageIndex + 1} / {totalPages}
                 </span>
                 <Button
@@ -262,7 +265,7 @@ export function Testimonials() {
         {/* Empty State */}
         {!isLoading && displayTestimonials.length === 0 && !hasShapeError && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">
+            <p className="text-white/70 text-lg">
               Reviews are updating. Please check back soon.
             </p>
           </div>
@@ -270,7 +273,7 @@ export function Testimonials() {
 
         {hasShapeError && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">
+            <p className="text-white/70 text-lg">
               We ran into unexpected data while loading testimonials. Please refresh and try again.
             </p>
           </div>

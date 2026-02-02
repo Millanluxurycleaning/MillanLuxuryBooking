@@ -43,7 +43,10 @@ export function FragranceCard({ products }: FragranceCardProps) {
   const { addItem } = useCart();
   const [isAdding, setIsAdding] = useState(false);
   const isFeatured = sortedProducts.some((item) => item.featured);
-  const hasOptions = sortedProducts.length > 1;
+  const hasOptions = sortedProducts.length > 0;
+  const isOutOfStock = (product: FragranceProduct) =>
+    Boolean(product.trackInventory) && (product.inventoryCount ?? 0) <= 0;
+  const isSelectedOutOfStock = selectedProduct ? isOutOfStock(selectedProduct) : false;
 
   // Keep selection in sync with available products
   useEffect(() => {
@@ -132,8 +135,8 @@ export function FragranceCard({ products }: FragranceCardProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {sortedProducts.map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.fragrance || item.name}
+                    <SelectItem key={item.id} value={String(item.id)} disabled={isOutOfStock(item)}>
+                      {(item.fragrance || item.name) + (isOutOfStock(item) ? " - Out of stock" : "")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -167,9 +170,9 @@ export function FragranceCard({ products }: FragranceCardProps) {
           <Button
             className="w-full transition-shadow group-hover:shadow-md"
             onClick={handleAddToCart}
-            disabled={isAdding}
+            disabled={isAdding || isSelectedOutOfStock}
           >
-            {isAdding ? "Adding..." : "Add to Order"}
+            {isSelectedOutOfStock ? "Out of stock" : isAdding ? "Adding..." : "Add to Order"}
           </Button>
         </CardFooter>
       </div>

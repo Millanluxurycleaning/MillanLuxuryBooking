@@ -25,15 +25,12 @@ export default function Fragrances() {
     queryKey: ['/api/products'],
   });
 
-  // Filter to only Square-synced products
-  const squareProducts = products.filter((product) => Boolean(product.squareCatalogId));
-
-  // Group products by squareItemId (variations of the same product)
+  // Group products by Square item id (variations of the same product)
   const groupedProducts = useMemo(() => {
     const groups = new Map<string, FragranceProduct[]>();
-    squareProducts.forEach((product) => {
-      // Use squareItemId as the grouping key, fall back to squareCatalogId or product id
-      const key = product.squareItemId ?? product.squareCatalogId ?? `product-${product.id}`;
+    products.forEach((product) => {
+      const fallbackKey = `${product.category}::${product.name}`;
+      const key = product.squareItemId ?? fallbackKey;
       const existing = groups.get(key) ?? [];
       existing.push(product);
       groups.set(key, existing);
@@ -42,7 +39,7 @@ export default function Fragrances() {
       key,
       items: items.sort((a, b) => (a.fragrance || a.name).localeCompare(b.fragrance || b.name)),
     }));
-  }, [squareProducts]);
+  }, [products]);
 
   // Filter groups by category
   const filteredGroups = selectedCategory === 'all'

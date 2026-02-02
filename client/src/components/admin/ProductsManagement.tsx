@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { handleUnauthorizedError, getErrorMessage } from "@/lib/authUtils";
-import { Package, Plus, Edit, Trash2, X, Loader2, ImageIcon, ExternalLink, Eye, EyeOff, DollarSign } from "lucide-react";
+import { Package, Plus, Edit, Trash2, X, Loader2, ImageIcon, ExternalLink, Eye, EyeOff, DollarSign, RefreshCw } from "lucide-react";
 import type { FragranceProduct } from "@shared/types";
 import { insertFragranceProductSchema } from "@shared/types";
 import { z } from "zod";
@@ -58,6 +58,7 @@ export function ProductsManagement() {
   const [blobBrowserOpen, setBlobBrowserOpen] = useState(false);
   const [blobTargetForm, setBlobTargetForm] = useState<'add' | 'edit'>('add');
   const [uploading, setUploading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const { data: productsPayload, isLoading, error } = useQuery<FragranceProduct[]>({
     queryKey: ["/api/products"],
@@ -290,6 +291,32 @@ export function ProductsManagement() {
   const handleDeleteConfirm = () => {
     if (deletingItemId) {
       deleteMutation.mutate(deletingItemId);
+    }
+  };
+
+  const handleSquareSync = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await apiRequest("POST", "/api/square/catalog/sync");
+      const payload = await response.json().catch(() => null);
+      const created = payload?.created ?? 0;
+      const updated = payload?.updated ?? 0;
+      const services = payload?.services ?? 0;
+      const products = payload?.products ?? 0;
+      toast({
+        title: "Square sync complete",
+        description: `Updated ${products} products and ${services} services (created ${created}, updated ${updated}).`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+    } catch (error) {
+      const message = getErrorMessage(error) || "Failed to sync Square catalog";
+      toast({
+        title: "Sync failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -615,6 +642,14 @@ export function ProductsManagement() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
+        <Button variant="outline" onClick={handleSquareSync} disabled={isSyncing}>
+          {isSyncing ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          {isSyncing ? "Syncing Square..." : "Sync Square Catalog"}
+        </Button>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>

@@ -7,6 +7,15 @@
       "includeFiles": "dist/server/**"
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/square-sync",
+      "schedule": "0 10 * * *",
+      "headers": {
+        "Authorization": "Bearer ${CRON_SECRET}"
+      }
+    }
+  ],
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/((?!api).*)", "destination": "/index.html" }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, ShoppingCart } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAssets } from "@/hooks/useAssets";
+import { useCart } from "@/contexts/CartContext";
 
 const fallbackLogo =
   "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/IMG_5919%20-%20Millan%20Luxury%20Cleaning%20(1).png";
@@ -11,6 +12,8 @@ export function Navigation() {
   const { data: assets = {} } = useAssets();
   const [isScrolled, setIsScrolled] = useState(false);
   const logo = assets?.logo?.url ?? fallbackLogo;
+  const { cart } = useCart();
+  const cartCount = cart?.totals?.itemCount ?? 0;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -71,55 +74,73 @@ export function Navigation() {
             ))}
           </div>
           
-          {/* CTA Button */}
-          <div className="hidden lg:flex items-center gap-3">
-            <Button
-              asChild
-              variant="default"
-              size="default"
-              data-testid="button-book-nav"
+          <div className="flex items-center gap-3">
+            <a
+              href="/cart"
+              className={`relative inline-flex items-center justify-center rounded-full p-2 transition-colors hover:bg-white/10 ${
+                isScrolled ? "text-foreground" : "text-white"
+              }`}
+              aria-label="View selections"
+              data-testid="link-nav-cart"
             >
-              <a href="/book">
-                Book Now
-              </a>
-            </Button>
-          </div>
-          
-          {/* Mobile Menu */}
-          <Sheet>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className={isScrolled ? "text-foreground" : "text-white"}
-                data-testid="button-menu-toggle"
+              <ShoppingCart className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[0.65rem] font-semibold text-primary-foreground">
+                  {cartCount}
+                </span>
+              )}
+            </a>
+
+            {/* CTA Button */}
+            <div className="hidden lg:flex items-center gap-3">
+              <Button
+                asChild
+                variant="default"
+                size="default"
+                data-testid="button-book-nav"
               >
-                <Menu className="w-6 h-6" />
+                <a href="/book">
+                  Book Now
+                </a>
               </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[300px]">
-              <div className="flex flex-col gap-6 mt-8">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className="text-lg font-medium text-foreground hover-elevate px-4 py-2 rounded-md transition-colors"
-                    data-testid={`link-mobile-${link.label.toLowerCase()}`}
-                  >
-                    {link.label}
-                  </a>
-                ))}
+            </div>
+
+            {/* Mobile Menu */}
+            <Sheet>
+              <SheetTrigger asChild className="lg:hidden">
                 <Button 
-                  asChild
-                  variant="default"
-                  className="w-full mt-4"
-                  data-testid="button-book-mobile"
+                  variant="ghost" 
+                  size="icon"
+                  className={isScrolled ? "text-foreground" : "text-white"}
+                  data-testid="button-menu-toggle"
                 >
-                  <a href="/book">Book Now</a>
+                  <Menu className="w-6 h-6" />
                 </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px]">
+                <div className="flex flex-col gap-6 mt-8">
+                  {navLinks.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      className="text-lg font-medium text-foreground hover-elevate px-4 py-2 rounded-md transition-colors"
+                      data-testid={`link-mobile-${link.label.toLowerCase()}`}
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                  <Button 
+                    asChild
+                    variant="default"
+                    className="w-full mt-4"
+                    data-testid="button-book-mobile"
+                  >
+                    <a href="/book">Book Now</a>
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </nav>
