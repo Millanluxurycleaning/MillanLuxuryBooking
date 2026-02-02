@@ -17,7 +17,7 @@ export default function Home() {
       <main>
         <Hero />
         <About />
-        <Services limit={3} showAllLink />
+        <Services limit={3} showAllLink variant="luxe" />
         <Gallery />
         <ServiceAreas />
         <Testimonials />

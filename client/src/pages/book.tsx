@@ -400,11 +400,19 @@ export default function BookingPage() {
                         {service.displayPrice && service.price && (
                           <p className="text-purple-600 font-bold mt-1">Starting at ${Number(service.price).toFixed(2)}</p>
                         )}
-                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{service.description}</p>
                       </button>
                     ))}
                 </CardContent>
               </Card>
+
+              {selectedService?.description && (
+                <div className="rounded-xl border border-border/70 bg-gradient-to-br from-purple-50/70 to-pink-50/70 px-5 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Service Description</p>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                    {selectedService.description}
+                  </p>
+                </div>
+              )}
 
               {/* Pricing Tier Selection (if available, not for laundry) */}
               {pricingTiers.length > 0 && !isLaundryService && (
