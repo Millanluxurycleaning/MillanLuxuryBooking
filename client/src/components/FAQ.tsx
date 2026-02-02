@@ -17,6 +17,37 @@ export function FAQ() {
   });
 
   const { items: faqs, isValid } = normalizeArrayData<Faq>(faqsPayload);
+  const priorityMatchers = [
+    (question: string) => question.toLowerCase().includes("deep") && question.toLowerCase().includes("clean"),
+    (question: string) => question.toLowerCase().includes("pet"),
+    (question: string) => question.toLowerCase().includes("cancel") || question.toLowerCase().includes("resched"),
+    (question: string) => question.toLowerCase().includes("book") || question.toLowerCase().includes("schedule"),
+    (question: string) =>
+      question.toLowerCase().includes("service area") || question.toLowerCase().includes("areas"),
+  ];
+
+  const selectedFaqs = (() => {
+    const selected: Faq[] = [];
+    const used = new Set<number>();
+
+    priorityMatchers.forEach((matches) => {
+      const match = faqs.find((faq) => !used.has(faq.id) && matches(faq.question));
+      if (match) {
+        selected.push(match);
+        used.add(match.id);
+      }
+    });
+
+    faqs.forEach((faq) => {
+      if (selected.length >= 5) return;
+      if (!used.has(faq.id)) {
+        selected.push(faq);
+        used.add(faq.id);
+      }
+    });
+
+    return selected;
+  })();
 
   useEffect(() => {
     if (!isValid && !isLoading && !error) {
@@ -51,11 +82,11 @@ export function FAQ() {
             </div>
           ) : error ? (
             <div className="text-center text-muted-foreground">Unable to load FAQs right now.</div>
-          ) : faqs.length === 0 ? (
+          ) : selectedFaqs.length === 0 ? (
             <div className="text-center text-muted-foreground">No FAQs available yet. Check back soon!</div>
           ) : (
             <Accordion type="single" collapsible className="space-y-4">
-              {faqs.map((faq, index) => (
+              {selectedFaqs.map((faq, index) => (
                 <AccordionItem
                   key={faq.id ?? index}
                   value={`item-${faq.id ?? index}`}

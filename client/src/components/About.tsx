@@ -29,7 +29,7 @@ export function About() {
             About Millan Luxury Cleaning
           </h2>
           <p className="text-lg md:text-xl text-center text-muted-foreground mb-12 italic">
-            An immaculate home should feel like a retreat—restful, rejuvenating, and refined
+            A clean space should feel intentional, elevated, and cared for.
           </p>
           
           {/* Content Card with Owner Photo */}
@@ -48,40 +48,28 @@ export function About() {
               </div>
 
               {/* Text Content */}
-              <div className="space-y-6">
-                <h3 className="font-serif text-2xl md:text-3xl font-semibold text-primary">
-                  Hi, I'm Ivan Millan, the heart behind Millan Luxury Cleaning Co.
-                </h3>
-                
-                <p className="text-base md:text-lg leading-relaxed text-foreground">
-                  What began as a small passion for creating clean, peaceful spaces has grown 
-                  into a full-service cleaning business built on trust, quality, and care. I started 
-                  this company because I truly believe a clean home can bring peace of mind and 
-                  a sense of luxury to everyday life.
+              <div className="space-y-4 italic text-foreground">
+                <p className="text-base md:text-lg leading-relaxed">
+                  Millan Luxury Cleaning Co. was founded with one simple belief:
+                  a clean space should feel intentional, elevated, and cared for.
                 </p>
-                
-                <p className="text-base md:text-lg leading-relaxed text-foreground">
-                  Every service is done with attention to detail and pride — as if it were my own home. My 
-                  goal is to give each client that fresh start feeling every time they walk in.
+
+                <p className="text-base md:text-lg leading-relaxed">
+                  What began as a passion for creating calm, pristine environments evolved into a
+                  full-service cleaning company built on trust, quality, and attention to detail.
                 </p>
-                
-                <div className="pt-4">
-                  <p className="text-primary font-semibold text-lg">
-                    Dedicated to making your space shine inside and out
-                  </p>
-                </div>
+
+                <p className="text-base md:text-lg leading-relaxed">
+                  Every service is completed with care and pride, as if it were our own home —
+                  because luxury lives in the details.
+                </p>
+
+                <p className="text-primary font-semibold text-base md:text-lg">
+                  — Ivan Millan, Founder
+                </p>
               </div>
             </div>
           </Card>
-          
-          {/* Mission Statement */}
-          <div className="mt-12 text-center max-w-3xl mx-auto">
-            <p className="text-base md:text-lg leading-relaxed text-muted-foreground">
-              Whether you're preparing for a fresh start with move-in cleaning, wrapping up a chapter 
-              with move-out cleaning, or simply maintaining a sparkling living space through regular 
-              residential cleaning, our work is grounded in one clear purpose: to elevate your environment.
-            </p>
-          </div>
         </div>
       </div>
     </section>

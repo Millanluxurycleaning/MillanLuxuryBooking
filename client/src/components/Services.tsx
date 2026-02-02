@@ -16,8 +16,60 @@ const iconMap: Record<string, any> = {
   "Move-In/Move-Out": Truck,
   "Basic Cleaning": Home,
   "Laundry Services": Shirt,
+  "Airbnb (Only)": Home,
+  "Airbnb Turnovers": Home,
 };
 
+const signatureServices = [
+  {
+    emoji: "🫧",
+    title: "Deep Cleaning",
+    description:
+      "A meticulous, top-to-bottom clean designed to reset your home or rental when it needs extra attention.",
+  },
+  {
+    emoji: "🏠",
+    title: "Move-In / Move-Out Cleaning",
+    description:
+      "Perfect for transitions — detailed cleaning that prepares your space for inspection, listing, or move-in.",
+  },
+  {
+    emoji: "🛏",
+    title: "Weekly & Bi-Weekly Cleaning (Basic Cleaning)",
+    description:
+      "Consistent, guest-ready service to maintain a polished, welcoming space between stays.",
+  },
+  {
+    emoji: "✨",
+    title: "Airbnb Turnovers",
+    description:
+      "Fast, detailed resets between guests to ensure your rental is spotless, refreshed, and guest-ready every time.",
+  },
+];
+
+const signatureCopyMap: Record<string, string> = {
+  "deep cleaning": signatureServices[0].description,
+  "move-in/move-out": signatureServices[1].description,
+  "move-in / move-out": signatureServices[1].description,
+  "move-in / move-out cleaning": signatureServices[1].description,
+  "move-in/move-out cleaning": signatureServices[1].description,
+  "basic cleaning": signatureServices[2].description,
+  "weekly & bi-weekly cleaning": signatureServices[2].description,
+  "weekly & biweekly cleaning": signatureServices[2].description,
+  "weekly & bi-weekly cleaning (basic cleaning)": signatureServices[2].description,
+  "airbnb turnovers": signatureServices[3].description,
+  "airbnb (only)": signatureServices[3].description,
+  "airbnb weekly & biweekly cleaning": signatureServices[3].description,
+  "reset, monthly & one time cleaning": signatureServices[3].description,
+  "final/ move-out cleaning": signatureServices[3].description,
+  "final / move-out cleaning": signatureServices[3].description,
+  "standard service offerings": signatureServices[3].description,
+};
+
+const getCuratedServiceCopy = (name: string) => {
+  const normalized = normalizeServiceName(name).toLowerCase();
+  return signatureCopyMap[normalized] ?? null;
+};
 
 type ServicesProps = {
   limit?: number;
@@ -25,11 +77,26 @@ type ServicesProps = {
   subheading?: string;
   showAllLink?: boolean;
   variant?: "default" | "luxe";
+  groupByCategory?: boolean;
 };
 
 const resolveServiceTitle = (service: ServiceItem) => service.title || service.name || "Service";
 
 const normalizeServiceName = (name: string) => name.replace(/^[^A-Za-z0-9]+/, "").trim();
+const isRentalServiceName = (name: string) => {
+  const lowerName = name.toLowerCase();
+  return (
+    lowerName.includes("airbnb") ||
+    lowerName.includes("turnover") ||
+    lowerName.includes("guest") ||
+    lowerName.includes("reset, monthly") ||
+    lowerName.includes("weekly & biweekly") ||
+    lowerName.includes("weekly & bi-weekly") ||
+    lowerName.includes("final / move-out") ||
+    lowerName.includes("final/move-out") ||
+    lowerName.includes("standard service offerings")
+  );
+};
 
 const isLaundryAddonServiceName = (name: string) => {
   const lowerName = name.toLowerCase();
@@ -38,6 +105,9 @@ const isLaundryAddonServiceName = (name: string) => {
 
 const getServiceType = (name: string) => {
   const lowerName = name.toLowerCase();
+  if (isRentalServiceName(name)) {
+    return "Rental";
+  }
   if (lowerName.includes("laundry") || lowerName.includes("comforter") || lowerName.includes("bed sheet")) {
     return "Laundry";
   }
@@ -72,9 +142,9 @@ const summarizeDescription = (description?: string | null, maxLength = 120) => {
 export function Services({
   limit,
   heading,
-  subheading,
   showAllLink = false,
   variant = "default",
+  groupByCategory = false,
 }: ServicesProps) {
   const { data: services = [], isLoading, error } = useQuery<ServiceItem[]>({
     queryKey: ["/api/services"],
@@ -92,9 +162,32 @@ export function Services({
   const hasShapeError = !isLoading && !error && !isValid;
   const background = assets?.servicesBackground?.url ?? assets?.heroBackground?.url ?? fallbackBg;
   const titleText = heading ?? "Our Services";
-  const subtitleText =
-    subheading ??
-    "A spotless, refreshed home is the heart of everyday comfort that's precisely what Millan Luxury Cleaning delivers through our premium residential cleaning solutions.";
+  const groupedServices = groupByCategory
+    ? ([
+        {
+          label: "Core Cleaning",
+          items: limitedServices.filter((service) => {
+            const name = normalizeServiceName(resolveServiceTitle(service));
+            const lowerName = name.toLowerCase();
+            return !isRentalServiceName(name) && !lowerName.includes("laundry") && !lowerName.includes("add-on");
+          }),
+        },
+        {
+          label: "Rental Services",
+          items: limitedServices.filter((service) => {
+            const name = normalizeServiceName(resolveServiceTitle(service));
+            return isRentalServiceName(name);
+          }),
+        },
+        {
+          label: "Maintenance",
+          items: limitedServices.filter((service) => {
+            const name = normalizeServiceName(resolveServiceTitle(service)).toLowerCase();
+            return name.includes("laundry") || name.includes("add-on");
+          }),
+        },
+      ] as const).filter((group) => group.items.length > 0)
+    : [{ label: null, items: limitedServices }];
 
   return (
     <section
@@ -116,9 +209,22 @@ export function Services({
           <h2 className="font-serif text-3xl md:text-5xl font-semibold text-white mb-4">
             {titleText}
           </h2>
-          <p className="text-lg md:text-xl text-white/80 max-w-3xl mx-auto">
-            {subtitleText}
-          </p>
+          <div className="mt-6 max-w-3xl mx-auto text-left md:text-center">
+            <p className="text-sm uppercase tracking-[0.25em] text-white/70 mb-6">
+              Our Signature Cleaning Services
+            </p>
+            <div className="space-y-4 text-white/85 text-sm md:text-base">
+              {signatureServices.map((service) => (
+                <div key={service.title} className="flex gap-3 md:justify-center md:text-left">
+                  <span className="text-lg md:text-xl">{service.emoji}</span>
+                  <div className="max-w-2xl">
+                    <p className="font-semibold text-white">{service.title}</p>
+                    <p className="text-white/70">{service.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Loading State */}
@@ -153,120 +259,132 @@ export function Services({
 
         {/* Services Grid */}
         {!isLoading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            {limitedServices.map((service) => {
-              const serviceTitle = resolveServiceTitle(service);
-              const normalizedTitle = normalizeServiceName(serviceTitle);
-              const serviceType = getServiceType(normalizedTitle);
-              const Icon = iconMap[normalizedTitle] || Sparkles;
-              const isFeatured = normalizedTitle === "Deep Cleaning";
-              const bookingLink = `/book?serviceId=${service.id}`;
-              const price = formatPrice(service.price);
-              const summary = summarizeDescription(service.description, isLuxe ? 90 : 120);
+          <div className="space-y-12">
+            {groupedServices.map((group, groupIndex) => (
+              <div key={group.label ?? `group-${groupIndex}`} className="space-y-6">
+                {group.label && (
+                  <div className="text-center">
+                    <p className="text-sm uppercase tracking-[0.3em] text-white/60">{group.label}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+                  {group.items.map((service) => {
+                    const serviceTitle = resolveServiceTitle(service);
+                    const normalizedTitle = normalizeServiceName(serviceTitle);
+                    const serviceType = getServiceType(normalizedTitle);
+                    const Icon = iconMap[normalizedTitle] || Sparkles;
+                    const isFeatured = normalizedTitle === "Deep Cleaning";
+                    const bookingLink = `/book?serviceId=${service.id}`;
+                    const price = formatPrice(service.price);
+                    const curatedCopy = getCuratedServiceCopy(serviceTitle);
+                    const summary = curatedCopy ?? summarizeDescription(service.description, isLuxe ? 90 : 120);
 
-              return (
-                <Card
-                  key={service.id}
-                  className={`group hover-elevate transition-all duration-300 overflow-hidden ${
-                    isFeatured ? "border-2 border-primary shadow-xl" : ""
-                  } ${isLuxe ? "bg-black/25 backdrop-blur-2xl border border-white/20 shadow-[0_40px_90px_rgba(0,0,0,0.55)] ring-1 ring-white/10" : ""}`}
-                  data-testid={`card-service-${service.id}`}
-                >
-                  {/* Service Image */}
-                  {service.imageUrl && (
-                    <div className="relative w-full h-48 overflow-hidden">
-                      <img
-                        src={service.imageUrl}
-                        alt={serviceTitle}
-                        className={`w-full h-full object-cover transition-transform duration-500 ${isLuxe ? "group-hover:scale-105" : ""}`}
-                      />
-                      {isLuxe && <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />}
-                      {isFeatured && !isLuxe && (
-                        <span className="absolute top-3 right-3 text-xs font-semibold text-white bg-primary px-3 py-1 rounded-full shadow-lg">
-                          MOST POPULAR
-                        </span>
-                      )}
-                    </div>
-                  )}
+                    return (
+                      <Card
+                        key={service.id}
+                        className={`group hover-elevate transition-all duration-300 overflow-hidden ${
+                          isFeatured ? "border-2 border-primary shadow-xl" : ""
+                        } ${isLuxe ? "bg-black/25 backdrop-blur-2xl border border-white/20 shadow-[0_40px_90px_rgba(0,0,0,0.55)] ring-1 ring-white/10" : ""}`}
+                        data-testid={`card-service-${service.id}`}
+                      >
+                        {/* Service Image */}
+                        {service.imageUrl && (
+                          <div className="relative w-full h-48 overflow-hidden">
+                            <img
+                              src={service.imageUrl}
+                              alt={serviceTitle}
+                              className={`w-full h-full object-cover transition-transform duration-500 ${isLuxe ? "group-hover:scale-105" : ""}`}
+                            />
+                            {isLuxe && <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />}
+                            {isFeatured && !isLuxe && (
+                              <span className="absolute top-3 right-3 text-xs font-semibold text-white bg-primary px-3 py-1 rounded-full shadow-lg">
+                                MOST POPULAR
+                              </span>
+                            )}
+                          </div>
+                        )}
 
-                  <CardHeader className={isLuxe ? "space-y-4 pb-5 text-white" : "space-y-3 pb-4"}>
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`p-3 rounded-lg ${
-                            isFeatured ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
-                          } ${isLuxe ? "bg-white/15 text-white rounded-full ring-1 ring-white/20" : ""}`}
-                        >
-                          <Icon className="w-6 h-6" />
-                        </div>
-                        <div className="space-y-1">
-                          <CardTitle className={`text-xl md:text-2xl font-serif ${isLuxe ? "text-white" : ""}`}>
-                            {serviceTitle}
-                          </CardTitle>
-                          {isLuxe && (
-                            <p className="text-[0.7rem] uppercase tracking-[0.3em] text-white/60">
-                              {serviceType}
-                            </p>
+                        <CardHeader className={isLuxe ? "space-y-4 pb-5 text-white" : "space-y-3 pb-4"}>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`p-3 rounded-lg ${
+                                  isFeatured ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
+                                } ${isLuxe ? "bg-white/15 text-white rounded-full ring-1 ring-white/20" : ""}`}
+                              >
+                                <Icon className="w-6 h-6" />
+                              </div>
+                              <div className="space-y-1">
+                                <CardTitle className={`text-xl md:text-2xl font-serif ${isLuxe ? "text-white" : ""}`}>
+                                  {serviceTitle}
+                                </CardTitle>
+                                {isLuxe && (
+                                  <p className="text-[0.7rem] uppercase tracking-[0.3em] text-white/60">
+                                    {serviceType}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {!isLuxe && (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">{serviceType}</Badge>
+                                {price && service.displayPrice && (
+                                  <Badge className="bg-primary text-primary-foreground">${price}</Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {!isLuxe && (
+                            <CardDescription className="text-base text-muted-foreground">{summary}</CardDescription>
                           )}
-                        </div>
-                      </div>
-                      {!isLuxe && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{serviceType}</Badge>
-                          {price && service.displayPrice && (
-                            <Badge className="bg-primary text-primary-foreground">${price}</Badge>
+                          {isLuxe && isFeatured && (
+                            <Badge className="w-fit border border-white/40 bg-white/15 text-white">
+                              SIGNATURE
+                            </Badge>
                           )}
-                        </div>
-                      )}
-                    </div>
-                    {!isLuxe && (
-                      <CardDescription className="text-base text-muted-foreground">{summary}</CardDescription>
-                    )}
-                    {isLuxe && isFeatured && (
-                      <Badge className="w-fit border border-white/40 bg-white/15 text-white">
-                        SIGNATURE
-                      </Badge>
-                    )}
-                  </CardHeader>
+                        </CardHeader>
 
-                  {!isLuxe && (
-                    <CardContent>
-                      {Array.isArray(service.features) && service.features.length > 0 ? (
-                        <ul className="space-y-2">
-                          {service.features.map((feature, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                              <span className="text-primary mt-0.5">*</span>
-                              <span>{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          {serviceType} service with flexible scheduling and premium care.
-                        </p>
-                      )}
-                    </CardContent>
-                  )}
+                        {!isLuxe && (
+                          <CardContent>
+                            {Array.isArray(service.features) && service.features.length > 0 ? (
+                              <ul className="space-y-2">
+                                {service.features.map((feature, idx) => (
+                                  <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                    <span className="text-primary mt-0.5">*</span>
+                                    <span>{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                {serviceType} service with flexible scheduling and premium care.
+                              </p>
+                            )}
+                          </CardContent>
+                        )}
 
-                  {isLuxe && summary && (
-                    <CardContent className="pt-0">
-                      <p className="text-sm text-white/70 leading-relaxed line-clamp-2">{summary}</p>
-                    </CardContent>
-                  )}
+                        {isLuxe && summary && (
+                          <CardContent className="pt-0">
+                            <p className="text-sm text-white/70 leading-relaxed line-clamp-2">{summary}</p>
+                          </CardContent>
+                        )}
 
-                  <CardFooter className={isLuxe ? "pt-2" : ""}>
-                    <Button
-                      asChild
-                      variant={isLuxe || isFeatured ? "default" : "outline"}
-                      className={`w-full ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
-                      data-testid={`button-book-${service.id}`}
-                    >
-                      <a href={bookingLink}>{isLuxe ? "Reserve This Service" : "Book This Service"}</a>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })}
+                        <CardFooter className={isLuxe ? "pt-2" : ""}>
+                          <Button
+                            asChild
+                            variant={isLuxe || isFeatured ? "default" : "outline"}
+                            className={`w-full ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
+                            data-testid={`button-book-${service.id}`}
+                          >
+                            <a href={bookingLink}>{isLuxe ? "Reserve This Service" : "Book This Service"}</a>
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

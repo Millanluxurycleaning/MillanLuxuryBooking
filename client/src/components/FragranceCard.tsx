@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, ShoppingCart } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { FragranceProduct } from '@shared/types';
 import { useCart } from '@/contexts/CartContext';
 import { useEffect, useMemo, useState } from 'react';
@@ -39,6 +39,7 @@ export function FragranceCard({ products }: FragranceCardProps) {
     sortedProducts.find((item) => item.id === selectedProductId) ?? sortedProducts[0];
 
   const categoryLabel = selectedProduct ? CATEGORY_LABELS[selectedProduct.category] || "Product" : "Product";
+  const fragranceLabel = selectedProduct?.fragrance || "Signature";
   const { addItem } = useCart();
   const [isAdding, setIsAdding] = useState(false);
   const isFeatured = sortedProducts.some((item) => item.featured);
@@ -107,6 +108,9 @@ export function FragranceCard({ products }: FragranceCardProps) {
             )}
           </div>
           <CardTitle className="text-xl">{selectedProduct.name}</CardTitle>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Fragrance: {fragranceLabel}
+          </p>
           <CardDescription className="text-sm text-muted-foreground">
             {selectedProduct.description}
           </CardDescription>
@@ -165,8 +169,7 @@ export function FragranceCard({ products }: FragranceCardProps) {
             onClick={handleAddToCart}
             disabled={isAdding}
           >
-            {isAdding ? "Adding..." : "Add to Cart"}
-            <ShoppingCart className="ml-2 h-4 w-4" />
+            {isAdding ? "Adding..." : "Add to Order"}
           </Button>
         </CardFooter>
       </div>

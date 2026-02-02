@@ -83,7 +83,7 @@ export default function CheckoutPage() {
     }
 
     if (!cart?.id) {
-      setError("Cart not ready. Please refresh.");
+      setError("Order details not ready. Please refresh.");
       return;
     }
 
@@ -210,7 +210,7 @@ export default function CheckoutPage() {
                 </div>
               ) : items.length === 0 ? (
                 <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-                  Your cart is empty. <Link href="/fragrances">Shop products</Link> to continue.
+                  Your selections are empty. <Link href="/fragrances">Shop products</Link> to continue.
                 </div>
               ) : (
                 <div className="space-y-4">

@@ -6,7 +6,7 @@ import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { Sparkles, Trash2 } from "lucide-react";
 
 export default function CartPage() {
   const { cart, isLoading, error, updateItem, removeItem, clearCart } = useCart();
@@ -36,10 +36,10 @@ export default function CartPage() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-3 rounded-full bg-primary/10 text-primary">
-              <ShoppingCart className="w-5 h-5" />
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-3xl md:text-4xl font-serif font-semibold">Your Cart</h1>
+              <h1 className="text-3xl md:text-4xl font-serif font-semibold">Your Selections</h1>
               <p className="text-muted-foreground">Review your selections before checkout.</p>
             </div>
           </div>
@@ -92,14 +92,14 @@ export default function CartPage() {
                   <CardTitle>Items ({cart?.totals.itemCount ?? 0})</CardTitle>
                   {items.length > 0 && (
                     <Button variant="ghost" onClick={clearCart} className="text-muted-foreground">
-                      Clear cart
+                      Clear selections
                     </Button>
                   )}
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {items.length === 0 ? (
                     <div className="text-center py-10 text-muted-foreground">
-                      Your cart is empty.
+                      Your selections are empty.
                     </div>
                   ) : (
                     items.map((item) => {
@@ -116,9 +116,9 @@ export default function CartPage() {
                             </div>
                             <div>
                               <p className="font-medium">{product?.name ?? "Item"}</p>
-                              {product?.fragrance && product.fragrance !== "Signature" && (
-                                <p className="text-xs text-muted-foreground">{product.fragrance}</p>
-                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Fragrance: {product?.fragrance || "Signature"}
+                              </p>
                               <p className="text-sm text-muted-foreground">${item.price.toFixed(2)} each</p>
                             </div>
                           </div>

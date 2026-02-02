@@ -130,7 +130,7 @@ export function Contact() {
                             <SelectContent>
                               <SelectItem value="deep-cleaning">Deep Cleaning</SelectItem>
                               <SelectItem value="basic-cleaning">Basic Cleaning</SelectItem>
-                              <SelectItem value="move-in-out">Move-In/Move-Out</SelectItem>
+                              <SelectItem value="move-in-out">Move In / Move Out</SelectItem>
                               <SelectItem value="laundry">Laundry Services</SelectItem>
                               <SelectItem value="other">Other</SelectItem>
                             </SelectContent>

@@ -139,7 +139,7 @@ export default function Fragrances() {
             size="lg"
             className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
           >
-            <a href="/cart">View Cart</a>
+            <a href="/book">Book a Service</a>
           </Button>
         </div>
       </section>

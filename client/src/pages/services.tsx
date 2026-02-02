@@ -10,6 +10,7 @@ export default function ServicesPage() {
         <Services
           heading="All Services"
           subheading="Every service is tailored to your space, schedule, and standards."
+          groupByCategory
         />
       </main>
       <Footer />

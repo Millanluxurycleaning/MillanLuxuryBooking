@@ -353,7 +353,7 @@ export function GalleryManagement() {
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="deep-cleaning">Deep Cleaning</SelectItem>
-                  <SelectItem value="move-in-out">Move-In/Move-Out</SelectItem>
+                  <SelectItem value="move-in-out">Move In / Move Out</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

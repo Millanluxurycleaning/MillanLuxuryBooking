@@ -1,7 +1,9 @@
-import { SiInstagram, SiYelp } from "react-icons/si";
+import { SiFacebook, SiGoogle, SiInstagram, SiYelp } from "react-icons/si";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const googleBusinessUrl = "https://www.google.com/maps/search/?api=1&query=Millan%20Luxury%20Cleaning%20Phoenix%20AZ";
+  const facebookUrl = "https://www.facebook.com/search/top/?q=Millan%20Luxury%20Cleaning";
 
   return (
     <footer className="bg-card border-t border-border py-12">
@@ -101,6 +103,26 @@ export function Footer() {
 
             {/* Social Icons */}
             <div className="flex gap-4">
+              <a
+                href={googleBusinessUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-accent hover:bg-primary hover:text-primary-foreground transition-colors"
+                aria-label="Google Business Profile"
+                data-testid="link-social-google"
+              >
+                <SiGoogle className="w-5 h-5" />
+              </a>
+              <a
+                href={facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-accent hover:bg-primary hover:text-primary-foreground transition-colors"
+                aria-label="Facebook"
+                data-testid="link-social-facebook"
+              >
+                <SiFacebook className="w-5 h-5" />
+              </a>
               <a
                 href="https://www.instagram.com/millan_luxury_cleaning/"
                 target="_blank"

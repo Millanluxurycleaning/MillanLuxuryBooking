@@ -16,7 +16,14 @@ export function Testimonials() {
   const sourceLabels: Record<string, string> = {
     google: "View on Google",
     thumbtack: "View on Thumbtack",
+    yelp: "View on Yelp",
   };
+  const liveTestimonials = testimonialList.filter(
+    (testimonial) => testimonial.source === "google" || testimonial.source === "yelp",
+  );
+  const displayTestimonials = liveTestimonials;
+  const googleLink = liveTestimonials.find((testimonial) => testimonial.source === "google" && testimonial.sourceUrl)?.sourceUrl;
+  const yelpLink = liveTestimonials.find((testimonial) => testimonial.source === "yelp" && testimonial.sourceUrl)?.sourceUrl;
 
   return (
     <section id="testimonials" className="py-20 md:py-32 bg-card">
@@ -49,7 +56,7 @@ export function Testimonials() {
         {/* Testimonials Grid */}
         {!isLoading && !hasShapeError && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {testimonialList.map((testimonial) => (
+            {displayTestimonials.map((testimonial) => (
               <Card
                 key={testimonial.id}
                 className="hover-elevate transition-all duration-300"
@@ -71,7 +78,8 @@ export function Testimonials() {
                     "{testimonial.review}"
                   </p>
 
-                  {(testimonial.source === "google" || testimonial.source === "thumbtack") && testimonial.sourceUrl && (
+                  {(testimonial.source === "google" || testimonial.source === "thumbtack" || testimonial.source === "yelp") &&
+                    testimonial.sourceUrl && (
                     <div className="mb-4">
                       <a
                         href={testimonial.sourceUrl}
@@ -96,10 +104,10 @@ export function Testimonials() {
         )}
 
         {/* Empty State */}
-        {!isLoading && testimonialList.length === 0 && !hasShapeError && (
+        {!isLoading && displayTestimonials.length === 0 && !hasShapeError && (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-lg">
-              No testimonials available yet.
+              Reviews are updating. Please check back soon.
             </p>
           </div>
         )}
@@ -112,25 +120,26 @@ export function Testimonials() {
           </div>
         )}
 
-        {/* CTA to Yelp */}
-        <div className="text-center mt-12">
-          <Button 
-            asChild
-            variant="outline"
-            size="lg"
-            data-testid="button-read-more-reviews"
-          >
-            <a 
-              href="https://www.yelp.com/biz/millan-luxury-cleaning-phoenix" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2"
+        {(googleLink || yelpLink) && (
+          <div className="text-center mt-12">
+            <Button 
+              asChild
+              variant="outline"
+              size="lg"
+              data-testid="button-read-more-reviews"
             >
-              Read More on Yelp
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </Button>
-        </div>
+              <a 
+                href={googleLink || yelpLink || "#"}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2"
+              >
+                {googleLink ? "Read More on Google" : "Read More on Yelp"}
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   );

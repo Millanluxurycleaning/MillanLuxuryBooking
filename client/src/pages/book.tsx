@@ -45,6 +45,59 @@ const LAUNDRY_RATES = {
   deliveryPerMile: 0.75,
 } as const;
 
+const signatureServiceCopyMap: Record<string, string> = {
+  "deep cleaning":
+    "A meticulous, top-to-bottom clean designed to reset your home or rental when it needs extra attention.",
+  "move-in/move-out":
+    "Perfect for transitions — detailed cleaning that prepares your space for inspection, listing, or move-in.",
+  "move-in / move-out":
+    "Perfect for transitions — detailed cleaning that prepares your space for inspection, listing, or move-in.",
+  "move-in / move-out cleaning":
+    "Perfect for transitions — detailed cleaning that prepares your space for inspection, listing, or move-in.",
+  "move-in/move-out cleaning":
+    "Perfect for transitions — detailed cleaning that prepares your space for inspection, listing, or move-in.",
+  "basic cleaning":
+    "Consistent, guest-ready service to maintain a polished, welcoming space between stays.",
+  "weekly & bi-weekly cleaning":
+    "Consistent, guest-ready service to maintain a polished, welcoming space between stays.",
+  "weekly & biweekly cleaning":
+    "Consistent, guest-ready service to maintain a polished, welcoming space between stays.",
+  "weekly & bi-weekly cleaning (basic cleaning)":
+    "Consistent, guest-ready service to maintain a polished, welcoming space between stays.",
+  "airbnb turnovers":
+    "Fast, detailed resets between guests to ensure your rental is spotless, refreshed, and guest-ready every time.",
+  "airbnb (only)":
+    "Fast, detailed resets between guests to ensure your rental is spotless, refreshed, and guest-ready every time.",
+  "airbnb weekly & biweekly cleaning":
+    "Fast, detailed resets between guests to ensure your rental is spotless, refreshed, and guest-ready every time.",
+  "reset, monthly & one time cleaning":
+    "Fast, detailed resets between guests to ensure your rental is spotless, refreshed, and guest-ready every time.",
+  "final/ move-out cleaning":
+    "Fast, detailed resets between guests to ensure your rental is spotless, refreshed, and guest-ready every time.",
+  "final / move-out cleaning":
+    "Fast, detailed resets between guests to ensure your rental is spotless, refreshed, and guest-ready every time.",
+  "standard service offerings":
+    "Fast, detailed resets between guests to ensure your rental is spotless, refreshed, and guest-ready every time.",
+};
+
+const normalizeServiceName = (name: string) => name.replace(/^[^A-Za-z0-9]+/, "").trim();
+
+const getCuratedServiceCopy = (name: string) => {
+  const normalized = normalizeServiceName(name).toLowerCase();
+  return signatureServiceCopyMap[normalized] ?? null;
+};
+
+const formatDescriptionLines = (description: string) => {
+  const cleaned = description.replace(/\s+/g, " ").trim();
+  if (!cleaned) return [];
+  const bulletSplit = cleaned.split("•").map((line) => line.trim()).filter(Boolean);
+  if (bulletSplit.length > 1) {
+    return bulletSplit;
+  }
+  const sentenceSplit = cleaned.split(/(?<=\.)\s+/).map((line) => line.trim()).filter(Boolean);
+  return sentenceSplit.length > 1 ? sentenceSplit : [cleaned];
+};
+
 type AvailabilitySlot = {
   startAt: string | null;
   locationId: string;
@@ -232,6 +285,13 @@ export default function BookingPage() {
     setSelectedSlot(null);
   }, [selectedServiceId, selectedDate]);
 
+  const curatedDescription = selectedService
+    ? getCuratedServiceCopy(selectedService.title ?? selectedService.name ?? "")
+    : null;
+  const formattedDescription = selectedService?.description
+    ? formatDescriptionLines(selectedService.description)
+    : [];
+
   // Group availabilities by date
   const availabilitiesByDate = useMemo(() => {
     const slots = availabilityQuery.data?.availabilities || [];
@@ -408,9 +468,21 @@ export default function BookingPage() {
               {selectedService?.description && (
                 <div className="rounded-xl border border-border/70 bg-gradient-to-br from-purple-50/70 to-pink-50/70 px-5 py-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Service Description</p>
-                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                    {selectedService.description}
-                  </p>
+                  {curatedDescription && (
+                    <p className="mt-2 text-sm text-foreground font-medium">
+                      {curatedDescription}
+                    </p>
+                  )}
+                  {formattedDescription.length > 0 && (
+                    <ul className="mt-3 space-y-2 text-sm text-muted-foreground leading-relaxed">
+                      {formattedDescription.map((line, index) => (
+                        <li key={`${selectedService.id}-detail-${index}`} className="flex gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
 

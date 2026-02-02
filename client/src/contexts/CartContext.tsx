@@ -90,11 +90,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         headers: sessionId ? { "x-cart-session": sessionId } : undefined,
       });
       if (!response.ok) {
-        throw new Error("Unable to load cart");
+        throw new Error("Unable to load selections");
       }
       await handleResponse(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load cart");
+      setError(err instanceof Error ? err.message : "Unable to load selections");
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +127,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ quantity }),
     });
     if (!response.ok) {
-      throw new Error("Unable to update cart");
+      throw new Error("Unable to update selections");
     }
     await handleResponse(response);
   };
@@ -151,7 +151,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       headers: sessionId ? { "x-cart-session": sessionId } : undefined,
     });
     if (!response.ok) {
-      throw new Error("Unable to clear cart");
+      throw new Error("Unable to clear selections");
     }
     await handleResponse(response);
   };

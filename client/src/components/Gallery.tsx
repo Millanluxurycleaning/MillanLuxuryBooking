@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ const placeholderImage = "https://placehold.co/1200x800?text=Image+coming+soon";
 
 export function Gallery() {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<string>("deep-cleaning");
 
   const { data: galleryItems, isLoading, error } = useQuery<GalleryItem[]>({
     queryKey: ["/api/gallery"]
@@ -21,9 +21,16 @@ export function Gallery() {
   const { items, isValid } = normalizeArrayData<GalleryItem>(galleryItems);
   const hasShapeError = !isLoading && !error && !isValid;
   
-  const filteredImages = filter === "all" 
-    ? items 
-    : items.filter(img => img.category === filter);
+  const filteredImages = items.filter((img) => img.category === filter || img.category === "all");
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    const hasCurrent = items.some((img) => img.category === filter || img.category === "all");
+    if (!hasCurrent) {
+      const fallback = items.some((img) => img.category === "deep-cleaning") ? "deep-cleaning" : "move-in-out";
+      setFilter(fallback);
+    }
+  }, [items, filter]);
 
   const selectedIndex = selectedItemId !== null 
     ? filteredImages.findIndex(img => img.id === selectedItemId)
@@ -119,13 +126,6 @@ export function Gallery() {
         {/* Filter Buttons */}
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           <Button
-            variant={filter === "all" ? "default" : "outline"}
-            onClick={() => setFilter("all")}
-            data-testid="button-filter-all"
-          >
-            All
-          </Button>
-          <Button
             variant={filter === "deep-cleaning" ? "default" : "outline"}
             onClick={() => setFilter("deep-cleaning")}
             data-testid="button-filter-deep-cleaning"
@@ -137,7 +137,7 @@ export function Gallery() {
             onClick={() => setFilter("move-in-out")}
             data-testid="button-filter-move-in-out"
           >
-            Move-In/Out
+            Move In / Move Out
           </Button>
         </div>
 
