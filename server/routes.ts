@@ -161,8 +161,11 @@ const extractCronAuth = (req: Request) => {
 const ensureCronAuthorized = (req: Request, res: Response) => {
   const secret = getCronSecret();
   if (!secret) {
-    res.status(500).json({ message: "CRON_SECRET not configured" });
-    return false;
+    if (!process.env.VERCEL) {
+      res.status(500).json({ message: "CRON_SECRET not configured" });
+      return false;
+    }
+    return true;
   }
   const provided = extractCronAuth(req);
   if (!provided) {
