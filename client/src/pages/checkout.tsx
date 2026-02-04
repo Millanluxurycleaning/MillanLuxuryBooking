@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Ach, ApplePay, CreditCard, GiftCard, GooglePay, PaymentForm } from "react-square-web-payments-sdk";
 import type { ChargeVerifyBuyerDetails } from "@square/web-payments-sdk-types";
@@ -21,6 +21,16 @@ export default function CheckoutPage() {
   const [postalCode, setPostalCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isApplePaySupported = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const ua = window.navigator.userAgent;
+    const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|Edg|OPR|Firefox|Android/.test(ua);
+    const applePaySession = (window as any).ApplePaySession;
+    if (!isSafari || !applePaySession) return false;
+    return typeof applePaySession.canMakePayments === "function"
+      ? applePaySession.canMakePayments()
+      : true;
+  }, []);
 
   const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID as string | undefined;
   const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID as string | undefined;
@@ -223,7 +233,7 @@ export default function CheckoutPage() {
                   >
                     <div className="space-y-6">
                       <div className="grid gap-3 md:grid-cols-2">
-                        <ApplePay />
+                        {isApplePaySupported && <ApplePay />}
                         <GooglePay />
                       </div>
 
