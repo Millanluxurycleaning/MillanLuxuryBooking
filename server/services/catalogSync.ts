@@ -38,7 +38,15 @@ const SERVICE_KEYWORDS = [
   "add-on",
   "deep clean",
   "basic",
+  "service",
+  "maintenance",
 ];
+
+const SERVICE_PRODUCT_TYPES = new Set([
+  "APPOINTMENTS_SERVICE",
+  "LEGACY_SQUARE_ONLINE_SERVICE",
+  "LEGACY_SQUARE_ONLINE_MEMBERSHIP",
+]);
 
 const requireSquareSyncEnabled = () => {
   if (process.env.SQUARE_SYNC_ENABLED !== "true") {
@@ -60,7 +68,11 @@ const buildImageMap = (objects: CatalogObject[]) => {
   return map;
 };
 
-const isServiceItem = (name: string): boolean => {
+const isServiceItem = (item: CatalogObject, name: string): boolean => {
+  const productType = item.itemData?.productType;
+  if (productType && SERVICE_PRODUCT_TYPES.has(productType)) {
+    return true;
+  }
   const lowerName = name.toLowerCase();
   if (PRODUCT_KEYWORDS.some((keyword) => lowerName.includes(keyword))) {
     return false;
@@ -118,7 +130,7 @@ const mapCatalogItems = (item: CatalogObject, images: Map<string, string>): Mapp
   const description = item.itemData.description?.trim() ?? null;
 
   // Services: only create one record (use first priced variation)
-  if (isServiceItem(name)) {
+  if (isServiceItem(item, name)) {
     const firstPriced = item.itemData.variations.find((v) => getVariationPrice(v) !== null);
     if (!firstPriced) {
       return [];

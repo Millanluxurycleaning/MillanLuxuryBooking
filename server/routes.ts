@@ -2071,7 +2071,10 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       const totalAmount = BigInt(Math.round(total * 100));
 
       const accessToken = await resolveSquareAccessToken();
-      const locationId = await resolveSquareLocationId(accessToken);
+      const locationId =
+        process.env.SQUARE_LOCATION_ID_FRAGRANCE ||
+        process.env.SQUARE_LOCATION_ID ||
+        (await resolveSquareLocationId(accessToken));
       const client = createSquareClient(accessToken);
       const orderIdempotencyKey = randomBytes(16).toString("hex");
       const paymentIdempotencyKey = randomBytes(16).toString("hex");
@@ -2164,7 +2167,19 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         return;
       }
       console.error("[API] Error in POST /api/checkout/payment:", error);
-      res.status(500).json({ message: "Failed to process payment" });
+      const squareErrors =
+        typeof error === "object" && error && "errors" in error
+          ? (error as { errors?: { code?: string; detail?: string }[] }).errors
+          : undefined;
+      const squareMessage = Array.isArray(squareErrors)
+        ? squareErrors
+            .map((squareError) => squareError?.detail || squareError?.code)
+            .filter(Boolean)
+            .join("; ")
+        : "";
+      res.status(500).json({
+        message: squareMessage ? `Failed to process payment: ${squareMessage}` : "Failed to process payment",
+      });
     }
   });
 
@@ -2276,10 +2291,17 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       const bookingSchema = createBookingSchema.extend({
         teamMemberId: z.string().min(1),
         serviceVariationId: z.string().min(1),
-        serviceVariationVersion: z.string().min(1),
+        serviceVariationVersion: z.string().regex(/^\d+$/, "Service variation version must be numeric"),
       });
 
       const payload = bookingSchema.parse(req.body);
+      let serviceVariationVersion: bigint;
+      try {
+        serviceVariationVersion = BigInt(payload.serviceVariationVersion);
+      } catch (parseError) {
+        res.status(400).json({ message: "Invalid service variation version" });
+        return;
+      }
       const service = await prisma.serviceItem.findUnique({ where: { id: payload.serviceId } });
 
       if (!service?.squareServiceId) {
@@ -2326,7 +2348,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
             {
               teamMemberId: payload.teamMemberId,
               serviceVariationId: payload.serviceVariationId,
-              serviceVariationVersion: BigInt(payload.serviceVariationVersion),
+              serviceVariationVersion,
             },
           ],
         },
@@ -2370,7 +2392,19 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         return;
       }
       console.error("[API] Error in POST /api/bookings:", error);
-      res.status(500).json({ message: "Failed to create booking" });
+      const squareErrors =
+        typeof error === "object" && error && "errors" in error
+          ? (error as { errors?: { code?: string; detail?: string }[] }).errors
+          : undefined;
+      const squareMessage = Array.isArray(squareErrors)
+        ? squareErrors
+            .map((squareError) => squareError?.detail || squareError?.code)
+            .filter(Boolean)
+            .join("; ")
+        : "";
+      res.status(500).json({
+        message: squareMessage ? `Failed to create booking: ${squareMessage}` : "Failed to create booking",
+      });
     }
   });
 
