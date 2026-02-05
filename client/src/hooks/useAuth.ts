@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/types";
 import { supabase } from "@/lib/supabase";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Session } from "@supabase/supabase-js";
 
 async function fetchAuthedUser(accessToken: string): Promise<User | null> {
@@ -37,7 +38,11 @@ async function fetchAuthedUser(accessToken: string): Promise<User | null> {
 
   if (!response.ok) {
     const message = (parsedBody as { message?: string } | null)?.message;
-    throw new Error(message || `Request failed with status ${response.status}`);
+    const error = new Error(message || `Request failed with status ${response.status}`) as Error & {
+      status?: number;
+    };
+    error.status = response.status;
+    throw error;
   }
 
   return parsedBody as User | null;
@@ -74,6 +79,11 @@ export function useAuth() {
     enabled: Boolean(session && accessToken),
     retry: 2,
     queryFn: () => fetchAuthedUser(accessToken!),
+    onError: (err) => {
+      if (isUnauthorizedError(err)) {
+        void supabase.auth.signOut();
+      }
+    },
   });
 
   const isSignedIn = Boolean(session);

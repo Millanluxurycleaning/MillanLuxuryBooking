@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { UserMenu } from "@/components/auth/UserMenu";
@@ -18,13 +17,7 @@ import { BlobBrowser } from "@/components/admin/BlobBrowser";
 
 export default function Admin() {
   const { user, isLoading, isLoaded, isSignedIn, isAdmin, error } = useAuth();
-  const [location, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (location === "/admin" && isLoaded && isSignedIn && !isAdmin) {
-      setLocation("/");
-    }
-  }, [isAdmin, isLoaded, isSignedIn, location, setLocation]);
+  const [, setLocation] = useLocation();
 
   // Show sign-in screen if not signed in
   if (!isLoading && isLoaded && !isSignedIn) {
