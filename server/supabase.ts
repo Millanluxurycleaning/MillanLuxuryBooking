@@ -50,12 +50,19 @@ export async function getUserFromRequest(req: Request): Promise<{ userId: string
 }
 
 // Check if user is admin by looking up in database
-export async function isUserAdmin(userId: string, prisma: any): Promise<boolean> {
+export async function isUserAdmin(userId: string, prisma: any, email?: string): Promise<boolean> {
   try {
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { id: userId },
       select: { isAdmin: true },
     });
+
+    if (!user && email) {
+      user = await prisma.user.findUnique({
+        where: { email },
+        select: { isAdmin: true },
+      });
+    }
 
     return user?.isAdmin || false;
   } catch (error) {

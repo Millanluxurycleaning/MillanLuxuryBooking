@@ -327,7 +327,7 @@ const createRequireAdminMiddleware = (prisma: PrismaClient, supabaseEnabled: boo
       return;
     }
 
-    const isAdmin = await isUserAdmin(user.userId, prisma);
+    const isAdmin = await isUserAdmin(user.userId, prisma, user.email);
 
     if (!isAdmin) {
       res.status(403).json({ message: "Forbidden - Admin access required" });
@@ -438,13 +438,36 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       // Try to get existing user from database
       let user = await prisma.user.findUnique({ where: { id: authUser.userId } });
 
+      // If user doesn't exist in DB, try to reconcile by email
+      if (!user && authUser.email) {
+        const existingByEmail = await prisma.user.findUnique({ where: { email: authUser.email } });
+        if (existingByEmail) {
+          if (existingByEmail.id !== authUser.userId) {
+            try {
+              user = await prisma.user.update({
+                where: { id: existingByEmail.id },
+                data: { id: authUser.userId, email: authUser.email },
+              });
+            } catch (error) {
+              console.warn(
+                "[WARN] Failed to align user id with auth user id. Falling back to email match.",
+                error,
+              );
+              user = existingByEmail;
+            }
+          } else {
+            user = existingByEmail;
+          }
+        }
+      }
+
       // If user doesn't exist in DB, create them (first-time login)
       if (!user) {
         // Extract name parts from email if not provided
-        const emailPrefix = authUser.email.split('@')[0];
+        const emailPrefix = authUser.email.split("@")[0];
         const nameParts = emailPrefix.split(/[._-]/);
-        const firstName = nameParts[0] || 'User';
-        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : null;
+        const firstName = nameParts[0] || "User";
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
 
         // Create user record from Supabase auth data
         user = await prisma.user.create({
