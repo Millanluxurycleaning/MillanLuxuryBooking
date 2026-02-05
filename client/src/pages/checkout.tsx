@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useCart } from "@/contexts/CartContext";
 
 export default function CheckoutPage() {
-  const { cart } = useCart();
+  const { cart, sessionId } = useCart();
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
@@ -104,6 +104,7 @@ export default function CheckoutPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(sessionId ? { "x-cart-session": sessionId } : {}),
         },
         body: JSON.stringify({
           cartId: cart.id,

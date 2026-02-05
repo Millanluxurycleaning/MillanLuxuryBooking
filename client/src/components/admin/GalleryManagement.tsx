@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +22,26 @@ import type { BlobImage } from "@/types/blob";
 
 type GalleryFormData = InsertGalleryItem;
 const placeholderImage = "https://placehold.co/600x600?text=Image+coming+soon";
+
+const normalizeCategoryKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const formatCategoryLabel = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Uncategorized";
+  if (/[-_]/.test(trimmed)) {
+    return trimmed
+      .split(/[-_]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+  return trimmed;
+};
 
 export function GalleryManagement() {
   const { toast } = useToast();
@@ -46,6 +65,24 @@ export function GalleryManagement() {
 
   const { items, isValid } = normalizeArrayData<GalleryItem>(galleryPayload);
   const normalizeCachedItems = (value: unknown) => normalizeArrayData<GalleryItem>(value).items;
+  const categoryOptions = useMemo(() => {
+    const map = new Map<string, { label: string; count: number; raw: string }>();
+    items.forEach((item) => {
+      const raw = item.category?.trim();
+      if (!raw) return;
+      const key = normalizeCategoryKey(raw);
+      if (!key) return;
+      const existing = map.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(key, { label: formatCategoryLabel(raw), count: 1, raw });
+      }
+    });
+    return Array.from(map.entries())
+      .map(([key, value]) => ({ key, ...value }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [items]);
 
   useEffect(() => {
     if (error) {
@@ -179,22 +216,36 @@ export function GalleryManagement() {
   });
 
   const onAddSubmit = (data: GalleryFormData) => {
+    const cleanedCategory = data.category?.trim();
+    if (!cleanedCategory) {
+      addForm.setError("category", { message: "Category is required" });
+      return;
+    }
     const cleanedData: GalleryFormData = {
       ...data,
+      category: cleanedCategory,
       imageUrl: data.imageUrl || undefined,
       beforeImageUrl: data.beforeImageUrl || undefined,
       afterImageUrl: data.afterImageUrl || undefined,
+      order: data.order ?? undefined,
     };
     addMutation.mutate(cleanedData);
   };
 
   const onEditSubmit = (data: GalleryFormData) => {
     if (editingItem) {
+      const cleanedCategory = data.category?.trim();
+      if (!cleanedCategory) {
+        editForm.setError("category", { message: "Category is required" });
+        return;
+      }
       const cleanedData: Partial<GalleryFormData> = {
         ...data,
+        category: cleanedCategory,
         imageUrl: data.imageUrl || undefined,
         beforeImageUrl: data.beforeImageUrl || undefined,
         afterImageUrl: data.afterImageUrl || undefined,
+        order: data.order ?? undefined,
       };
       updateMutation.mutate({ id: editingItem.id, data: cleanedData });
     }
@@ -213,7 +264,8 @@ export function GalleryManagement() {
       ...(item.afterImageUrl && { afterImageUrl: item.afterImageUrl }),
       ...(item.afterImagePublicId && { afterImagePublicId: item.afterImagePublicId }),
       ...(item.afterImageFilename && { afterImageFilename: item.afterImageFilename }),
-      category: item.category as "deep-cleaning" | "move-in-out" | "all",
+      category: item.category,
+      ...(item.order !== null && item.order !== undefined && { order: item.order }),
     });
   };
 
@@ -344,18 +396,55 @@ export function GalleryManagement() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="deep-cleaning">Deep Cleaning</SelectItem>
-                  <SelectItem value="move-in-out">Move In / Move Out</SelectItem>
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <Input
+                  {...field}
+                  list="gallery-category-options"
+                  placeholder="e.g. deep-cleaning, kitchens, move-in-out"
+                  data-testid="input-category"
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                Use <span className="font-medium">all</span> to show in every filter.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <datalist id="gallery-category-options">
+          {categoryOptions.map((option) => (
+            <option key={option.key} value={option.raw}>
+              {option.label}
+            </option>
+          ))}
+        </datalist>
+
+        <FormField
+          control={form.control}
+          name="order"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Display Order</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={field.value ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value === "") {
+                      field.onChange(undefined);
+                      return;
+                    }
+                    const parsed = Number(value);
+                    field.onChange(Number.isNaN(parsed) ? undefined : parsed);
+                  }}
+                  placeholder="Leave blank to auto-order"
+                  data-testid="input-order"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -372,6 +461,12 @@ export function GalleryManagement() {
                 <FormLabel>Single Image</FormLabel>
                 <FormControl>
                   <div className="space-y-2">
+                    <Input
+                      {...field}
+                      type="url"
+                      placeholder="https://example.com/image.jpg"
+                      data-testid="input-imageUrl-url"
+                    />
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                       <Input
                         type="file"
@@ -424,6 +519,12 @@ export function GalleryManagement() {
                   <FormLabel>Before Image</FormLabel>
                   <FormControl>
                     <div className="space-y-2">
+                      <Input
+                        {...field}
+                        type="url"
+                        placeholder="https://example.com/before.jpg"
+                        data-testid="input-beforeImageUrl-url"
+                      />
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <Input
                           type="file"
@@ -473,6 +574,12 @@ export function GalleryManagement() {
                   <FormLabel>After Image</FormLabel>
                   <FormControl>
                     <div className="space-y-2">
+                      <Input
+                        {...field}
+                        type="url"
+                        placeholder="https://example.com/after.jpg"
+                        data-testid="input-afterImageUrl-url"
+                      />
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <Input
                           type="file"
@@ -605,7 +712,7 @@ export function GalleryManagement() {
                 </h3>
                 <div className="flex items-center gap-2 mb-3">
                   <Badge variant="secondary" className="text-xs">
-                    {item.category}
+                    {formatCategoryLabel(item.category)}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     Order: {item.order}

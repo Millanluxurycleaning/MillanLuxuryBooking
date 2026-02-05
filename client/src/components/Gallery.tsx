@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,29 @@ import { normalizeArrayData } from "@/lib/arrayUtils";
 
 const placeholderImage = "https://placehold.co/1200x800?text=Image+coming+soon";
 
+const normalizeCategoryKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const formatCategoryLabel = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Uncategorized";
+  if (/[-_]/.test(trimmed)) {
+    return trimmed
+      .split(/[-_]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+  return trimmed;
+};
+
 export function Gallery() {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [filter, setFilter] = useState<string>("deep-cleaning");
+  const [filter, setFilter] = useState<string>("all");
 
   const { data: galleryItems, isLoading, error } = useQuery<GalleryItem[]>({
     queryKey: ["/api/gallery"]
@@ -20,17 +40,39 @@ export function Gallery() {
 
   const { items, isValid } = normalizeArrayData<GalleryItem>(galleryItems);
   const hasShapeError = !isLoading && !error && !isValid;
-  
-  const filteredImages = items.filter((img) => img.category === filter || img.category === "all");
+  const categories = useMemo(() => {
+    const map = new Map<string, string>();
+    items.forEach((item) => {
+      const raw = item.category?.trim();
+      if (!raw) return;
+      const key = normalizeCategoryKey(raw);
+      if (!key || key === "all") return;
+      if (!map.has(key)) {
+        map.set(key, formatCategoryLabel(raw));
+      }
+    });
+    return Array.from(map.entries())
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [items]);
+
+  const filteredImages = items.filter((img) => {
+    const key = normalizeCategoryKey(img.category || "");
+    if (filter === "all") return true;
+    return key === filter || key === "all";
+  });
 
   useEffect(() => {
     if (items.length === 0) return;
-    const hasCurrent = items.some((img) => img.category === filter || img.category === "all");
+    if (filter === "all") return;
+    const hasCurrent = items.some((img) => {
+      const key = normalizeCategoryKey(img.category || "");
+      return key === filter || key === "all";
+    });
     if (!hasCurrent) {
-      const fallback = items.some((img) => img.category === "deep-cleaning") ? "deep-cleaning" : "move-in-out";
-      setFilter(fallback);
+      setFilter(categories[0]?.key ?? "all");
     }
-  }, [items, filter]);
+  }, [items, filter, categories]);
 
   const selectedIndex = selectedItemId !== null 
     ? filteredImages.findIndex(img => img.id === selectedItemId)
@@ -126,19 +168,22 @@ export function Gallery() {
         {/* Filter Buttons */}
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           <Button
-            variant={filter === "deep-cleaning" ? "default" : "outline"}
-            onClick={() => setFilter("deep-cleaning")}
-            data-testid="button-filter-deep-cleaning"
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => setFilter("all")}
+            data-testid="button-filter-all"
           >
-            Deep Cleaning
+            All
           </Button>
-          <Button
-            variant={filter === "move-in-out" ? "default" : "outline"}
-            onClick={() => setFilter("move-in-out")}
-            data-testid="button-filter-move-in-out"
-          >
-            Move In / Move Out
-          </Button>
+          {categories.map((category) => (
+            <Button
+              key={category.key}
+              variant={filter === category.key ? "default" : "outline"}
+              onClick={() => setFilter(category.key)}
+              data-testid={`button-filter-${category.key}`}
+            >
+              {category.label}
+            </Button>
+          ))}
         </div>
 
         {/* Loading State */}

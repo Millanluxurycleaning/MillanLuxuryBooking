@@ -179,7 +179,7 @@ export type CreateContactMessage = z.infer<typeof createContactMessageSchema>;
 
 export const createGalleryItemSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  category: z.enum(["deep-cleaning", "move-in-out", "all"]),
+  category: z.string().trim().min(1, "Category is required"),
   imageUrl: optionalUrl.optional(),
   imagePublicId: z.string().optional(),
   imageFilename: z.string().optional(),
@@ -189,6 +189,7 @@ export const createGalleryItemSchema = z.object({
   afterImageUrl: optionalUrl.optional(),
   afterImagePublicId: z.string().optional(),
   afterImageFilename: z.string().optional(),
+  order: z.number().int().min(0).optional(),
 }).superRefine((data, ctx) => {
   const hasPrimary = Boolean(data.imageUrl);
   const hasBeforeAfter = Boolean(data.beforeImageUrl && data.afterImageUrl);
