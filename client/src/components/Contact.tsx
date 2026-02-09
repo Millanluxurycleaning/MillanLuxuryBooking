@@ -208,11 +208,11 @@ export function Contact() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Email</h3>
                     <a 
-                      href="mailto:millanluxurycleaning@gmail.com" 
+                      href="mailto:info@millanluxurycleaning.com" 
                       className="text-muted-foreground hover:text-primary transition-colors break-all"
                       data-testid="link-email"
                     >
-                      millanluxurycleaning@gmail.com
+                      info@millanluxurycleaning.com
                     </a>
                   </div>
                 </div>

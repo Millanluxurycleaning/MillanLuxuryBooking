@@ -90,10 +90,10 @@ export function Footer() {
               </p>
               <p className="text-muted-foreground text-sm">
                 <a 
-                  href="mailto:millanluxurycleaning@gmail.com" 
+                  href="mailto:info@millanluxurycleaning.com" 
                   className="hover:text-primary transition-colors break-all"
                 >
-                  millanluxurycleaning@gmail.com
+                  info@millanluxurycleaning.com
                 </a>
               </p>
               <p className="text-muted-foreground text-sm">
