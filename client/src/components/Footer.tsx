@@ -59,8 +59,8 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a 
-                  href="#testimonials" 
+                <a
+                  href="#testimonials"
                   className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   data-testid="link-footer-testimonials"
                 >
@@ -68,8 +68,17 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a 
-                  href="#contact" 
+                <a
+                  href="/partners"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                  data-testid="link-footer-partners"
+                >
+                  Partners
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#contact"
                   className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   data-testid="link-footer-contact"
                 >
@@ -84,8 +93,8 @@ export function Footer() {
             <h3 className="font-serif text-xl font-semibold mb-4">Connect With Us</h3>
             <div className="space-y-3 mb-6">
               <p className="text-muted-foreground text-sm">
-                <a href="tel:6619418765" className="hover:text-primary transition-colors">
-                  (661) 941-8765
+                <a href="tel:6025967393" className="hover:text-primary transition-colors">
+                  (602) 596-7393
                 </a>
               </p>
               <p className="text-muted-foreground text-sm">

@@ -192,11 +192,11 @@ export function Contact() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Phone</h3>
                     <a 
-                      href="tel:6619418765" 
+                      href="tel:6025967393"
                       className="text-muted-foreground hover:text-primary transition-colors"
                       data-testid="link-phone"
                     >
-                      (661) 941-8765
+                      (602) 596-7393
                     </a>
                   </div>
                 </div>
