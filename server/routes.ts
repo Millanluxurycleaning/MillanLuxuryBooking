@@ -2173,11 +2173,20 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       const orderIdempotencyKey = randomBytes(16).toString("hex");
       const paymentIdempotencyKey = randomBytes(16).toString("hex");
 
+      const taxAmount = BigInt(Math.round(tax * 100));
+
       const orderResponse = await client.orders.create({
         idempotencyKey: orderIdempotencyKey,
         order: {
           locationId,
           lineItems,
+          taxes: [
+            {
+              name: "Sales Tax",
+              percentage: "7.5",
+              scope: "ORDER",
+            },
+          ],
           ...(affiliateId ? { metadata: { affiliate_id: String(affiliateId) } } : {}),
         },
       });
@@ -2188,11 +2197,14 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         return;
       }
 
+      // Use Square's calculated total to avoid rounding mismatches
+      const squareTotal = squareOrder.totalMoney?.amount ?? totalAmount;
+
       const paymentResponse = await client.payments.create({
         idempotencyKey: paymentIdempotencyKey,
         sourceId: payload.sourceId,
         verificationToken: payload.verificationToken,
-        amountMoney: { amount: totalAmount, currency: Currency.Usd },
+        amountMoney: { amount: squareTotal, currency: Currency.Usd },
         orderId: squareOrder.id,
         locationId,
         buyerEmailAddress: payload.buyerEmail ?? authUser?.email ?? undefined,
