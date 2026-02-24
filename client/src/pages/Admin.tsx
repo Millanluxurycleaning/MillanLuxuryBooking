@@ -4,7 +4,7 @@ import { UserMenu } from "@/components/auth/UserMenu";
 import { SignInButton } from "@/components/auth/SignInButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ImageIcon, MessageSquare, Star, Briefcase, BookOpen, HelpCircle, Package } from "lucide-react";
+import { Loader2, ImageIcon, MessageSquare, Star, Briefcase, BookOpen, HelpCircle, Package, Handshake } from "lucide-react";
 import { ContactMessages } from "@/components/admin/ContactMessages";
 import { GalleryManagement } from "@/components/admin/GalleryManagement";
 import { TestimonialsManagement } from "@/components/admin/TestimonialsManagement";
@@ -14,6 +14,7 @@ import { SiteAssetsManagement } from "@/components/admin/SiteAssetsManagement";
 import { BlogManagement } from "@/components/admin/BlogManagement";
 import { FaqManagement } from "@/components/admin/FaqManagement";
 import { BlobBrowser } from "@/components/admin/BlobBrowser";
+import { PartnersManagement } from "@/components/admin/PartnersManagement";
 
 export default function Admin() {
   const { user, isLoading, isLoaded, isSignedIn, isAdmin, error } = useAuth();
@@ -102,7 +103,7 @@ export default function Admin() {
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8">
         <Tabs defaultValue="gallery" className="w-full">
-          <TabsList className="grid w-full grid-cols-9 max-w-6xl">
+          <TabsList className="grid w-full grid-cols-10 max-w-6xl">
             <TabsTrigger value="gallery" data-testid="tab-gallery">
               <ImageIcon className="mr-2 h-4 w-4" />
               Gallery
@@ -134,6 +135,10 @@ export default function Admin() {
             <TabsTrigger value="faq" data-testid="tab-faq">
               <HelpCircle className="mr-2 h-4 w-4" />
               FAQ
+            </TabsTrigger>
+            <TabsTrigger value="partners" data-testid="tab-partners">
+              <Handshake className="mr-2 h-4 w-4" />
+              Partners
             </TabsTrigger>
             <TabsTrigger value="messages" data-testid="tab-messages">
               <MessageSquare className="mr-2 h-4 w-4" />
@@ -219,6 +224,16 @@ export default function Admin() {
               </p>
             </div>
             <FaqManagement />
+          </TabsContent>
+
+          <TabsContent value="partners" className="mt-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-serif font-semibold mb-2">Partner Management</h2>
+              <p className="text-muted-foreground">
+                Review applications, manage partners, and track payouts
+              </p>
+            </div>
+            <PartnersManagement />
           </TabsContent>
 
           <TabsContent value="messages" className="mt-6">

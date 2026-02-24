@@ -22,6 +22,18 @@ const envSchema = z.object({
 
   // Encryption key for OAuth tokens (REQUIRED for OAuth)
   ENCRYPTION_KEY: z.string().min(32).optional(),
+
+  // Resend email
+  RESEND_API_KEY: z.string().trim().optional(),
+  EMAIL_FROM: z.string().trim().optional(),
+  SITE_URL: z.string().trim().optional(),
+
+  // Google SMTP (Gmail / Google Workspace)
+  SMTP_HOST: z.string().trim().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_USER: z.string().trim().optional(),
+  SMTP_PASS: z.string().trim().optional(),
+  NOTIFICATION_EMAIL: z.string().trim().optional(),
 });
 
 export type EnvConfig = ReturnType<typeof loadEnv>;
@@ -73,12 +85,17 @@ export function loadEnv() {
     console.warn("[WARN] Google OAuth credentials provided but ENCRYPTION_KEY is missing. OAuth will be disabled.");
   }
 
+  const resendEnabled = Boolean(env.RESEND_API_KEY);
+  const smtpEnabled = Boolean(env.SMTP_USER && env.SMTP_PASS);
+
   return {
     nodeEnv: env.NODE_ENV,
     port,
     supabaseEnabled: supabaseConfigured,
     blobEnabled,
     googleOAuthEnabled,
+    resendEnabled,
+    smtpEnabled,
     supabase: {
       url: env.SUPABASE_URL,
       anonKey: env.SUPABASE_ANON_KEY,
@@ -94,5 +111,17 @@ export function loadEnv() {
     },
     encryptionKey: env.ENCRYPTION_KEY,
     databaseUrl,
+    resend: {
+      apiKey: env.RESEND_API_KEY,
+      from: env.EMAIL_FROM || "Millan Luxury <noreply@millanluxury.com>",
+    },
+    smtp: {
+      host: env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(env.SMTP_PORT || "587"),
+      user: env.SMTP_USER,
+      pass: env.SMTP_PASS,
+    },
+    notificationEmail: env.NOTIFICATION_EMAIL || env.SMTP_USER || "",
+    siteUrl: env.SITE_URL || "",
   } as const;
 }

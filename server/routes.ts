@@ -41,6 +41,8 @@ import { importSquareCatalog } from "./services/catalogSync.js";
 import { createSquareClient } from "./services/square.js";
 import { resolveSquareAccessToken, resolveSquareLocationId } from "./services/squareAccess.js";
 import { Currency, type Availability } from "square";
+import { registerAffiliateRoutes, readAffiliateCookie } from "./routes/affiliate.js";
+import { sendContactNotificationEmail, sendBookingNotificationEmail, sendOrderNotificationEmail } from "./services/email.js";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -363,6 +365,12 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
   const requireAdmin = createRequireAdminMiddleware(prisma, env.supabaseEnabled);
   const requireAuthMiddleware = createRequireAuthMiddleware(env.supabaseEnabled);
 
+  // Register affiliate/partner routes (vanity redirects, applications, admin, portal)
+  registerAffiliateRoutes(app, prisma, env.supabaseEnabled, {
+    requireAdmin,
+    requireAuth: requireAuthMiddleware,
+  });
+
   const resolveCartSessionId = (req: Request) => {
     const headerValue = req.headers[CART_SESSION_HEADER] ?? req.headers[CART_SESSION_HEADER.toLowerCase()];
     if (Array.isArray(headerValue)) {
@@ -544,7 +552,12 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
 
       const validatedData = insertContactMessageSchema.parse(req.body);
       const message = await prisma.contactMessage.create({ data: validatedData });
-      
+
+      // Send email notification (fire-and-forget, don't block the response)
+      sendContactNotificationEmail(validatedData).catch((err) =>
+        console.error("[Email] Contact notification error:", err)
+      );
+
       res.status(201).json({
         success: true,
         message: "Contact form submitted successfully",
@@ -1638,8 +1651,62 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
 
     const eventType = (req.body?.type ?? req.body?.event_type ?? "unknown") as string;
     const eventId = (req.body?.event_id ?? req.body?.id ?? null) as string | null;
+    const eventData = req.body?.data?.object;
 
     console.log(`[SquareWebhook] type=${eventType} id=${eventId ?? "unknown"}`);
+
+    try {
+      switch (eventType) {
+        case "payment.completed": {
+          const payment = eventData?.payment;
+          if (payment?.order_id || payment?.orderId) {
+            const orderId = payment.order_id || payment.orderId;
+            // Idempotency: only upgrade pending → approved, never downgrade
+            await prisma.affiliateConversion.updateMany({
+              where: {
+                squareOrderId: orderId,
+                status: "pending",
+              },
+              data: {
+                status: "approved",
+                approvedAt: new Date(),
+              },
+            });
+          }
+          break;
+        }
+
+        case "refund.created":
+        case "refund.updated": {
+          const refund = eventData?.refund;
+          if (refund && (refund.order_id || refund.orderId)) {
+            const orderId = refund.order_id || refund.orderId;
+            const refundStatus = refund.status ?? "";
+            if (refundStatus === "COMPLETED" || refundStatus === "APPROVED") {
+              // Idempotency: never re-process already-refunded conversions
+              await prisma.affiliateConversion.updateMany({
+                where: {
+                  squareOrderId: orderId,
+                  status: { not: "refunded" },
+                },
+                data: {
+                  status: "refunded",
+                },
+              });
+              // Also update the Order status
+              await prisma.order.updateMany({
+                where: { squareOrderId: orderId },
+                data: { status: "refunded" },
+              });
+            }
+          }
+          break;
+        }
+      }
+    } catch (webhookError) {
+      console.error("[SquareWebhook] Processing error:", webhookError);
+      // Still return 200 to avoid Square retries
+    }
 
     res.status(200).json({ received: true });
   });
@@ -2060,6 +2127,10 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         return;
       }
 
+      // Read affiliate attribution cookie (HMAC-signed, first-touch)
+      const affiliateAttribution = await readAffiliateCookie(req, prisma);
+      const affiliateId = affiliateAttribution?.affiliateId ?? null;
+
       const productIds = cart.items.map((item) => item.productId);
       const products = await prisma.fragranceProduct.findMany({
         where: { id: { in: productIds } },
@@ -2095,8 +2166,8 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
 
       const accessToken = await resolveSquareAccessToken();
       const locationId =
-        process.env.SQUARE_LOCATION_ID_FRAGRANCE ||
         process.env.SQUARE_LOCATION_ID ||
+        process.env.SQUARE_LOCATION_ID_FRAGRANCE ||
         (await resolveSquareLocationId(accessToken));
       const client = createSquareClient(accessToken);
       const orderIdempotencyKey = randomBytes(16).toString("hex");
@@ -2107,6 +2178,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         order: {
           locationId,
           lineItems,
+          ...(affiliateId ? { metadata: { affiliate_id: String(affiliateId) } } : {}),
         },
       });
 
@@ -2151,6 +2223,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           subtotal: Number(subtotal.toFixed(2)),
           tax: Number(tax.toFixed(2)),
           paymentId: payment.id,
+          affiliateId,
           shippingAddress,
           billingAddress,
           items: {
@@ -2171,11 +2244,52 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         },
       });
 
+      // Create affiliate conversion if attributed
+      if (affiliateId && affiliateAttribution) {
+        try {
+          const commissionRate = Number(affiliateAttribution.affiliate.commissionRate);
+          const grossAmount = Number(total.toFixed(2));
+          const netAmount = Number(subtotal.toFixed(2));
+          const commissionAmount = Number((netAmount * commissionRate).toFixed(2));
+
+          await prisma.affiliateConversion.create({
+            data: {
+              affiliateId,
+              orderId: orderRecord.id,
+              squareOrderId: squareOrder.id,
+              grossAmount,
+              netAmount,
+              commissionAmount,
+              source: "native_checkout",
+              status: payment.status === "COMPLETED" ? "approved" : "pending",
+              approvedAt: payment.status === "COMPLETED" ? new Date() : null,
+            },
+          });
+        } catch (conversionError) {
+          // Log but don't fail the payment
+          console.error("[Affiliate] Failed to create conversion:", conversionError);
+        }
+      }
+
       await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
       await prisma.cart.update({
         where: { id: cart.id },
         data: { updatedAt: new Date(), expiresAt: touchCartExpiry() },
       });
+
+      // Send order notification (fire-and-forget)
+      sendOrderNotificationEmail({
+        orderId: orderRecord.id,
+        customerEmail: email,
+        total,
+        items: cart.items.map((item) => {
+          const product = productMap.get(item.productId);
+          const displayName = product?.fragrance && product.fragrance !== "Signature"
+            ? `${product.name} (${product.fragrance})`
+            : product?.name ?? "Item";
+          return { name: displayName, quantity: item.quantity, price: Number(item.price) };
+        }),
+      }).catch((err) => console.error("[Email] Order notification error:", err));
 
       res.json({
         success: true,
@@ -2276,16 +2390,16 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
             teamMemberId: segment.teamMemberId,
             serviceVariationId: segment.serviceVariationId ?? serviceVariationId,
             serviceVariationVersion: segment.serviceVariationVersion
-              ? segment.serviceVariationVersion.toString()
-              : serviceVariationVersion.toString(),
-            durationMinutes: segment.durationMinutes ?? service.duration,
+              ? String(segment.serviceVariationVersion)
+              : String(serviceVariationVersion),
+            durationMinutes: Number(segment.durationMinutes ?? service.duration),
           })) ?? [],
       }));
 
       res.json({
         serviceId,
         serviceVariationId,
-        serviceVariationVersion: serviceVariationVersion.toString(),
+        serviceVariationVersion: String(serviceVariationVersion),
         availabilities: sanitized,
       });
     } catch (error) {
@@ -2402,6 +2516,16 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           notes: payload.notes ?? null,
         },
       });
+
+      // Send booking notification (fire-and-forget)
+      sendBookingNotificationEmail({
+        customerName: payload.customerName,
+        customerEmail: payload.customerEmail,
+        customerPhone: payload.customerPhone,
+        serviceName: service.title,
+        startAt: payload.startAt,
+        notes: payload.notes,
+      }).catch((err) => console.error("[Email] Booking notification error:", err));
 
       res.status(201).json({
         success: true,

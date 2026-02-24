@@ -378,6 +378,7 @@ export interface Order {
   shippingAddress: Record<string, unknown> | null;
   billingAddress: Record<string, unknown> | null;
   paymentId: string | null;
+  affiliateId: number | null;
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -479,3 +480,119 @@ export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
 export const bookingStatusSchema = z.enum(["pending", "confirmed", "cancelled", "completed"]);
 export type BookingStatus = z.infer<typeof bookingStatusSchema>;
+
+// ============================================
+// Affiliate / Partner Types
+// ============================================
+
+export interface AffiliateApplication {
+  id: number;
+  partnerType: "brand_affiliate" | "cleaning_partner";
+  brandName: string;
+  contactName: string;
+  contactEmail: string;
+  website: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+  youtube: string | null;
+  otherSocial: string | null;
+  audienceSize: string | null;
+  audienceDescription: string | null;
+  whyPartner: string;
+  experience: string | null;
+  portfolioUrl: string | null;
+  companySize: string | null;
+  serviceArea: string | null;
+  yearsInBusiness: string | null;
+  status: "pending" | "approved" | "rejected";
+  reviewedAt: string | Date | null;
+  reviewedBy: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface Affiliate {
+  id: number;
+  userId: string | null;
+  contactEmail: string;
+  brandName: string;
+  slug: string;
+  commissionRate: number;
+  attributionWindowDays: number;
+  status: "active" | "disabled";
+  applicationId: number | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface AffiliateConversion {
+  id: number;
+  affiliateId: number;
+  orderId: number;
+  squareOrderId: string;
+  grossAmount: number;
+  netAmount: number;
+  commissionAmount: number;
+  status: "pending" | "approved" | "refunded";
+  source: string;
+  attributedAt: string | Date;
+  approvedAt: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface AffiliatePayout {
+  id: number;
+  affiliateId: number;
+  amount: number;
+  periodStart: string | Date;
+  periodEnd: string | Date;
+  status: "pending" | "paid";
+  paidAt: string | Date | null;
+  notes: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface AffiliateStats {
+  totalConversions: number;
+  pendingConversions: number;
+  totalRevenue: number;
+  totalCommission: number;
+  totalPaid: number;
+  outstandingBalance: number;
+}
+
+export const partnerTypeSchema = z.enum(["brand_affiliate", "cleaning_partner"]);
+export type PartnerType = z.infer<typeof partnerTypeSchema>;
+
+export const createPartnerApplicationSchema = z.object({
+  partnerType: partnerTypeSchema,
+  brandName: z.string().min(2, "Brand name is required"),
+  contactName: z.string().min(2, "Contact name is required"),
+  contactEmail: z.string().email("Valid email is required"),
+  website: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
+  instagram: z.string().max(100).or(z.literal("")).optional(),
+  tiktok: z.string().max(100).or(z.literal("")).optional(),
+  youtube: z.string().max(200).or(z.literal("")).optional(),
+  otherSocial: z.string().max(200).or(z.literal("")).optional(),
+  audienceSize: z.string().max(50).or(z.literal("")).optional(),
+  audienceDescription: z.string().max(500).or(z.literal("")).optional(),
+  whyPartner: z.string().min(20, "Please tell us why you want to partner (at least 20 characters)").max(1000),
+  experience: z.string().max(1000).or(z.literal("")).optional(),
+  portfolioUrl: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
+  // Cleaning partner specific
+  companySize: z.string().max(50).or(z.literal("")).optional(),
+  serviceArea: z.string().max(200).or(z.literal("")).optional(),
+  yearsInBusiness: z.string().max(50).or(z.literal("")).optional(),
+});
+export type CreatePartnerApplication = z.infer<typeof createPartnerApplicationSchema>;
+
+export const affiliateApplicationStatusSchema = z.enum(["pending", "approved", "rejected"]);
+export type AffiliateApplicationStatus = z.infer<typeof affiliateApplicationStatusSchema>;
+
+export const affiliateStatusSchema = z.enum(["active", "disabled"]);
+export type AffiliateStatus = z.infer<typeof affiliateStatusSchema>;
+
+export const conversionStatusSchema = z.enum(["pending", "approved", "refunded"]);
+export type ConversionStatus = z.infer<typeof conversionStatusSchema>;

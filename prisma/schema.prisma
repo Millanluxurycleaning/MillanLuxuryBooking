@@ -219,6 +219,7 @@ model Order {
   shippingAddress Json?
   billingAddress  Json?
   paymentId       String?
+  affiliateId     Int?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -299,4 +300,100 @@ model FragranceProduct {
   @@index([featured])
   @@index([isVisible])
   @@map("fragrance_products")
+}
+
+// ============================================
+// Affiliate / Partner System
+// ============================================
+
+model AffiliateApplication {
+  id                  Int       @id @default(autoincrement())
+  partnerType         String    @default("brand_affiliate") // brand_affiliate | cleaning_partner
+  brandName           String
+  contactName         String
+  contactEmail        String
+  website             String?
+  instagram           String?
+  tiktok              String?
+  youtube             String?
+  otherSocial         String?
+  audienceSize        String?
+  audienceDescription String?
+  whyPartner          String
+  experience          String?
+  portfolioUrl        String?
+  // Cleaning partner specific fields
+  companySize         String?   // solo | 2-5 | 6-15 | 16-50 | 50+
+  serviceArea         String?   // geographic area they serve
+  yearsInBusiness     String?
+  status              String    @default("pending") // pending | approved | rejected
+  reviewedAt          DateTime?
+  reviewedBy          String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([status])
+  @@index([contactEmail])
+  @@map("affiliate_applications")
+}
+
+model Affiliate {
+  id                    Int                   @id @default(autoincrement())
+  userId                String?               @unique
+  contactEmail          String                @unique
+  brandName             String
+  slug                  String                @unique
+  commissionRate        Decimal               @db.Decimal(5, 4) // e.g. 0.1000 = 10%
+  attributionWindowDays Int                   @default(30)
+  status                String                @default("active") // active | disabled
+  applicationId         Int?                  @unique
+  conversions           AffiliateConversion[]
+  payouts               AffiliatePayout[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([status])
+  @@index([slug])
+  @@map("affiliates")
+}
+
+model AffiliateConversion {
+  id               Int       @id @default(autoincrement())
+  affiliateId      Int
+  affiliate        Affiliate @relation(fields: [affiliateId], references: [id])
+  orderId          Int
+  squareOrderId    String
+  grossAmount      Decimal   @db.Decimal(10, 2)
+  netAmount        Decimal   @db.Decimal(10, 2)
+  commissionAmount Decimal   @db.Decimal(10, 2)
+  status           String    @default("pending") // pending | approved | refunded
+  source           String    @default("native_checkout") // native_checkout | manual_adjustment
+  attributedAt     DateTime  @default(now())
+  approvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([affiliateId])
+  @@index([orderId])
+  @@index([squareOrderId])
+  @@index([status])
+  @@map("affiliate_conversions")
+}
+
+model AffiliatePayout {
+  id          Int       @id @default(autoincrement())
+  affiliateId Int
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id])
+  amount      Decimal   @db.Decimal(10, 2)
+  periodStart DateTime
+  periodEnd   DateTime
+  status      String    @default("pending") // pending | paid
+  paidAt      DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([affiliateId])
+  @@index([status])
+  @@map("affiliate_payouts")
 }

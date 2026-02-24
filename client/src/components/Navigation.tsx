@@ -31,6 +31,7 @@ export function Navigation() {
     { href: "/#gallery", label: "Gallery" },
     { href: "/#testimonials", label: "Reviews" },
     { href: "/blog", label: "Blog" },
+    { href: "/partners", label: "Partners" },
     { href: "/#faq", label: "FAQ" },
     { href: "/#contact", label: "Contact" },
   ];

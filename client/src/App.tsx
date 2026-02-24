@@ -17,6 +17,9 @@ import CartPage from "@/pages/cart";
 import CheckoutPage from "@/pages/checkout";
 import CheckoutSuccess from "@/pages/checkout-success";
 import BookingPage from "@/pages/book";
+import PartnersPage from "@/pages/partners";
+import PartnerLogin from "@/pages/partner/login";
+import PartnerDashboard from "@/pages/partner/dashboard";
 
 // Main router component
 function Router() {
@@ -31,6 +34,9 @@ function Router() {
       <Route path="/checkout" component={CheckoutPage}/>
       <Route path="/checkout/success" component={CheckoutSuccess}/>
       <Route path="/book" component={BookingPage}/>
+      <Route path="/partners" component={PartnersPage}/>
+      <Route path="/partner/login" component={PartnerLogin}/>
+      <Route path="/partner/dashboard" component={PartnerDashboard}/>
       <Route path="/admin" component={Admin}/>
       <Route component={NotFound} />
     </Switch>
