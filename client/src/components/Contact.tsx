@@ -85,8 +85,9 @@ export function Contact() {
                         <FormItem>
                           <FormLabel>Name</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Your name" 
+                            <Input
+                              placeholder="Your name"
+                              autoComplete="name"
                               {...field}
                               data-testid="input-contact-name"
                             />
@@ -103,9 +104,10 @@ export function Contact() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="email" 
-                              placeholder="your.email@example.com" 
+                            <Input
+                              type="email"
+                              placeholder="your.email@example.com"
+                              autoComplete="email"
                               {...field}
                               data-testid="input-contact-email"
                             />

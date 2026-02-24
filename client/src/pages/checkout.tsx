@@ -151,6 +151,8 @@ export default function CheckoutPage() {
                   <Label htmlFor="buyer-name">Full Name</Label>
                   <Input
                     id="buyer-name"
+                    name="name"
+                    autoComplete="name"
                     value={buyerName}
                     onChange={(event) => setBuyerName(event.target.value)}
                   />
@@ -159,7 +161,9 @@ export default function CheckoutPage() {
                   <Label htmlFor="buyer-email">Email</Label>
                   <Input
                     id="buyer-email"
+                    name="email"
                     type="email"
+                    autoComplete="email"
                     value={buyerEmail}
                     onChange={(event) => setBuyerEmail(event.target.value)}
                   />
@@ -168,6 +172,9 @@ export default function CheckoutPage() {
                   <Label htmlFor="buyer-phone">Phone</Label>
                   <Input
                     id="buyer-phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
                     value={buyerPhone}
                     onChange={(event) => setBuyerPhone(event.target.value)}
                   />
@@ -176,6 +183,8 @@ export default function CheckoutPage() {
                   <Label htmlFor="address-line-1">Address</Label>
                   <Input
                     id="address-line-1"
+                    name="address-line1"
+                    autoComplete="address-line1"
                     value={addressLine1}
                     onChange={(event) => setAddressLine1(event.target.value)}
                   />
@@ -184,6 +193,8 @@ export default function CheckoutPage() {
                   <Label htmlFor="address-line-2">Address Line 2</Label>
                   <Input
                     id="address-line-2"
+                    name="address-line2"
+                    autoComplete="address-line2"
                     value={addressLine2}
                     onChange={(event) => setAddressLine2(event.target.value)}
                   />
@@ -192,6 +203,8 @@ export default function CheckoutPage() {
                   <Label htmlFor="city">City</Label>
                   <Input
                     id="city"
+                    name="city"
+                    autoComplete="address-level2"
                     value={city}
                     onChange={(event) => setCity(event.target.value)}
                   />
@@ -200,6 +213,8 @@ export default function CheckoutPage() {
                   <Label htmlFor="state">State</Label>
                   <Input
                     id="state"
+                    name="state"
+                    autoComplete="address-level1"
                     value={state}
                     onChange={(event) => setState(event.target.value)}
                   />
@@ -208,6 +223,8 @@ export default function CheckoutPage() {
                   <Label htmlFor="postal-code">Postal Code</Label>
                   <Input
                     id="postal-code"
+                    name="postal-code"
+                    autoComplete="postal-code"
                     value={postalCode}
                     onChange={(event) => setPostalCode(event.target.value)}
                   />
