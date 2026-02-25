@@ -45,6 +45,7 @@ import { registerAffiliateRoutes, readAffiliateCookie } from "./routes/affiliate
 import { sendContactNotificationEmail, sendBookingNotificationEmail, sendBookingConfirmationEmail, sendOrderNotificationEmail, sendOrderConfirmationEmail } from "./services/email.js";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+let lastCatalogSyncAt = 0; // Debounce for catalog webhook sync (epoch ms)
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/jpg",
@@ -1462,26 +1463,75 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
     }
   });
 
-  // DEV: Public sync endpoint for testing (remove in production)
-  app.post("/api/square/sync-now", async (req, res) => {
-    if (!ensureSquareSyncEnabled(res)) {
+  // Register Square webhooks programmatically (admin-only, one-time setup)
+  app.post("/api/square/webhooks/register", async (req, res) => {
+    const authUser = await getUserFromRequest(req);
+    if (!authUser || !(await isUserAdmin(authUser.userId))) {
+      res.status(401).json({ message: "Unauthorized" });
       return;
     }
 
-    const rateLimit = checkPublicWriteRateLimit(req);
-    if (rateLimit.limited) {
-      res.setHeader("Retry-After", String(rateLimit.retryAfterSeconds));
-      res.status(429).json({ message: "Too many requests. Please try again later." });
-      return;
-    }
     try {
-      const result = await importSquareCatalog();
-      res.json({ success: true, ...result });
+      const client = createSquareClient();
+      const notificationUrl = "https://millanluxurycleaning.com/api/webhooks/square";
+
+      // Check for existing subscriptions first
+      const existing = await client.webhookSubscriptions.list();
+      const existingSubs = existing.subscriptions ?? [];
+      const alreadyRegistered = existingSubs.find((s) => s.notificationUrl === notificationUrl);
+
+      if (alreadyRegistered) {
+        // Update existing subscription with all event types
+        const updated = await client.webhookSubscriptions.update({
+          subscriptionId: alreadyRegistered.id!,
+          subscription: {
+            name: "Millan Luxury Auto-Sync",
+            enabled: true,
+            eventTypes: [
+              "catalog.version.updated",
+              "inventory.count.updated",
+              "payment.completed",
+              "refund.created",
+              "refund.updated",
+            ],
+          },
+        });
+        res.json({
+          success: true,
+          action: "updated",
+          subscriptionId: updated.subscription?.id,
+          signatureKey: updated.subscription?.signatureKey ?? "Check Square Dashboard",
+        });
+      } else {
+        // Create new subscription
+        const created = await client.webhookSubscriptions.create({
+          idempotencyKey: randomBytes(16).toString("hex"),
+          subscription: {
+            name: "Millan Luxury Auto-Sync",
+            notificationUrl,
+            enabled: true,
+            eventTypes: [
+              "catalog.version.updated",
+              "inventory.count.updated",
+              "payment.completed",
+              "refund.created",
+              "refund.updated",
+            ],
+            apiVersion: "2025-01-23",
+          },
+        });
+        res.json({
+          success: true,
+          action: "created",
+          subscriptionId: created.subscription?.id,
+          signatureKey: created.subscription?.signatureKey,
+          message: "Add the signatureKey as SQUARE_WEBHOOK_SIGNATURE_KEY in Vercel env vars",
+        });
+      }
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : "Failed to sync"
-      });
+      console.error("[API] Webhook registration error:", error);
+      const msg = error instanceof Error ? error.message : "Failed to register webhooks";
+      res.status(500).json({ success: false, message: msg });
     }
   });
 
@@ -1683,7 +1733,6 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
             const orderId = refund.order_id || refund.orderId;
             const refundStatus = refund.status ?? "";
             if (refundStatus === "COMPLETED" || refundStatus === "APPROVED") {
-              // Idempotency: never re-process already-refunded conversions
               await prisma.affiliateConversion.updateMany({
                 where: {
                   squareOrderId: orderId,
@@ -1693,12 +1742,47 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
                   status: "refunded",
                 },
               });
-              // Also update the Order status
               await prisma.order.updateMany({
                 where: { squareOrderId: orderId },
                 data: { status: "refunded" },
               });
             }
+          }
+          break;
+        }
+
+        case "catalog.version.updated": {
+          // Debounce: skip if synced within last 60 seconds
+          const now = Date.now();
+          if (now - lastCatalogSyncAt < 60_000) {
+            console.log("[Webhook] Catalog sync debounced (last sync <60s ago)");
+            break;
+          }
+          lastCatalogSyncAt = now;
+          console.log("[Webhook] Catalog updated, triggering auto-sync");
+          importSquareCatalog().catch((err) =>
+            console.error("[Webhook] Catalog sync error:", err)
+          );
+          break;
+        }
+
+        case "inventory.count.updated": {
+          const counts = req.body?.data?.object?.inventory_counts ??
+            req.body?.data?.object?.inventoryCounts ?? [];
+          if (Array.isArray(counts) && counts.length > 0) {
+            let updated = 0;
+            for (const count of counts) {
+              const variationId = count.catalog_object_id ?? count.catalogObjectId;
+              const quantity = parseInt(count.quantity ?? "0", 10);
+              if (variationId) {
+                const result = await prisma.fragranceProduct.updateMany({
+                  where: { squareVariationId: variationId },
+                  data: { inventoryCount: quantity },
+                });
+                updated += result.count;
+              }
+            }
+            console.log(`[Webhook] Inventory updated for ${updated} products`);
           }
           break;
         }
