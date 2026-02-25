@@ -10,12 +10,13 @@ import type { BlobImage } from "@/types/blob";
 
 export type BlobBrowserModalProps = {
   open: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  onOpenChange?: (open: boolean) => void;
   onSelect: (image: BlobImage) => void;
   prefix: "branding" | "gallery" | "before" | "after" | "testimonials";
 };
 
-export function BlobBrowserModal({ open, onClose, onSelect, prefix }: BlobBrowserModalProps) {
+export function BlobBrowserModal({ open, onClose, onOpenChange, onSelect, prefix }: BlobBrowserModalProps) {
   const { data, isLoading, isError, error } = useQuery<BlobImage[]>({
     queryKey: ["blob-files", prefix],
     enabled: open,
@@ -35,8 +36,18 @@ export function BlobBrowserModal({ open, onClose, onSelect, prefix }: BlobBrowse
 
   const files = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
+  const handleClose = () => {
+    onClose?.();
+    onOpenChange?.(false);
+  };
+
+  const handleDialogOpenChange = (value: boolean) => {
+    if (!value) handleClose();
+    onOpenChange?.(value);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Choose an Image</DialogTitle>
@@ -67,7 +78,7 @@ export function BlobBrowserModal({ open, onClose, onSelect, prefix }: BlobBrowse
                   className="group overflow-hidden rounded border bg-muted/40 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
                   onClick={() => {
                     onSelect(file);
-                    onClose();
+                    handleClose();
                   }}
                 >
                   <div className="aspect-square w-full overflow-hidden bg-background">
@@ -94,7 +105,7 @@ export function BlobBrowserModal({ open, onClose, onSelect, prefix }: BlobBrowse
         )}
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose}>
             Close
           </Button>
         </div>

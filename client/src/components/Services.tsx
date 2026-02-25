@@ -288,8 +288,8 @@ export function Services({
             return name.includes("laundry") || name.includes("add-on");
           }),
         },
-      ] as const).filter((group) => group.items.length > 0)
-    : [{ label: null, items: limitedServices }];
+      ] as { label: string | null; items: ServiceItem[] }[]).filter((group) => group.items.length > 0)
+    : [{ label: null as string | null, items: limitedServices }];
   const needsRentalGroup =
     showAirbnbOnlyCard && groupByCategory && !groupedServices.some((group) => group.label === "Rental Services");
   let groupsToRender = groupedServices;

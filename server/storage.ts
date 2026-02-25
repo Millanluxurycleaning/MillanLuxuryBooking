@@ -129,24 +129,24 @@ class PrismaStorage implements IStorage {
     return this.db.contactMessage.findUnique({ where: { id } });
   }
 
-  async createGalleryItem(itemData: InsertGalleryItem) {
+  async createGalleryItem(itemData: InsertGalleryItem): Promise<GalleryItem> {
     const maxOrder = await this.db.galleryItem.aggregate({ _max: { order: true } });
     const nextOrder = (maxOrder._max.order ?? -1) + 1;
-    return this.db.galleryItem.create({ data: { ...itemData, order: nextOrder } });
+    return this.db.galleryItem.create({ data: { ...itemData, order: nextOrder } }) as unknown as Promise<GalleryItem>;
   }
 
-  async getGalleryItems() {
-    return this.db.galleryItem.findMany({ orderBy: [{ order: "asc" }, { id: "asc" }] });
+  async getGalleryItems(): Promise<GalleryItem[]> {
+    return this.db.galleryItem.findMany({ orderBy: [{ order: "asc" }, { id: "asc" }] }) as unknown as Promise<GalleryItem[]>;
   }
 
-  async getGalleryItem(id: number) {
-    return this.db.galleryItem.findUnique({ where: { id } });
+  async getGalleryItem(id: number): Promise<GalleryItem | null> {
+    return this.db.galleryItem.findUnique({ where: { id } }) as unknown as Promise<GalleryItem | null>;
   }
 
-  async updateGalleryItem(id: number, itemData: UpdateGalleryItem) {
+  async updateGalleryItem(id: number, itemData: UpdateGalleryItem): Promise<GalleryItem | null> {
     const existing = await this.getGalleryItem(id);
     if (!existing) return null;
-    return this.db.galleryItem.update({ where: { id }, data: itemData });
+    return this.db.galleryItem.update({ where: { id }, data: itemData }) as unknown as Promise<GalleryItem | null>;
   }
 
   async deleteGalleryItem(id: number) {
@@ -156,7 +156,7 @@ class PrismaStorage implements IStorage {
     return true;
   }
 
-  async createTestimonial(itemData: InsertTestimonial) {
+  async createTestimonial(itemData: InsertTestimonial): Promise<Testimonial> {
     const maxOrder = await this.db.testimonial.aggregate({ _max: { order: true } });
     const nextOrder = (maxOrder._max.order ?? -1) + 1;
     return this.db.testimonial.create({
@@ -170,21 +170,21 @@ class PrismaStorage implements IStorage {
         review: (itemData as any).content ?? (itemData as any).review,
         order: nextOrder,
       },
-    });
+    }) as unknown as Promise<Testimonial>;
   }
 
-  async getTestimonials() {
-    return this.db.testimonial.findMany({ orderBy: [{ order: "asc" }, { id: "asc" }] });
+  async getTestimonials(): Promise<Testimonial[]> {
+    return this.db.testimonial.findMany({ orderBy: [{ order: "asc" }, { id: "asc" }] }) as unknown as Promise<Testimonial[]>;
   }
 
-  async getTestimonial(id: number) {
-    return this.db.testimonial.findUnique({ where: { id } });
+  async getTestimonial(id: number): Promise<Testimonial | null> {
+    return this.db.testimonial.findUnique({ where: { id } }) as unknown as Promise<Testimonial | null>;
   }
 
-  async updateTestimonial(id: number, itemData: UpdateTestimonial) {
+  async updateTestimonial(id: number, itemData: UpdateTestimonial): Promise<Testimonial | null> {
     const existing = await this.getTestimonial(id);
     if (!existing) return null;
-    return this.db.testimonial.update({ where: { id }, data: itemData });
+    return this.db.testimonial.update({ where: { id }, data: itemData }) as unknown as Promise<Testimonial | null>;
   }
 
   async deleteTestimonial(id: number) {
@@ -221,7 +221,7 @@ class PrismaStorage implements IStorage {
     return true;
   }
 
-  async createService(itemData: InsertService) {
+  async createService(itemData: InsertService): Promise<ServiceItem> {
     const maxOrder = await this.db.serviceItem.aggregate({ _max: { order: true } });
     const nextOrder = (maxOrder._max.order ?? -1) + 1;
     return this.db.serviceItem.create({
@@ -231,21 +231,21 @@ class PrismaStorage implements IStorage {
         name: (itemData as any).name ?? (itemData as any).title ?? "",
         order: nextOrder,
       },
-    });
+    }) as unknown as Promise<ServiceItem>;
   }
 
-  async getServices() {
-    return this.db.serviceItem.findMany({ orderBy: [{ order: "asc" }, { id: "asc" }] });
+  async getServices(): Promise<ServiceItem[]> {
+    return this.db.serviceItem.findMany({ orderBy: [{ order: "asc" }, { id: "asc" }] }) as unknown as Promise<ServiceItem[]>;
   }
 
-  async getService(id: number) {
-    return this.db.serviceItem.findUnique({ where: { id } });
+  async getService(id: number): Promise<ServiceItem | null> {
+    return this.db.serviceItem.findUnique({ where: { id } }) as unknown as Promise<ServiceItem | null>;
   }
 
-  async updateService(id: number, itemData: UpdateService) {
+  async updateService(id: number, itemData: UpdateService): Promise<ServiceItem | null> {
     const existing = await this.getService(id);
     if (!existing) return null;
-    return this.db.serviceItem.update({ where: { id }, data: itemData });
+    return this.db.serviceItem.update({ where: { id }, data: itemData }) as unknown as Promise<ServiceItem | null>;
   }
 
   async deleteService(id: number) {
@@ -479,7 +479,7 @@ class InMemoryStorage implements IStorage {
   async getSiteAssetByUrl(url: string) { return this.assets.find((a) => a.url === url) ?? null; }
 
   async createPost(post: InsertPost) {
-    const created: Post = { id: this.posts.length + 1, createdAt: new Date(), updatedAt: new Date(), published: post.published ?? false, ...post } as Post;
+    const created: Post = { ...post, id: this.posts.length + 1, createdAt: new Date(), updatedAt: new Date(), published: post.published ?? false } as Post;
     this.posts.push(created);
     return created;
   }

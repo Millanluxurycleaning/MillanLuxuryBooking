@@ -69,7 +69,7 @@ const buildImageMap = (objects: CatalogObject[]) => {
 };
 
 const isServiceItem = (item: CatalogObject, name: string): boolean => {
-  const productType = item.itemData?.productType;
+  const productType = (item as any).itemData?.productType;
   if (productType && SERVICE_PRODUCT_TYPES.has(productType)) {
     return true;
   }
@@ -206,7 +206,7 @@ export const importSquareCatalog = async (): Promise<CatalogSyncResult> => {
   cursor = undefined;
 
   do {
-    const result = await client.catalog.list({ cursor, types: ["IMAGE"] });
+    const result = await client.catalog.list({ cursor, types: "IMAGE" });
     if (result.data?.length) {
       for (const obj of result.data) {
         allImages.push(obj);

@@ -39,7 +39,9 @@ export function SiteAssetsManagement() {
       queryClient.setQueryData<SiteAssetMap>(["/api/assets"], (prev = {}) => ({
         ...prev,
         [asset.key]: {
-          id: String(prev[asset.key]?.id ?? asset.key),
+          ...prev[asset.key],
+          id: prev[asset.key]?.id ?? 0,
+          key: asset.key,
           url: asset.url,
           publicId: asset.publicId ?? prev[asset.key]?.publicId ?? "",
           filename: asset.filename ?? prev[asset.key]?.filename ?? asset.key,
@@ -73,7 +75,9 @@ export function SiteAssetsManagement() {
       queryClient.setQueryData<SiteAssetMap>(["/api/assets"], (prev = {}) => ({
         ...prev,
         [asset.key]: {
-          id: String(prev[asset.key]?.id ?? asset.key),
+          ...prev[asset.key],
+          id: prev[asset.key]?.id ?? 0,
+          key: asset.key,
           url: asset.url,
           publicId: asset.publicId ?? prev[asset.key]?.publicId ?? "",
           filename: asset.filename ?? prev[asset.key]?.filename ?? asset.key,

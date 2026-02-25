@@ -137,7 +137,7 @@ export default function CheckoutPage() {
       : Boolean(shipAddressLine1.trim() && shipCity.trim() && shipState.trim() && shipPostalCode.trim());
   const formReady = Boolean(buyerName.trim()) && isValidEmail && isValidPhone && billingComplete && shippingComplete;
 
-  const handleTokenize = async (tokenResult: any, buyerVerificationToken?: { token?: string }) => {
+  const handleTokenize = async (tokenResult: any, buyerVerificationToken?: { token?: string } | null) => {
     if (tokenResult.status !== "OK") {
       setError("Payment details are incomplete or invalid.");
       return;

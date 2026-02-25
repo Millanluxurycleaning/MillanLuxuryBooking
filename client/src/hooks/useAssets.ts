@@ -28,8 +28,10 @@ function normalizeAsset(asset: SiteAssetResponseRecord, keyFallback?: string): A
     const filename = asset.filename || inferredName || asset.publicId?.split("/").pop() || new URL(asset.url).pathname.split("/").pop();
     const publicId = asset.publicId || new URL(asset.url).pathname;
 
+    const rawId = (asset as any).id ?? (asset as any).key ?? keyFallback ?? filename ?? asset.url;
     return {
-      id: String((asset as any).id ?? (asset as any).key ?? keyFallback ?? filename ?? asset.url),
+      id: typeof rawId === "number" ? rawId : Number(rawId) || 0,
+      key: (asset as any).key ?? keyFallback ?? "",
       url: asset.url,
       publicId,
       filename: filename ?? "asset",

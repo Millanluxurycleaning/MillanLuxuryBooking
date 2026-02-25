@@ -74,16 +74,11 @@ export function useAuth() {
   const accessToken = session?.access_token;
 
   // Fetch user data from our database (only if signed in)
-  const { data: dbUser, isLoading: dbLoading, error } = useQuery<User>({
+  const { data: dbUser, isLoading: dbLoading, error } = useQuery<User | null>({
     queryKey: ["/api/auth/user", accessToken],
     enabled: Boolean(session && accessToken),
     retry: 2,
     queryFn: () => fetchAuthedUser(accessToken!),
-    onError: (err) => {
-      if (isUnauthorizedError(err)) {
-        void supabase.auth.signOut();
-      }
-    },
   });
 
   const isSignedIn = Boolean(session);

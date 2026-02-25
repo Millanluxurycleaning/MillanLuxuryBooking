@@ -40,7 +40,7 @@ import {
 import { importSquareCatalog } from "./services/catalogSync.js";
 import { createSquareClient } from "./services/square.js";
 import { resolveSquareAccessToken, resolveSquareLocationId } from "./services/squareAccess.js";
-import { Currency, type Availability } from "square";
+import { Country, Currency, FulfillmentState, FulfillmentType, type Availability } from "square";
 import { registerAffiliateRoutes, readAffiliateCookie } from "./routes/affiliate.js";
 import { sendContactNotificationEmail, sendBookingNotificationEmail, sendBookingConfirmationEmail, sendOrderNotificationEmail, sendOrderConfirmationEmail } from "./services/email.js";
 
@@ -286,7 +286,7 @@ const buildAssetPayload = (asset: SiteAsset): Asset & { key: string; path: strin
   return {
     key: asset.key,
     url: asset.url,
-    id: String(asset.id),
+    id: asset.id,
     path,
     publicId: asset.publicId || path,
     filename,
@@ -1466,7 +1466,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
   // Register Square webhooks programmatically (admin-only, one-time setup)
   app.post("/api/square/webhooks/register", async (req, res) => {
     const authUser = await getUserFromRequest(req);
-    if (!authUser || !(await isUserAdmin(authUser.userId))) {
+    if (!authUser || !(await isUserAdmin(authUser.userId, prisma))) {
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
@@ -1476,13 +1476,22 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       const notificationUrl = "https://millanluxurycleaning.com/api/webhooks/square";
 
       // Check for existing subscriptions first
-      const existing = await client.webhookSubscriptions.list();
-      const existingSubs = existing.subscriptions ?? [];
+      const existingSubs: { id?: string; notificationUrl?: string | null }[] = [];
+      try {
+        const subsPage = await client.webhooks.subscriptions.list();
+        if (subsPage.data) {
+          for (const sub of subsPage.data) {
+            existingSubs.push(sub);
+          }
+        }
+      } catch {
+        // No existing subscriptions or API error — continue
+      }
       const alreadyRegistered = existingSubs.find((s) => s.notificationUrl === notificationUrl);
 
       if (alreadyRegistered) {
         // Update existing subscription with all event types
-        const updated = await client.webhookSubscriptions.update({
+        const updated = await client.webhooks.subscriptions.update({
           subscriptionId: alreadyRegistered.id!,
           subscription: {
             name: "Millan Luxury Auto-Sync",
@@ -1504,7 +1513,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         });
       } else {
         // Create new subscription
-        const created = await client.webhookSubscriptions.create({
+        const created = await client.webhooks.subscriptions.create({
           idempotencyKey: randomBytes(16).toString("hex"),
           subscription: {
             name: "Millan Luxury Auto-Sync",
@@ -2284,7 +2293,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
             locality: shipAddr.city || undefined,
             administrativeDistrictLevel1: shipAddr.state || undefined,
             postalCode: shipAddr.postalCode || undefined,
-            country: "US",
+            country: Country.Us,
           }
         : undefined;
 
@@ -2308,8 +2317,8 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       // Build fulfillment based on delivery type
       const fulfillment = isServiceDelivery
         ? {
-            type: "PICKUP" as const,
-            state: "PROPOSED" as const,
+            type: FulfillmentType.Pickup,
+            state: FulfillmentState.Proposed,
             pickupDetails: {
               recipient: {
                 displayName: payload.buyerName || "Customer",
@@ -2320,14 +2329,14 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
             },
           }
         : {
-            type: "SHIPMENT" as const,
-            state: "PROPOSED" as const,
+            type: FulfillmentType.Shipment,
+            state: FulfillmentState.Proposed,
             shipmentDetails: {
               recipient: {
                 displayName: payload.buyerName || "Customer",
                 emailAddress: payload.buyerEmail || undefined,
                 phoneNumber: payload.buyerPhone || undefined,
-                ...(fulfillmentAddress ? { address: fulfillmentAddress } : {}),
+                address: fulfillmentAddress,
               },
             },
           };

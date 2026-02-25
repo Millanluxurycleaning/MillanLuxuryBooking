@@ -52,11 +52,11 @@ app.use((req, res, next) => {
 });
 
 // Initialization state for Vercel serverless
-let initPromise: Promise<Express> | null = null;
-let initializedApp: Express | null = null;
+let initPromise: Promise<express.Express> | null = null;
+let initializedApp: express.Express | null = null;
 
 // Async initialization function
-async function initializeApp(): Promise<Express> {
+async function initializeApp(): Promise<express.Express> {
   if (initializedApp) {
     return initializedApp;
   }

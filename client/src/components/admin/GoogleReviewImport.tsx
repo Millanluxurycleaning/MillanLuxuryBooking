@@ -18,7 +18,7 @@ export function GoogleReviewImport() {
   const queryClient = useQueryClient();
 
   // Check connection status
-  const { data: status } = useQuery({
+  const { data: status } = useQuery<{ connected: boolean }>({
     queryKey: ['/api/auth/google/status'],
     enabled: open,
   });

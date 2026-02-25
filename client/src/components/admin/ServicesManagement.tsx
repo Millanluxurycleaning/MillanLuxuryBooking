@@ -253,7 +253,7 @@ export function ServicesManagement() {
   const onAddSubmit = (data: ServiceFormData) => {
     const filtered = {
       ...data,
-      features: data.features.filter(f => f.trim()),
+      features: (data.features ?? []).filter(f => f.trim()),
     };
     addMutation.mutate(filtered);
   };
@@ -262,7 +262,7 @@ export function ServicesManagement() {
     if (!editingItem) return;
     const filtered = {
       ...data,
-      features: data.features.filter(f => f.trim()),
+      features: (data.features ?? []).filter(f => f.trim()),
     };
     updateMutation.mutate({ id: editingItem.id, data: filtered });
   };
