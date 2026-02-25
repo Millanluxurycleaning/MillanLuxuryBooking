@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay, addDays, startOfDay } from "date-fns";
+import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, Sparkles, Home, AlertCircle } from "lucide-react";
+import { Calendar, Clock, Sparkles, Home, AlertCircle, ShieldCheck } from "lucide-react";
 import type { ServiceItem, ServicePricingTier } from "@shared/types";
 
 // Square footage pricing tiers
@@ -226,17 +227,9 @@ export default function BookingPage() {
     return basePrice + sqftAddOn;
   }, [basePrice, sqftAddOn, isLaundryService, laundryTotal]);
 
-  // Calculate deposit amount
-  const depositAmount = useMemo(() => {
-    if (!selectedService?.requiresDeposit) return null;
-    if (selectedService.depositAmount) return Number(selectedService.depositAmount);
-    if (selectedPrice && selectedService.depositPercent) {
-      return Math.round((selectedPrice * selectedService.depositPercent) / 100);
-    }
-    // Default: 25% deposit
-    if (selectedPrice) return Math.round(selectedPrice * 0.25);
-    return null;
-  }, [selectedService, selectedPrice]);
+  // Square Web Payments SDK for card-on-file
+  const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID as string | undefined;
+  const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID as string | undefined;
 
   useEffect(() => {
     if (!selectedServiceId && squareServices.length > 0) {
@@ -330,7 +323,7 @@ export default function BookingPage() {
     return days;
   }, []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (sourceId?: string) => {
     if (!selectedServiceId || !selectedSlot?.startAt || !selectedSlot.appointmentSegments.length) {
       return;
     }
@@ -388,6 +381,7 @@ export default function BookingPage() {
           teamMemberId: segment.teamMemberId,
           serviceVariationId: segment.serviceVariationId,
           serviceVariationVersion: segment.serviceVariationVersion,
+          sourceId,
         }),
       });
 
@@ -398,7 +392,7 @@ export default function BookingPage() {
 
       setBookingStatus({
         success: true,
-        message: `Booking confirmed! Reference #${data.bookingId}. ${depositAmount ? `A deposit of $${depositAmount.toFixed(2)} will be collected.` : ""}`,
+        message: `Booking confirmed! Reference #${data.bookingId}. You'll receive a confirmation email shortly.`,
       });
     } catch (error) {
       setBookingStatus({
@@ -978,38 +972,27 @@ export default function BookingPage() {
                           <span className="font-medium">Total Price</span>
                           <span className="font-bold text-purple-600">${selectedPrice.toFixed(2)}</span>
                         </div>
-                        {depositAmount && selectedService?.requiresDeposit !== false && (
-                          <div className="flex justify-between items-center pt-2 border-t border-purple-200">
-                            <div>
-                              <span className="font-semibold">Deposit Due</span>
-                              <p className="text-xs text-muted-foreground">Due at booking</p>
-                            </div>
-                            <span className="font-bold text-lg text-purple-600">${depositAmount.toFixed(2)}</span>
-                          </div>
-                        )}
                       </>
                     )}
                   </CardContent>
                 </Card>
               )}
 
-              {/* Deposit Notice */}
-              {selectedService?.requiresDeposit !== false && (
-                <Card className="border-amber-200 bg-amber-50/50">
-                  <CardContent className="pt-4">
-                    <div className="flex gap-3">
-                      <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="font-medium text-amber-900">Deposit Required</p>
-                        <p className="text-amber-700 mt-1">
-                          A {selectedService?.depositPercent || 25}% deposit is required to confirm your booking.
-                          The remaining balance is due on the day of service.
-                        </p>
-                      </div>
+              {/* Cancellation Policy Notice */}
+              <Card className="border-emerald-200 bg-emerald-50/50">
+                <CardContent className="pt-4">
+                  <div className="flex gap-3">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium text-emerald-900">Cancellation Policy</p>
+                      <p className="text-emerald-700 mt-1">
+                        A card is required to hold your booking but <strong>will not be charged</strong>.
+                        Cancellations within 24 hours incur a 25% fee. Same-day cancellations or no-shows incur a 50% fee.
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Contact Form */}
               <Card>
@@ -1071,20 +1054,71 @@ export default function BookingPage() {
                     </div>
                   )}
 
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={
-                      isSubmitting ||
-                      !selectedServiceId ||
-                      !selectedSlot ||
-                      !customerName.trim() ||
-                      !customerEmail.trim()
-                    }
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                    size="lg"
-                  >
-                    {isSubmitting ? "Booking..." : depositAmount ? `Confirm Booking • $${depositAmount.toFixed(2)} Deposit` : "Confirm Booking"}
-                  </Button>
+                  {/* Card on File + Confirm Button */}
+                  {applicationId && squareLocationId ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                        <span>Your card will not be charged. Held securely by Square.</span>
+                      </div>
+                      <PaymentForm
+                        applicationId={applicationId}
+                        locationId={squareLocationId}
+                        cardTokenizeResponseReceived={(tokenResult) => {
+                          if (tokenResult.status === "OK" && tokenResult.token) {
+                            handleSubmit(tokenResult.token);
+                          } else {
+                            setBookingStatus({
+                              success: false,
+                              message: "Please enter valid card details.",
+                            });
+                          }
+                        }}
+                        createPaymentRequest={() => ({
+                          countryCode: "US",
+                          currencyCode: "USD",
+                          total: { amount: "0.00", label: "Card on File" },
+                        })}
+                      >
+                        <CreditCard
+                          buttonProps={{
+                            isLoading: isSubmitting,
+                            css: {
+                              backgroundColor: "#a855f7",
+                              fontSize: "16px",
+                              fontWeight: "600",
+                              padding: "12px",
+                              "&:hover": {
+                                backgroundColor: "#9333ea",
+                              },
+                            },
+                          }}
+                          style={{
+                            input: {
+                              fontSize: "16px",
+                            },
+                          }}
+                        >
+                          {isSubmitting ? "Booking..." : "Confirm Booking"}
+                        </CreditCard>
+                      </PaymentForm>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => handleSubmit()}
+                      disabled={
+                        isSubmitting ||
+                        !selectedServiceId ||
+                        !selectedSlot ||
+                        !customerName.trim() ||
+                        !customerEmail.trim()
+                      }
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                      size="lg"
+                    >
+                      {isSubmitting ? "Booking..." : "Confirm Booking"}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </div>

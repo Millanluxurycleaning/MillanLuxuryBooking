@@ -42,7 +42,7 @@ import { createSquareClient } from "./services/square.js";
 import { resolveSquareAccessToken, resolveSquareLocationId } from "./services/squareAccess.js";
 import { Currency, type Availability } from "square";
 import { registerAffiliateRoutes, readAffiliateCookie } from "./routes/affiliate.js";
-import { sendContactNotificationEmail, sendBookingNotificationEmail, sendOrderNotificationEmail, sendOrderConfirmationEmail } from "./services/email.js";
+import { sendContactNotificationEmail, sendBookingNotificationEmail, sendBookingConfirmationEmail, sendOrderNotificationEmail, sendOrderConfirmationEmail } from "./services/email.js";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -2564,6 +2564,27 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
 
       const customerId = customerResponse.customer?.id ?? null;
 
+      // Save card on file for cancellation protection (no charge)
+      let squareCardId: string | null = null;
+      if (payload.sourceId && customerId) {
+        try {
+          const cardResponse = await client.cards.create({
+            idempotencyKey: randomBytes(16).toString("hex"),
+            sourceId: payload.sourceId,
+            card: {
+              customerId,
+              cardholderName: payload.customerName,
+            },
+          });
+          squareCardId = cardResponse.card?.id ?? null;
+          console.log(`[Booking] Card on file saved: ${squareCardId}`);
+        } catch (cardError) {
+          console.error("[Booking] Failed to save card on file:", cardError);
+          res.status(400).json({ message: "Failed to save card. Please check your card details and try again." });
+          return;
+        }
+      }
+
       const bookingResponse = await client.bookings.create({
         booking: {
           locationId,
@@ -2603,6 +2624,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           endAt: endAtDate,
           status: booking.status ?? "pending",
           notes: payload.notes ?? null,
+          squareCardId,
         },
       });
 
@@ -2614,7 +2636,18 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         serviceName: service.title,
         startAt: payload.startAt,
         notes: payload.notes,
+        cardOnFile: !!squareCardId,
       }).catch((err) => console.error("[Email] Booking notification error:", err));
+
+      // Send booking confirmation to customer (fire-and-forget)
+      sendBookingConfirmationEmail({
+        bookingId: record.id,
+        customerName: payload.customerName,
+        customerEmail: payload.customerEmail,
+        serviceName: service.title,
+        startAt: payload.startAt,
+        cardOnFile: !!squareCardId,
+      }).catch((err) => console.error("[Email] Booking confirmation error:", err));
 
       res.status(201).json({
         success: true,

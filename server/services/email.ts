@@ -117,14 +117,20 @@ export async function sendBookingNotificationEmail(params: {
   serviceName: string;
   startAt: string;
   notes?: string;
+  cardOnFile?: boolean;
 }): Promise<boolean> {
   const transport = getSmtpTransport();
-  const notifyTo = getNotificationEmail();
 
-  if (!transport || !notifyTo) {
+  if (!transport) {
     console.warn("[Email] SMTP not configured, skipping booking notification");
     return false;
   }
+
+  // Send to both ivan@ and info@ (info is alias but user wants both)
+  const recipients = [
+    "ivan@millanluxurycleaning.com",
+    "info@millanluxurycleaning.com",
+  ].join(", ");
 
   const date = new Date(params.startAt);
   const formatted = date.toLocaleString("en-US", {
@@ -137,10 +143,20 @@ export async function sendBookingNotificationEmail(params: {
     timeZone: "America/Phoenix",
   });
 
+  const cardRow = params.cardOnFile
+    ? `<tr style="border-bottom: 1px solid #e5e5e5;">
+        <td style="padding: 12px 0; font-size: 14px; color: #888;">Card</td>
+        <td style="padding: 12px 0; font-size: 16px; color: #16a34a; font-weight: bold;">On file for cancellation protection</td>
+      </tr>`
+    : `<tr style="border-bottom: 1px solid #e5e5e5;">
+        <td style="padding: 12px 0; font-size: 14px; color: #888;">Card</td>
+        <td style="padding: 12px 0; font-size: 16px; color: #dc2626;">Not provided</td>
+      </tr>`;
+
   try {
     await transport.sendMail({
       from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
-      to: notifyTo,
+      to: recipients,
       replyTo: params.customerEmail,
       subject: `New Booking: ${params.customerName} — ${params.serviceName}`,
       html: `
@@ -172,6 +188,7 @@ export async function sendBookingNotificationEmail(params: {
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Date</td>
               <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${formatted}</td>
             </tr>
+            ${cardRow}
           </table>
           ${params.notes ? `
           <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
@@ -185,10 +202,110 @@ export async function sendBookingNotificationEmail(params: {
         </div>
       `,
     });
-    console.log(`[Email] Booking notification sent to ${notifyTo}`);
+    console.log(`[Email] Booking notification sent to ${recipients}`);
     return true;
   } catch (error) {
     console.error("[Email] Failed to send booking notification:", error);
+    return false;
+  }
+}
+
+// --- Customer booking confirmation ---
+
+export async function sendBookingConfirmationEmail(params: {
+  bookingId: number;
+  customerName: string;
+  customerEmail: string;
+  serviceName: string;
+  startAt: string;
+  cardOnFile?: boolean;
+}): Promise<boolean> {
+  const transport = getSmtpTransport();
+
+  if (!transport || !params.customerEmail) {
+    console.warn("[Email] SMTP not configured or no customer email, skipping booking confirmation");
+    return false;
+  }
+
+  const date = new Date(params.startAt);
+  const formatted = date.toLocaleString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Phoenix",
+  });
+
+  const firstName = params.customerName.split(" ")[0];
+
+  try {
+    await transport.sendMail({
+      from: `"Millan Luxury" <${process.env.SMTP_USER}>`,
+      to: params.customerEmail,
+      subject: `Booking Confirmed — ${params.serviceName}`,
+      html: `
+        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h1 style="font-size: 28px; color: #b8860b; margin: 0 0 8px;">You're All Set, ${firstName}!</h1>
+            <p style="font-size: 16px; color: #666; margin: 0;">Your booking has been confirmed.</p>
+          </div>
+
+          <div style="background: #f9f9f6; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <p style="font-size: 14px; color: #888; margin: 0 0 4px;">Booking Reference</p>
+            <p style="font-size: 20px; font-weight: bold; color: #b8860b; margin: 0;">#${params.bookingId}</p>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <tr style="border-bottom: 1px solid #e5e5e5;">
+              <td style="padding: 12px 0; font-size: 14px; color: #888; width: 100px;">Service</td>
+              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${params.serviceName}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e5e5;">
+              <td style="padding: 12px 0; font-size: 14px; color: #888;">Date &amp; Time</td>
+              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${formatted}</td>
+            </tr>
+          </table>
+
+          ${params.cardOnFile ? `
+          <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px 20px; margin-bottom: 24px;">
+            <p style="font-size: 15px; line-height: 1.6; margin: 0; color: #166534;">
+              Your card is securely on file but <strong>has not been charged</strong>. It is held in accordance with our cancellation policy.
+            </p>
+          </div>` : ""}
+
+          <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
+            <p style="font-size: 14px; color: #888; margin: 0 0 8px;">Cancellation Policy</p>
+            <p style="font-size: 15px; line-height: 1.6; margin: 0;">
+              Cancellations within <strong>24 hours</strong> of your scheduled service will incur a <strong>25% fee</strong> of the total service cost.
+              Cancellations within <strong>a few hours</strong> of service or no-shows will incur a <strong>50% fee</strong>.
+            </p>
+          </div>
+
+          <p style="font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+            We look forward to seeing you! If you have any questions, feel free to contact us at
+            <a href="tel:6025967393" style="color: #b8860b;">(602) 596-7393</a>.
+          </p>
+
+          <div style="text-align: center; margin-bottom: 24px;">
+            <a href="https://millanluxurycleaning.com" style="display: inline-block; padding: 12px 32px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
+              Visit Millan Luxury
+            </a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
+          <p style="font-size: 12px; color: #888; text-align: center; line-height: 1.5;">
+            Millan Luxury Cleaning &bull; 811 N 3rd St, Phoenix, AZ 85004<br/>
+            <a href="https://millanluxurycleaning.com" style="color: #b8860b;">millanluxurycleaning.com</a>
+          </p>
+        </div>
+      `,
+    });
+    console.log(`[Email] Booking confirmation sent to ${params.customerEmail}`);
+    return true;
+  } catch (error) {
+    console.error("[Email] Failed to send booking confirmation:", error);
     return false;
   }
 }

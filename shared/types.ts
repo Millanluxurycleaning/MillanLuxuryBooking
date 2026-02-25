@@ -379,6 +379,8 @@ export interface Order {
   billingAddress: Record<string, unknown> | null;
   paymentId: string | null;
   affiliateId: number | null;
+  bookingId: number | null;
+  fulfillmentType: "shipment" | "service_delivery";
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -406,6 +408,7 @@ export interface Booking {
   endAt: string | Date;
   status: "pending" | "confirmed" | "cancelled" | "completed";
   notes: string | null;
+  squareCardId: string | null;
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -472,6 +475,7 @@ export const createBookingSchema = z.object({
   serviceId: z.number().int().positive(),
   startAt: z.string().datetime(),
   notes: z.string().optional(),
+  sourceId: z.string().optional(),
 });
 export type CreateBooking = z.infer<typeof createBookingSchema>;
 
