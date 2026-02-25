@@ -193,6 +193,132 @@ export async function sendBookingNotificationEmail(params: {
   }
 }
 
+// --- Customer order confirmation ---
+
+export async function sendOrderConfirmationEmail(params: {
+  orderId: number;
+  customerName: string;
+  customerEmail: string;
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  total: number;
+  items: { name: string; quantity: number; price: number }[];
+  shippingAddress?: { addressLine1?: string; city?: string; state?: string; postalCode?: string };
+  isPickup?: boolean;
+}): Promise<boolean> {
+  const transport = getSmtpTransport();
+
+  if (!transport || !params.customerEmail) {
+    console.warn("[Email] SMTP not configured or no customer email, skipping confirmation");
+    return false;
+  }
+
+  const itemRows = params.items
+    .map(
+      (item) => `
+      <tr style="border-bottom: 1px solid #e5e5e5;">
+        <td style="padding: 10px 0; font-size: 14px;">${item.name}</td>
+        <td style="padding: 10px 0; font-size: 14px; text-align: center;">x${item.quantity}</td>
+        <td style="padding: 10px 0; font-size: 14px; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
+      </tr>`
+    )
+    .join("");
+
+  const shipAddr = params.shippingAddress;
+  const hasShipping = !params.isPickup && shipAddr?.addressLine1;
+  const fulfillmentMessage = hasShipping
+    ? "We'll send you a notification when your order has been shipped."
+    : "We'll notify you when your order is ready for pick-up.";
+
+  const shipAddrBlock = hasShipping
+    ? `
+      <div style="margin-bottom: 24px;">
+        <p style="font-size: 14px; color: #888; margin: 0 0 4px;">Shipping to</p>
+        <p style="font-size: 15px; margin: 0;">${shipAddr!.addressLine1}</p>
+        <p style="font-size: 15px; margin: 0;">${shipAddr!.city || ""}, ${shipAddr!.state || ""} ${shipAddr!.postalCode || ""}</p>
+      </div>`
+    : "";
+
+  try {
+    await transport.sendMail({
+      from: `"Millan Luxury" <${process.env.SMTP_USER}>`,
+      to: params.customerEmail,
+      subject: `Order Confirmed — #${params.orderId}`,
+      html: `
+        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h1 style="font-size: 28px; color: #b8860b; margin: 0 0 8px;">Thank You, ${params.customerName.split(" ")[0]}!</h1>
+            <p style="font-size: 16px; color: #666; margin: 0;">Your order has been received and is being prepared.</p>
+          </div>
+
+          <div style="background: #f9f9f6; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <p style="font-size: 14px; color: #888; margin: 0 0 4px;">Order Number</p>
+            <p style="font-size: 20px; font-weight: bold; color: #b8860b; margin: 0;">#${params.orderId}</p>
+          </div>
+
+          ${shipAddrBlock}
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+            <tr style="border-bottom: 2px solid #1a1a1a;">
+              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: left;">Item</th>
+              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: center;">Qty</th>
+              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: right;">Price</th>
+            </tr>
+            ${itemRows}
+          </table>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666;">Subtotal</td>
+              <td style="padding: 6px 0; font-size: 14px; text-align: right;">$${params.subtotal.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666;">Shipping</td>
+              <td style="padding: 6px 0; font-size: 14px; text-align: right;">$${params.shipping.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666;">Tax</td>
+              <td style="padding: 6px 0; font-size: 14px; text-align: right;">$${params.tax.toFixed(2)}</td>
+            </tr>
+            <tr style="border-top: 2px solid #1a1a1a;">
+              <td style="padding: 12px 0; font-size: 18px; font-weight: bold;">Total</td>
+              <td style="padding: 12px 0; font-size: 18px; font-weight: bold; text-align: right;">$${params.total.toFixed(2)}</td>
+            </tr>
+          </table>
+
+          <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
+            <p style="font-size: 15px; line-height: 1.6; margin: 0;">
+              ${fulfillmentMessage}
+            </p>
+          </div>
+
+          <p style="font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+            We truly appreciate your business. If you have any questions about your order, feel free to reply to this email or contact us at <a href="tel:6025967393" style="color: #b8860b;">(602) 596-7393</a>.
+          </p>
+
+          <div style="text-align: center; margin-bottom: 24px;">
+            <a href="https://millanluxurycleaning.com" style="display: inline-block; padding: 12px 32px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
+              Visit Millan Luxury
+            </a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
+          <p style="font-size: 12px; color: #888; text-align: center; line-height: 1.5;">
+            Millan Luxury Cleaning &bull; 811 N 3rd St, Phoenix, AZ 85004<br/>
+            <a href="https://millanluxurycleaning.com" style="color: #b8860b;">millanluxurycleaning.com</a>
+          </p>
+        </div>
+      `,
+    });
+    console.log(`[Email] Order confirmation sent to ${params.customerEmail}`);
+    return true;
+  } catch (error) {
+    console.error("[Email] Failed to send order confirmation:", error);
+    return false;
+  }
+}
+
 // --- Order notification ---
 
 export async function sendOrderNotificationEmail(params: {

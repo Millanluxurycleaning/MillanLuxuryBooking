@@ -42,7 +42,7 @@ import { createSquareClient } from "./services/square.js";
 import { resolveSquareAccessToken, resolveSquareLocationId } from "./services/squareAccess.js";
 import { Currency, type Availability } from "square";
 import { registerAffiliateRoutes, readAffiliateCookie } from "./routes/affiliate.js";
-import { sendContactNotificationEmail, sendBookingNotificationEmail, sendOrderNotificationEmail } from "./services/email.js";
+import { sendContactNotificationEmail, sendBookingNotificationEmail, sendOrderNotificationEmail, sendOrderConfirmationEmail } from "./services/email.js";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -2356,6 +2356,25 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           return { name: displayName, quantity: item.quantity, price: Number(item.price) };
         }),
       }).catch((err) => console.error("[Email] Order notification error:", err));
+
+      // Send customer confirmation email (fire-and-forget)
+      sendOrderConfirmationEmail({
+        orderId: orderRecord.id,
+        customerName: payload.buyerName || "Customer",
+        customerEmail: email,
+        subtotal,
+        shipping,
+        tax,
+        total,
+        items: cart.items.map((item) => {
+          const product = productMap.get(item.productId);
+          const displayName = product?.fragrance && product.fragrance !== "Signature"
+            ? `${product.name} (${product.fragrance})`
+            : product?.name ?? "Item";
+          return { name: displayName, quantity: item.quantity, price: Number(item.price) };
+        }),
+        shippingAddress: payload.shippingAddress,
+      }).catch((err) => console.error("[Email] Order confirmation error:", err));
 
       res.json({
         success: true,
