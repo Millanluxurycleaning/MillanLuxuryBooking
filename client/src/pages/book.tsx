@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, Sparkles, Home, AlertCircle, ShieldCheck } from "lucide-react";
+import { Calendar, Clock, Sparkles, Home, AlertCircle, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { BookingUpsellCarousel } from "@/components/BookingUpsellCarousel";
 import type { ServiceItem, ServicePricingTier } from "@shared/types";
 
 // Square footage pricing tiers
@@ -134,6 +135,12 @@ export default function BookingPage() {
   const [notes, setNotes] = useState("");
   const [bookingStatus, setBookingStatus] = useState<{ success: boolean; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState<{
+    bookingId: number;
+    serviceName: string;
+    date: string;
+    time: string;
+  } | null>(null);
 
   // Laundry add-ons state (quantities instead of just selected)
   const [laundryItemQuantities, setLaundryItemQuantities] = useState<Record<string, number>>({});
@@ -394,6 +401,13 @@ export default function BookingPage() {
         success: true,
         message: `Booking confirmed! Reference #${data.bookingId}. You'll receive a confirmation email shortly.`,
       });
+
+      setConfirmedBooking({
+        bookingId: data.bookingId,
+        serviceName: selectedService?.title ?? "your service",
+        date: selectedSlot?.startAt ? format(new Date(selectedSlot.startAt), "EEEE, MMMM d") : "",
+        time: selectedSlot?.startAt ? format(new Date(selectedSlot.startAt), "h:mm a") : "",
+      });
     } catch (error) {
       setBookingStatus({
         success: false,
@@ -422,6 +436,30 @@ export default function BookingPage() {
             </p>
           </div>
 
+          {confirmedBooking ? (
+            <div className="max-w-2xl mx-auto space-y-6">
+              <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50">
+                <CardContent className="pt-6 text-center space-y-4">
+                  <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto" />
+                  <h2 className="text-2xl font-semibold">Booking Confirmed!</h2>
+                  <p className="text-muted-foreground">
+                    Reference #{confirmedBooking.bookingId} — You'll receive a confirmation email shortly.
+                  </p>
+                  <div className="inline-flex flex-col sm:flex-row gap-4 text-sm bg-white/70 rounded-xl px-6 py-4 border border-emerald-200">
+                    <span><strong>Service:</strong> {confirmedBooking.serviceName}</span>
+                    <span><strong>Date:</strong> {confirmedBooking.date}</span>
+                    <span><strong>Time:</strong> {confirmedBooking.time}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <BookingUpsellCarousel
+                serviceName={confirmedBooking.serviceName}
+                bookingDate={confirmedBooking.date}
+                bookingId={confirmedBooking.bookingId}
+              />
+            </div>
+          ) : (
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <div className="space-y-6">
               {/* Service Selection */}
@@ -1123,6 +1161,7 @@ export default function BookingPage() {
               </Card>
             </div>
           </div>
+          )}
         </div>
       </section>
 

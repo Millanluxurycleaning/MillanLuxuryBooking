@@ -2191,6 +2191,10 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       buyerPhone: z.string().optional(),
       shippingAddress: addressSchema.optional(),
       billingAddress: addressSchema.optional(),
+      // Service delivery (products delivered with a booking)
+      bookingId: z.number().int().positive().optional(),
+      fulfillmentType: z.enum(["shipment", "service_delivery"]).optional(),
+      bookingDate: z.string().optional(),
     });
 
     try {
@@ -2254,7 +2258,8 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         };
       });
 
-      const FLAT_SHIPPING_CENTS = 1000; // $10.00
+      const isServiceDelivery = payload.fulfillmentType === "service_delivery";
+      const FLAT_SHIPPING_CENTS = isServiceDelivery ? 0 : 1000; // $0 for service delivery, $10 for shipment
       const subtotal = cart.items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
       const shipping = FLAT_SHIPPING_CENTS / 100;
       const tax = (subtotal + shipping) * 0.075; // 7.5% sales tax (on subtotal + shipping, matching Square ORDER scope)
@@ -2283,22 +2288,60 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           }
         : undefined;
 
+      // Build line items: include shipping only for non-service-delivery
+      const orderLineItems = [
+        ...lineItems,
+        ...(isServiceDelivery
+          ? []
+          : [
+              {
+                name: "Shipping",
+                quantity: "1",
+                basePriceMoney: {
+                  amount: BigInt(FLAT_SHIPPING_CENTS),
+                  currency: Currency.Usd,
+                },
+              },
+            ]),
+      ];
+
+      // Build fulfillment based on delivery type
+      const fulfillment = isServiceDelivery
+        ? {
+            type: "PICKUP" as const,
+            state: "PROPOSED" as const,
+            pickupDetails: {
+              recipient: {
+                displayName: payload.buyerName || "Customer",
+                emailAddress: payload.buyerEmail || undefined,
+                phoneNumber: payload.buyerPhone || undefined,
+              },
+              note: `Deliver with booking #${payload.bookingId}${payload.bookingDate ? ` on ${payload.bookingDate}` : ""}`,
+            },
+          }
+        : {
+            type: "SHIPMENT" as const,
+            state: "PROPOSED" as const,
+            shipmentDetails: {
+              recipient: {
+                displayName: payload.buyerName || "Customer",
+                emailAddress: payload.buyerEmail || undefined,
+                phoneNumber: payload.buyerPhone || undefined,
+                ...(fulfillmentAddress ? { address: fulfillmentAddress } : {}),
+              },
+            },
+          };
+
+      const orderMetadata: Record<string, string> = {};
+      if (affiliateId) orderMetadata.affiliate_id = String(affiliateId);
+      if (payload.bookingId) orderMetadata.booking_id = String(payload.bookingId);
+
       const orderResponse = await client.orders.create({
         idempotencyKey: orderIdempotencyKey,
         order: {
           locationId,
           referenceId: payload.buyerEmail || undefined,
-          lineItems: [
-            ...lineItems,
-            {
-              name: "Shipping",
-              quantity: "1",
-              basePriceMoney: {
-                amount: BigInt(FLAT_SHIPPING_CENTS),
-                currency: Currency.Usd,
-              },
-            },
-          ],
+          lineItems: orderLineItems,
           taxes: [
             {
               name: "Sales Tax",
@@ -2306,21 +2349,8 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
               scope: "ORDER",
             },
           ],
-          fulfillments: [
-            {
-              type: "SHIPMENT",
-              state: "PROPOSED",
-              shipmentDetails: {
-                recipient: {
-                  displayName: payload.buyerName || "Customer",
-                  emailAddress: payload.buyerEmail || undefined,
-                  phoneNumber: payload.buyerPhone || undefined,
-                  ...(fulfillmentAddress ? { address: fulfillmentAddress } : {}),
-                },
-              },
-            },
-          ],
-          ...(affiliateId ? { metadata: { affiliate_id: String(affiliateId) } } : {}),
+          fulfillments: [fulfillment],
+          ...(Object.keys(orderMetadata).length > 0 ? { metadata: orderMetadata } : {}),
         },
       });
 
@@ -2370,6 +2400,8 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           shipping: Number(shipping.toFixed(2)),
           paymentId: payment.id,
           affiliateId,
+          bookingId: payload.bookingId ?? null,
+          fulfillmentType: isServiceDelivery ? "service_delivery" : "shipment",
           shippingAddress: shippingAddressJson,
           billingAddress: billingAddressJson,
           items: {

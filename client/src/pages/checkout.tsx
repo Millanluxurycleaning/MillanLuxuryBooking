@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Ach, ApplePay, CreditCard, GiftCard, GooglePay, PaymentForm } from "react-square-web-payments-sdk";
 import type { ChargeVerifyBuyerDetails } from "@square/web-payments-sdk-types";
@@ -7,6 +7,8 @@ import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Truck } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 
 const FLAT_SHIPPING = 10.0;
@@ -32,6 +34,23 @@ export default function CheckoutPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Service delivery mode: products delivered with a booking service ($0 shipping)
+  const [serviceDelivery, setServiceDelivery] = useState<{
+    bookingId: number;
+    serviceName: string;
+    bookingDate: string;
+  } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("bookingUpsell");
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data?.bookingId) setServiceDelivery(data);
+      }
+    } catch { /* ignore */ }
+  }, []);
   const isApplePaySupported = useMemo(() => {
     if (typeof window === "undefined") return false;
     const ua = window.navigator.userAgent;
@@ -51,7 +70,7 @@ export default function CheckoutPage() {
   const achAccountHolderName = buyerName.trim();
   const redirectURI = typeof window !== "undefined" ? `${window.location.origin}/checkout` : undefined;
 
-  const shipping = FLAT_SHIPPING;
+  const shipping = serviceDelivery ? 0 : FLAT_SHIPPING;
   const tax = (subtotal + shipping) * 0.075;
   const total = subtotal + shipping + tax;
 
@@ -111,9 +130,11 @@ export default function CheckoutPage() {
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail);
   const isValidPhone = buyerPhone.replace(/\D/g, "").length >= 10;
   const billingComplete = Boolean(addressLine1.trim() && city.trim() && state.trim() && postalCode.trim());
-  const shippingComplete = shipSameAsBilling
-    ? billingComplete
-    : Boolean(shipAddressLine1.trim() && shipCity.trim() && shipState.trim() && shipPostalCode.trim());
+  const shippingComplete = serviceDelivery
+    ? true
+    : shipSameAsBilling
+      ? billingComplete
+      : Boolean(shipAddressLine1.trim() && shipCity.trim() && shipState.trim() && shipPostalCode.trim());
   const formReady = Boolean(buyerName.trim()) && isValidEmail && isValidPhone && billingComplete && shippingComplete;
 
   const handleTokenize = async (tokenResult: any, buyerVerificationToken?: { token?: string }) => {
@@ -156,7 +177,14 @@ export default function CheckoutPage() {
             postalCode,
             country: "US",
           },
-          shippingAddress,
+          shippingAddress: serviceDelivery ? undefined : shippingAddress,
+          ...(serviceDelivery
+            ? {
+                bookingId: serviceDelivery.bookingId,
+                fulfillmentType: "service_delivery",
+                bookingDate: serviceDelivery.bookingDate,
+              }
+            : {}),
         }),
       });
 
@@ -165,6 +193,7 @@ export default function CheckoutPage() {
         throw new Error(data?.message || "Payment failed.");
       }
 
+      sessionStorage.removeItem("bookingUpsell");
       window.location.assign(`/checkout/success?orderId=${data.orderId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed.");
@@ -184,6 +213,21 @@ export default function CheckoutPage() {
               <CardTitle>Checkout</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {serviceDelivery && (
+                <div className="flex items-center gap-3 rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-3">
+                  <Truck className="w-5 h-5 text-purple-500 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-purple-900">
+                      Delivered with your {serviceDelivery.serviceName}
+                    </p>
+                    <p className="text-purple-700">
+                      {serviceDelivery.bookingDate} — free delivery with service
+                    </p>
+                  </div>
+                  <Badge className="ml-auto bg-emerald-500 text-white">Free Delivery</Badge>
+                </div>
+              )}
+
               {/* Contact Info */}
               <div>
                 <h3 className="text-sm font-semibold mb-3">Contact Information</h3>
@@ -294,8 +338,8 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Shipping Address */}
-              <div>
+              {/* Shipping Address (hidden for service delivery) */}
+              {!serviceDelivery && <div>
                 <h3 className="text-sm font-semibold mb-3">Shipping Address</h3>
                 <label className="flex items-center gap-2 text-sm mb-3 cursor-pointer">
                   <input
@@ -365,7 +409,7 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
 
               {!applicationId || !locationId ? (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
@@ -454,8 +498,8 @@ export default function CheckoutPage() {
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>Shipping</span>
-                  <span>${shipping.toFixed(2)}</span>
+                  <span>{serviceDelivery ? "Delivery" : "Shipping"}</span>
+                  <span>{serviceDelivery ? <span className="text-emerald-600 font-medium">Free</span> : `$${shipping.toFixed(2)}`}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>Sales Tax (7.5%)</span>
