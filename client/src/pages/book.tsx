@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay, addDays, startOfDay } from "date-fns";
 import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
@@ -9,9 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, Sparkles, Home, AlertCircle, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Calendar, Clock, Sparkles, Home, ShieldCheck, CheckCircle2, ChevronDown } from "lucide-react";
 import { BookingUpsellCarousel } from "@/components/BookingUpsellCarousel";
 import type { ServiceItem, ServicePricingTier } from "@shared/types";
 
@@ -118,6 +117,13 @@ type AvailabilityResponse = {
   availabilities: AvailabilitySlot[];
 };
 
+// Step IDs for the wizard flow
+const STEP_SERVICE = 1;
+const STEP_DETAILS = 2;  // Property size / sqft / laundry items
+const STEP_DATE = 3;
+const STEP_TIME = 4;
+const STEP_CONTACT = 5;
+
 export default function BookingPage() {
   const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const initialServiceId = Number(queryParams.get("serviceId"));
@@ -148,6 +154,22 @@ export default function BookingPage() {
   const [delicateLaundryLbs, setDelicateLaundryLbs] = useState("");
   const [deliveryMiles, setDeliveryMiles] = useState("");
   const [needsPickupDelivery, setNeedsPickupDelivery] = useState(false);
+
+  // Wizard step tracking
+  const [activeStep, setActiveStep] = useState(STEP_SERVICE);
+  const stepRefs: Record<number, React.RefObject<HTMLDivElement>> = {
+    [STEP_SERVICE]: useRef<HTMLDivElement>(null),
+    [STEP_DETAILS]: useRef<HTMLDivElement>(null),
+    [STEP_DATE]: useRef<HTMLDivElement>(null),
+    [STEP_TIME]: useRef<HTMLDivElement>(null),
+    [STEP_CONTACT]: useRef<HTMLDivElement>(null),
+  };
+
+  const scrollToStep = useCallback((step: number) => {
+    setTimeout(() => {
+      stepRefs[step]?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+  }, []);
 
   const { data: services = [], isLoading: servicesLoading } = useQuery<ServiceItem[]>({
     queryKey: ["/api/services"],
@@ -330,6 +352,44 @@ export default function BookingPage() {
     return days;
   }, []);
 
+  // --- Step completion checks ---
+  // Step 2 (details) is needed for non-laundry services that have pricing tiers or sqft
+  const needsDetailsStep = selectedService && !isLaundryService;
+  const needsLaundryStep = selectedService && isLaundryService;
+
+  const isStep1Complete = Boolean(selectedServiceId && selectedService);
+  const isStep2Complete = (() => {
+    if (!isStep1Complete) return false;
+    if (needsLaundryStep) return laundryTotal > 0; // Must select at least one laundry item
+    if (needsDetailsStep) {
+      // If service has pricing tiers, must pick one + sqft
+      if (pricingTiers.length > 0) return Boolean(selectedPricingTier) && Boolean(squareFootage);
+      // Otherwise just sqft
+      return Boolean(squareFootage);
+    }
+    return true; // No details step needed
+  })();
+  const isStep3Complete = isStep2Complete && timesForSelectedDate.length > 0;
+  const isStep4Complete = isStep3Complete && Boolean(selectedSlot);
+  const isStep5Reachable = isStep4Complete;
+
+  // Determine the next step the user should go to
+  const advanceToStep = useCallback((step: number) => {
+    setActiveStep(step);
+    scrollToStep(step);
+  }, [scrollToStep]);
+
+  // Auto-advance when service is selected
+  const prevServiceId = useRef(selectedServiceId);
+  useEffect(() => {
+    if (selectedServiceId && selectedServiceId !== prevServiceId.current) {
+      prevServiceId.current = selectedServiceId;
+      if (activeStep === STEP_SERVICE) {
+        advanceToStep(STEP_DETAILS);
+      }
+    }
+  }, [selectedServiceId, activeStep, advanceToStep]);
+
   const handleSubmit = async (sourceId?: string) => {
     if (!selectedServiceId || !selectedSlot?.startAt || !selectedSlot.appointmentSegments.length) {
       return;
@@ -460,563 +520,641 @@ export default function BookingPage() {
               />
             </div>
           ) : (
-          <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <div className="space-y-6">
-              {/* Service Selection */}
-              <Card className="border-2 border-transparent hover:border-purple-200/50 transition-colors">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">1</span>
-                    Select a Service
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-3 md:grid-cols-2">
-                  {servicesLoading && <p className="text-sm text-muted-foreground">Loading services...</p>}
-                  {!servicesLoading &&
-                    squareServices.map((service) => (
-                      <button
-                        key={service.id}
-                        onClick={() => setSelectedServiceId(service.id)}
-                        className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
-                          selectedServiceId === service.id
-                            ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
-                            : "border-border hover:border-purple-300 hover:shadow-md"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <p className="font-semibold text-lg">{service.title}</p>
-                          {service.requiresDeposit !== false && (
-                            <Badge variant="outline" className="text-xs">Deposit Required</Badge>
-                          )}
-                        </div>
-                        {service.displayPrice && service.price && (
-                          <p className="text-purple-600 font-bold mt-1">Starting at ${Number(service.price).toFixed(2)}</p>
-                        )}
-                      </button>
-                    ))}
-                </CardContent>
-              </Card>
+          <div className="max-w-3xl mx-auto space-y-4">
 
-              {selectedService?.description && (
-                <div className="rounded-xl border border-border/70 bg-gradient-to-br from-purple-50/70 to-pink-50/70 px-5 py-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Service Description</p>
-                  {curatedDescription && (
-                    <p className="mt-2 text-sm text-foreground font-medium">
-                      {curatedDescription}
-                    </p>
-                  )}
-                  {formattedDescription.length > 0 && (
-                    <ul className="mt-3 space-y-2 text-sm text-muted-foreground leading-relaxed">
-                      {formattedDescription.map((line, index) => (
-                        <li key={`${selectedService.id}-detail-${index}`} className="flex gap-2">
-                          <span className="text-primary mt-0.5">•</span>
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-              {/* Pricing Tier Selection (if available, not for laundry) */}
-              {pricingTiers.length > 0 && !isLaundryService && (
-                <Card className="border-2 border-transparent hover:border-purple-200/50 transition-colors">
-                  <CardHeader>
+            {/* ───── STEP 1: Select a Service ───── */}
+            <div ref={stepRefs[STEP_SERVICE]} className="scroll-mt-24">
+              <Card className={`border-2 transition-all ${activeStep === STEP_SERVICE ? "border-purple-300 shadow-lg shadow-purple-100/50" : isStep1Complete ? "border-emerald-200" : "border-transparent"}`}>
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => setActiveStep(STEP_SERVICE)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
-                      <Home className="w-5 h-5 text-purple-500" />
-                      Select Property Size
+                      {isStep1Complete && activeStep !== STEP_SERVICE ? (
+                        <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+                      ) : (
+                        <span className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">1</span>
+                      )}
+                      Select a Service
                     </CardTitle>
+                    <div className="flex items-center gap-2">
+                      {isStep1Complete && activeStep !== STEP_SERVICE && (
+                        <span className="text-sm text-purple-600 font-medium">{selectedService?.title}</span>
+                      )}
+                      <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${activeStep === STEP_SERVICE ? "rotate-180" : ""}`} />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                      {pricingTiers.map((tier) => (
+                </button>
+                {activeStep === STEP_SERVICE && (
+                  <CardContent className="grid gap-3 md:grid-cols-2 pt-0">
+                    {servicesLoading && <p className="text-sm text-muted-foreground">Loading services...</p>}
+                    {!servicesLoading &&
+                      squareServices.map((service) => (
                         <button
-                          key={tier.name}
-                          onClick={() => setSelectedPricingTier(tier.name)}
+                          key={service.id}
+                          onClick={() => {
+                            setSelectedServiceId(service.id);
+                            // Auto-advance after brief delay for visual feedback
+                            setTimeout(() => {
+                              setActiveStep(STEP_DETAILS);
+                              scrollToStep(STEP_DETAILS);
+                            }, 300);
+                          }}
                           className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
-                            selectedPricingTier === tier.name
+                            selectedServiceId === service.id
                               ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
                               : "border-border hover:border-purple-300 hover:shadow-md"
                           }`}
                         >
-                          <p className="font-semibold">{tier.name}</p>
-                          <p className="text-purple-600 font-bold mt-1">${tier.price.toFixed(2)}</p>
-                          {tier.description && (
-                            <p className="text-xs text-muted-foreground mt-1">{tier.description}</p>
+                          <div className="flex items-start justify-between">
+                            <p className="font-semibold text-lg">{service.title}</p>
+                          </div>
+                          {service.displayPrice && service.price && (
+                            <p className="text-purple-600 font-bold mt-1">Starting at ${Number(service.price).toFixed(2)}</p>
                           )}
                         </button>
                       ))}
-                    </div>
-
-                    {/* Square Footage Selection */}
-                    <div className="mt-6 pt-4 border-t">
-                      <Label className="text-sm font-medium">
-                        Property Square Footage
-                      </Label>
-                      <Select value={squareFootage} onValueChange={setSquareFootage}>
-                        <SelectTrigger className="mt-2 max-w-sm">
-                          <SelectValue placeholder="Select square footage range" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SQFT_TIERS.map((tier) => (
-                            <SelectItem key={tier.name} value={tier.name}>
-                              {tier.name}
-                              {tier.addOn !== null ? (
-                                tier.addOn > 0 ? ` (+$${tier.addOn})` : " (included)"
-                              ) : " — Call for estimate"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {requiresEstimate && (
-                        <p className="text-sm text-amber-600 mt-2">
-                          📞 For properties over 5,000 sq ft, please call for a private estate estimate.
-                        </p>
-                      )}
-                    </div>
                   </CardContent>
-                </Card>
-              )}
+                )}
+              </Card>
+            </div>
 
-              {/* Square Footage for services without pricing tiers (not for laundry) */}
-              {pricingTiers.length === 0 && selectedService && !isLaundryService && (
-                <Card className="border-2 border-transparent hover:border-purple-200/50 transition-colors">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Home className="w-5 h-5 text-purple-500" />
-                      Property Square Footage
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Select value={squareFootage} onValueChange={setSquareFootage}>
-                      <SelectTrigger className="max-w-sm">
-                        <SelectValue placeholder="Select square footage range" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SQFT_TIERS.map((tier) => (
-                          <SelectItem key={tier.name} value={tier.name}>
-                            {tier.name}
-                            {tier.addOn !== null ? (
-                              tier.addOn > 0 ? ` (+$${tier.addOn})` : " (included)"
-                            ) : " — Call for estimate"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {requiresEstimate && (
-                      <p className="text-sm text-amber-600 mt-3">
-                        📞 For properties over 5,000 sq ft, please call for a private estate estimate.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+            {/* Service Description (shows between step 1 and 2 when service selected) */}
+            {selectedService?.description && activeStep >= STEP_DETAILS && (
+              <div className="rounded-xl border border-border/70 bg-gradient-to-br from-purple-50/70 to-pink-50/70 px-5 py-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Service Description</p>
+                {curatedDescription && (
+                  <p className="mt-2 text-sm text-foreground font-medium">{curatedDescription}</p>
+                )}
+                {formattedDescription.length > 0 && (
+                  <ul className="mt-3 space-y-2 text-sm text-muted-foreground leading-relaxed">
+                    {formattedDescription.map((line, index) => (
+                      <li key={`${selectedService.id}-detail-${index}`} className="flex gap-2">
+                        <span className="text-primary mt-0.5">&bull;</span>
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
-              {/* Laundry Add-ons */}
-              {isLaundryService && (
-                <Card className="border-2 border-transparent hover:border-purple-200/50 transition-colors">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <span className="text-2xl">🧺</span>
-                      Laundry Items & Services
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">Select items and quantities</p>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Pick-up & Delivery - First */}
-                    <div>
-                      <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                        needsPickupDelivery ? "border-purple-500 bg-purple-50" : "border-border hover:border-purple-300"
-                      }`}>
-                        <input
-                          type="checkbox"
-                          checked={needsPickupDelivery}
-                          onChange={(e) => setNeedsPickupDelivery(e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <div className="flex-1">
-                          <span className="font-medium">🚗 Pick-up & Delivery</span>
-                          <span className="text-sm text-muted-foreground ml-2">(${LAUNDRY_RATES.deliveryPerMile}/mile)</span>
-                        </div>
-                      </label>
-                      {needsPickupDelivery && (
-                        <div className="mt-3 ml-7">
-                          <Label htmlFor="delivery-miles" className="text-sm text-muted-foreground">
-                            Estimated round-trip miles
-                          </Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Input
-                              id="delivery-miles"
-                              type="number"
-                              min="0"
-                              step="1"
-                              placeholder="0"
-                              value={deliveryMiles}
-                              onChange={(e) => setDeliveryMiles(e.target.value)}
-                              className="max-w-24"
-                            />
-                            <span className="text-sm text-muted-foreground">miles</span>
-                            {parseFloat(deliveryMiles) > 0 && (
-                              <span className="text-purple-600 font-medium">
-                                = ${(parseFloat(deliveryMiles) * LAUNDRY_RATES.deliveryPerMile).toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Variable Pricing - By Weight */}
-                    <div className="border-t pt-4">
-                      <Label className="text-sm font-semibold mb-3 block">👕 Laundry by Weight</Label>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                          <Label htmlFor="regular-lbs" className="text-sm text-muted-foreground">
-                            Regular Clothes (${LAUNDRY_RATES.regularPerLb}/lb)
-                          </Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Input
-                              id="regular-lbs"
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              placeholder="0"
-                              value={regularLaundryLbs}
-                              onChange={(e) => setRegularLaundryLbs(e.target.value)}
-                              className="max-w-24"
-                            />
-                            <span className="text-sm text-muted-foreground">lbs</span>
-                            {parseFloat(regularLaundryLbs) > 0 && (
-                              <span className="text-purple-600 font-medium">
-                                = ${(parseFloat(regularLaundryLbs) * LAUNDRY_RATES.regularPerLb).toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <Label htmlFor="delicate-lbs" className="text-sm text-muted-foreground">
-                            Delicate Fabrics (${LAUNDRY_RATES.delicatePerLb}/lb)
-                          </Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Input
-                              id="delicate-lbs"
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              placeholder="0"
-                              value={delicateLaundryLbs}
-                              onChange={(e) => setDelicateLaundryLbs(e.target.value)}
-                              className="max-w-24"
-                            />
-                            <span className="text-sm text-muted-foreground">lbs</span>
-                            {parseFloat(delicateLaundryLbs) > 0 && (
-                              <span className="text-purple-600 font-medium">
-                                = ${(parseFloat(delicateLaundryLbs) * LAUNDRY_RATES.delicatePerLb).toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+            {/* ───── STEP 2: Property Details / Laundry ───── */}
+            {isStep1Complete && (
+              <div ref={stepRefs[STEP_DETAILS]} className="scroll-mt-24">
+                <Card className={`border-2 transition-all ${
+                  activeStep === STEP_DETAILS ? "border-purple-300 shadow-lg shadow-purple-100/50"
+                  : isStep2Complete ? "border-emerald-200"
+                  : "border-transparent opacity-60"
+                }`}>
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => isStep1Complete && setActiveStep(STEP_DETAILS)}
+                  >
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        {isStep2Complete && activeStep !== STEP_DETAILS ? (
+                          <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+                        ) : (
+                          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">2</span>
+                        )}
+                        {isLaundryService ? (
+                          <><span className="text-xl">🧺</span> Laundry Items & Services</>
+                        ) : (
+                          <><Home className="w-5 h-5 text-purple-500" /> Property Details</>
+                        )}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        {isStep2Complete && activeStep !== STEP_DETAILS && (
+                          <span className="text-sm text-purple-600 font-medium">
+                            {isLaundryService
+                              ? `$${laundryTotal.toFixed(2)}`
+                              : `${squareFootage}${selectedPricingTier ? ` / ${selectedPricingTier}` : ""}`}
+                          </span>
+                        )}
+                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${activeStep === STEP_DETAILS ? "rotate-180" : ""}`} />
                       </div>
-                    </div>
+                    </CardHeader>
+                  </button>
 
-                    {/* Bedding Items with Quantity */}
-                    <div className="border-t pt-4">
-                      <Label className="text-sm font-semibold mb-3 block">🛏️ Bedding & Blankets</Label>
-                      <div className="space-y-2">
-                        {LAUNDRY_ITEMS.map((item) => {
-                          const qty = laundryItemQuantities[item.id] || 0;
-                          return (
-                            <div
-                              key={item.id}
-                              className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                qty > 0 ? "border-purple-500 bg-purple-50" : "border-border"
-                              }`}
-                            >
-                              <span className="flex-1 font-medium">{item.name}</span>
-                              <span className="text-purple-600 font-bold">${item.price} ea</span>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => updateLaundryQuantity(item.id, qty - 1)}
-                                  disabled={qty <= 0}
-                                >
-                                  -
-                                </Button>
-                                <span className="w-8 text-center font-medium">{qty}</span>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => updateLaundryQuantity(item.id, qty + 1)}
-                                >
-                                  +
-                                </Button>
+                  {activeStep === STEP_DETAILS && (
+                    <CardContent className="pt-0 space-y-6">
+                      {/* Non-laundry: Pricing tiers + sqft */}
+                      {!isLaundryService && (
+                        <>
+                          {pricingTiers.length > 0 && (
+                            <>
+                              <div>
+                                <Label className="text-sm font-semibold mb-3 block">Select Property Size</Label>
+                                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                  {pricingTiers.map((tier) => (
+                                    <button
+                                      key={tier.name}
+                                      onClick={() => setSelectedPricingTier(tier.name)}
+                                      className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
+                                        selectedPricingTier === tier.name
+                                          ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
+                                          : "border-border hover:border-purple-300 hover:shadow-md"
+                                      }`}
+                                    >
+                                      <p className="font-semibold">{tier.name}</p>
+                                      <p className="text-purple-600 font-bold mt-1">${tier.price.toFixed(2)}</p>
+                                      {tier.description && (
+                                        <p className="text-xs text-muted-foreground mt-1">{tier.description}</p>
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
-                              {qty > 0 && (
-                                <span className="text-purple-600 font-bold min-w-16 text-right">
-                                  ${(item.price * qty).toFixed(2)}
-                                </span>
+                              <div className="border-t pt-4">
+                                <Label className="text-sm font-medium">Property Square Footage</Label>
+                                <Select value={squareFootage} onValueChange={setSquareFootage}>
+                                  <SelectTrigger className="mt-2 max-w-sm">
+                                    <SelectValue placeholder="Select square footage range" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {SQFT_TIERS.map((tier) => (
+                                      <SelectItem key={tier.name} value={tier.name}>
+                                        {tier.name}
+                                        {tier.addOn !== null ? (
+                                          tier.addOn > 0 ? ` (+$${tier.addOn})` : " (included)"
+                                        ) : " — Call for estimate"}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {requiresEstimate && (
+                                  <p className="text-sm text-amber-600 mt-2">
+                                    For properties over 5,000 sq ft, please call for a private estate estimate.
+                                  </p>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {pricingTiers.length === 0 && (
+                            <div>
+                              <Label className="text-sm font-medium">Property Square Footage</Label>
+                              <Select value={squareFootage} onValueChange={setSquareFootage}>
+                                <SelectTrigger className="mt-2 max-w-sm">
+                                  <SelectValue placeholder="Select square footage range" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SQFT_TIERS.map((tier) => (
+                                    <SelectItem key={tier.name} value={tier.name}>
+                                      {tier.name}
+                                      {tier.addOn !== null ? (
+                                        tier.addOn > 0 ? ` (+$${tier.addOn})` : " (included)"
+                                      ) : " — Call for estimate"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {requiresEstimate && (
+                                <p className="text-sm text-amber-600 mt-3">
+                                  For properties over 5,000 sq ft, please call for a private estate estimate.
+                                </p>
                               )}
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                          )}
 
-                    {/* Laundry Total */}
-                    {laundryTotal > 0 && (
-                      <div className="border-t pt-4 bg-gradient-to-r from-purple-50 to-pink-50 -mx-6 -mb-6 px-6 pb-6 rounded-b-lg">
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold">Laundry Total</span>
-                          <span className="text-xl font-bold text-purple-600">${laundryTotal.toFixed(2)}</span>
+                          {/* Continue button for non-laundry */}
+                          {isStep2Complete && (
+                            <Button
+                              onClick={() => advanceToStep(STEP_DATE)}
+                              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                            >
+                              Continue to Date Selection
+                            </Button>
+                          )}
+                        </>
+                      )}
+
+                      {/* Laundry items */}
+                      {isLaundryService && (
+                        <>
+                          {/* Pick-up & Delivery */}
+                          <div>
+                            <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                              needsPickupDelivery ? "border-purple-500 bg-purple-50" : "border-border hover:border-purple-300"
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={needsPickupDelivery}
+                                onChange={(e) => setNeedsPickupDelivery(e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              />
+                              <div className="flex-1">
+                                <span className="font-medium">Pick-up & Delivery</span>
+                                <span className="text-sm text-muted-foreground ml-2">(${LAUNDRY_RATES.deliveryPerMile}/mile)</span>
+                              </div>
+                            </label>
+                            {needsPickupDelivery && (
+                              <div className="mt-3 ml-7">
+                                <Label htmlFor="delivery-miles" className="text-sm text-muted-foreground">
+                                  Estimated round-trip miles
+                                </Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Input
+                                    id="delivery-miles"
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    placeholder="0"
+                                    value={deliveryMiles}
+                                    onChange={(e) => setDeliveryMiles(e.target.value)}
+                                    className="max-w-24"
+                                  />
+                                  <span className="text-sm text-muted-foreground">miles</span>
+                                  {parseFloat(deliveryMiles) > 0 && (
+                                    <span className="text-purple-600 font-medium">
+                                      = ${(parseFloat(deliveryMiles) * LAUNDRY_RATES.deliveryPerMile).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* By Weight */}
+                          <div className="border-t pt-4">
+                            <Label className="text-sm font-semibold mb-3 block">Laundry by Weight</Label>
+                            <div className="grid gap-4 md:grid-cols-2">
+                              <div>
+                                <Label htmlFor="regular-lbs" className="text-sm text-muted-foreground">
+                                  Regular Clothes (${LAUNDRY_RATES.regularPerLb}/lb)
+                                </Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Input id="regular-lbs" type="number" min="0" step="0.5" placeholder="0" value={regularLaundryLbs} onChange={(e) => setRegularLaundryLbs(e.target.value)} className="max-w-24" />
+                                  <span className="text-sm text-muted-foreground">lbs</span>
+                                  {parseFloat(regularLaundryLbs) > 0 && (
+                                    <span className="text-purple-600 font-medium">= ${(parseFloat(regularLaundryLbs) * LAUNDRY_RATES.regularPerLb).toFixed(2)}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="delicate-lbs" className="text-sm text-muted-foreground">
+                                  Delicate Fabrics (${LAUNDRY_RATES.delicatePerLb}/lb)
+                                </Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Input id="delicate-lbs" type="number" min="0" step="0.5" placeholder="0" value={delicateLaundryLbs} onChange={(e) => setDelicateLaundryLbs(e.target.value)} className="max-w-24" />
+                                  <span className="text-sm text-muted-foreground">lbs</span>
+                                  {parseFloat(delicateLaundryLbs) > 0 && (
+                                    <span className="text-purple-600 font-medium">= ${(parseFloat(delicateLaundryLbs) * LAUNDRY_RATES.delicatePerLb).toFixed(2)}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Bedding Items */}
+                          <div className="border-t pt-4">
+                            <Label className="text-sm font-semibold mb-3 block">Bedding & Blankets</Label>
+                            <div className="space-y-2">
+                              {LAUNDRY_ITEMS.map((item) => {
+                                const qty = laundryItemQuantities[item.id] || 0;
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                      qty > 0 ? "border-purple-500 bg-purple-50" : "border-border"
+                                    }`}
+                                  >
+                                    <span className="flex-1 font-medium">{item.name}</span>
+                                    <span className="text-purple-600 font-bold">${item.price} ea</span>
+                                    <div className="flex items-center gap-2">
+                                      <Button type="button" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => updateLaundryQuantity(item.id, qty - 1)} disabled={qty <= 0}>-</Button>
+                                      <span className="w-8 text-center font-medium">{qty}</span>
+                                      <Button type="button" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => updateLaundryQuantity(item.id, qty + 1)}>+</Button>
+                                    </div>
+                                    {qty > 0 && (
+                                      <span className="text-purple-600 font-bold min-w-16 text-right">${(item.price * qty).toFixed(2)}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Laundry Total + Continue */}
+                          {laundryTotal > 0 && (
+                            <div className="border-t pt-4 bg-gradient-to-r from-purple-50 to-pink-50 -mx-6 -mb-6 px-6 pb-6 rounded-b-lg space-y-3">
+                              <div className="flex justify-between items-center">
+                                <span className="font-semibold">Laundry Total</span>
+                                <span className="text-xl font-bold text-purple-600">${laundryTotal.toFixed(2)}</span>
+                              </div>
+                              <Button
+                                onClick={() => advanceToStep(STEP_DATE)}
+                                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                              >
+                                Continue to Date Selection
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              </div>
+            )}
+
+            {/* ───── STEP 3: Choose a Date ───── */}
+            <div ref={stepRefs[STEP_DATE]} className="scroll-mt-24">
+              <Card className={`border-2 transition-all ${
+                activeStep === STEP_DATE ? "border-purple-300 shadow-lg shadow-purple-100/50"
+                : isStep3Complete ? "border-emerald-200"
+                : !isStep2Complete ? "border-transparent opacity-40 pointer-events-none"
+                : "border-transparent"
+              }`}>
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => isStep2Complete && setActiveStep(STEP_DATE)}
+                  disabled={!isStep2Complete}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      {isStep3Complete && activeStep !== STEP_DATE ? (
+                        <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+                      ) : (
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${isStep2Complete ? "bg-gradient-to-br from-purple-500 to-pink-500" : "bg-gray-300"}`}>3</span>
+                      )}
+                      <Calendar className="w-5 h-5" />
+                      Choose a Date
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      {timesForSelectedDate.length > 0 && activeStep !== STEP_DATE && (
+                        <span className="text-sm text-purple-600 font-medium">{format(selectedDate, "EEE, MMM d")}</span>
+                      )}
+                      <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${activeStep === STEP_DATE ? "rotate-180" : ""}`} />
+                    </div>
+                  </CardHeader>
+                </button>
+                {activeStep === STEP_DATE && isStep2Complete && (
+                  <CardContent className="pt-0">
+                    {availabilityQuery.isLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-7 gap-2">
+                          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">{day}</div>
+                          ))}
+                          {Array.from({ length: calendarDays[0]?.getDay() || 0 }).map((_, i) => (
+                            <div key={`empty-${i}`} />
+                          ))}
+                          {calendarDays.map((day) => {
+                            const dateKey = format(day, "yyyy-MM-dd");
+                            const hasSlots = availabilitiesByDate.has(dateKey);
+                            const isSelected = isSameDay(day, selectedDate);
+                            const isToday = isSameDay(day, new Date());
+
+                            return (
+                              <button
+                                key={dateKey}
+                                onClick={() => {
+                                  if (hasSlots) {
+                                    setSelectedDate(day);
+                                    setTimeout(() => {
+                                      setActiveStep(STEP_TIME);
+                                      scrollToStep(STEP_TIME);
+                                    }, 300);
+                                  }
+                                }}
+                                disabled={!hasSlots}
+                                className={`
+                                  relative p-3 rounded-xl text-center transition-all
+                                  ${isSelected
+                                    ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-200"
+                                    : hasSlots
+                                      ? "hover:bg-purple-50 hover:shadow-md border border-transparent hover:border-purple-200"
+                                      : "text-muted-foreground/40 cursor-not-allowed"
+                                  }
+                                  ${isToday && !isSelected ? "ring-2 ring-purple-300" : ""}
+                                `}
+                              >
+                                <div className="text-lg font-semibold">{format(day, "d")}</div>
+                                <div className="text-xs mt-0.5">{format(day, "MMM")}</div>
+                                {hasSlots && !isSelected && (
+                                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
+                        {availableDates.length === 0 && (
+                          <p className="text-center text-muted-foreground py-4">
+                            No availability in the next 2 weeks. Please check back later.
+                          </p>
+                        )}
                       </div>
                     )}
                   </CardContent>
-                </Card>
-              )}
+                )}
+              </Card>
+            </div>
 
-              {/* Calendar Date Selection */}
-              <Card className="border-2 border-transparent hover:border-purple-200/50 transition-colors">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">2</span>
-                    <Calendar className="w-5 h-5" />
-                    Choose a Date
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {availabilityQuery.isLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+            {/* ───── STEP 4: Select a Time ───── */}
+            <div ref={stepRefs[STEP_TIME]} className="scroll-mt-24">
+              <Card className={`border-2 transition-all ${
+                activeStep === STEP_TIME ? "border-purple-300 shadow-lg shadow-purple-100/50"
+                : isStep4Complete ? "border-emerald-200"
+                : !isStep3Complete ? "border-transparent opacity-40 pointer-events-none"
+                : "border-transparent"
+              }`}>
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => isStep3Complete && setActiveStep(STEP_TIME)}
+                  disabled={!isStep3Complete}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      {isStep4Complete && activeStep !== STEP_TIME ? (
+                        <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+                      ) : (
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${isStep3Complete ? "bg-gradient-to-br from-purple-500 to-pink-500" : "bg-gray-300"}`}>4</span>
+                      )}
+                      <Clock className="w-5 h-5" />
+                      Select a Time
+                      {selectedDate && activeStep === STEP_TIME && (
+                        <span className="text-sm font-normal text-muted-foreground ml-2">
+                          for {format(selectedDate, "EEEE, MMMM d")}
+                        </span>
+                      )}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      {isStep4Complete && activeStep !== STEP_TIME && selectedSlot?.startAt && (
+                        <span className="text-sm text-purple-600 font-medium">{format(new Date(selectedSlot.startAt), "h:mm a")}</span>
+                      )}
+                      <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${activeStep === STEP_TIME ? "rotate-180" : ""}`} />
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {/* Calendar Grid */}
-                      <div className="grid grid-cols-7 gap-2">
-                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                          <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-                            {day}
-                          </div>
-                        ))}
-                        {/* Empty cells for alignment */}
-                        {Array.from({ length: calendarDays[0]?.getDay() || 0 }).map((_, i) => (
-                          <div key={`empty-${i}`} />
-                        ))}
-                        {calendarDays.map((day) => {
-                          const dateKey = format(day, "yyyy-MM-dd");
-                          const hasSlots = availabilitiesByDate.has(dateKey);
-                          const isSelected = isSameDay(day, selectedDate);
-                          const isToday = isSameDay(day, new Date());
+                  </CardHeader>
+                </button>
+                {activeStep === STEP_TIME && isStep3Complete && (
+                  <CardContent className="pt-0">
+                    {timesForSelectedDate.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-6">
+                        {availabilityQuery.isLoading ? "Loading times..." : "No times available for this date. Please select another date."}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                        {timesForSelectedDate.map((slot) => {
+                          const startAt = slot.startAt ? new Date(slot.startAt) : null;
+                          const timeLabel = startAt ? format(startAt, "h:mm a") : "";
+                          const isSelected = selectedSlot?.startAt === slot.startAt;
+                          const duration = slot.appointmentSegments[0]?.durationMinutes;
 
                           return (
                             <button
-                              key={dateKey}
-                              onClick={() => hasSlots && setSelectedDate(day)}
-                              disabled={!hasSlots}
+                              key={slot.startAt}
+                              onClick={() => {
+                                setSelectedSlot(slot);
+                                setTimeout(() => {
+                                  setActiveStep(STEP_CONTACT);
+                                  scrollToStep(STEP_CONTACT);
+                                }, 300);
+                              }}
                               className={`
-                                relative p-3 rounded-xl text-center transition-all
+                                px-3 py-3 rounded-xl text-center transition-all font-medium
                                 ${isSelected
                                   ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-200"
-                                  : hasSlots
-                                    ? "hover:bg-purple-50 hover:shadow-md border border-transparent hover:border-purple-200"
-                                    : "text-muted-foreground/40 cursor-not-allowed"
+                                  : "border-2 border-border hover:border-purple-300 hover:bg-purple-50 hover:shadow-md"
                                 }
-                                ${isToday && !isSelected ? "ring-2 ring-purple-300" : ""}
                               `}
                             >
-                              <div className="text-lg font-semibold">{format(day, "d")}</div>
-                              <div className="text-xs mt-0.5">{format(day, "MMM")}</div>
-                              {hasSlots && !isSelected && (
-                                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                              <div className="text-sm">{timeLabel}</div>
+                              {duration && (
+                                <div className={`text-xs mt-0.5 ${isSelected ? "text-white/80" : "text-muted-foreground"}`}>
+                                  {Math.floor(duration / 60)}h {duration % 60}m
+                                </div>
                               )}
                             </button>
                           );
                         })}
                       </div>
-
-                      {availableDates.length === 0 && (
-                        <p className="text-center text-muted-foreground py-4">
-                          No availability in the next 2 weeks. Please check back later.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Time Selection */}
-              <Card className="border-2 border-transparent hover:border-purple-200/50 transition-colors">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">3</span>
-                    <Clock className="w-5 h-5" />
-                    Select a Time
-                    {selectedDate && (
-                      <span className="text-sm font-normal text-muted-foreground ml-2">
-                        for {format(selectedDate, "EEEE, MMMM d")}
-                      </span>
                     )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {timesForSelectedDate.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-6">
-                      {availabilityQuery.isLoading
-                        ? "Loading times..."
-                        : "No times available for this date. Please select another date."}
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                      {timesForSelectedDate.map((slot) => {
-                        const startAt = slot.startAt ? new Date(slot.startAt) : null;
-                        const timeLabel = startAt ? format(startAt, "h:mm a") : "";
-                        const isSelected = selectedSlot?.startAt === slot.startAt;
-                        const duration = slot.appointmentSegments[0]?.durationMinutes;
-
-                        return (
-                          <button
-                            key={slot.startAt}
-                            onClick={() => setSelectedSlot(slot)}
-                            className={`
-                              px-3 py-3 rounded-xl text-center transition-all font-medium
-                              ${isSelected
-                                ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-200"
-                                : "border-2 border-border hover:border-purple-300 hover:bg-purple-50 hover:shadow-md"
-                              }
-                            `}
-                          >
-                            <div className="text-sm">{timeLabel}</div>
-                            {duration && (
-                              <div className={`text-xs mt-0.5 ${isSelected ? "text-white/80" : "text-muted-foreground"}`}>
-                                {Math.floor(duration / 60)}h {duration % 60}m
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
+                  </CardContent>
+                )}
               </Card>
             </div>
 
-            {/* Customer Details & Summary */}
-            <div className="space-y-6">
-              {/* Booking Summary */}
-              {(selectedService || selectedSlot) && (
-                <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Booking Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    {selectedService && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Service</span>
-                        <span className="font-medium">{selectedService.title}</span>
-                      </div>
-                    )}
-                    {selectedPricingTier && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Property Size</span>
-                        <span className="font-medium">{selectedPricingTier}</span>
-                      </div>
-                    )}
-                    {squareFootage && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Square Footage</span>
-                        <span className="font-medium">
-                          {squareFootage}
-                          {sqftAddOn > 0 && <span className="text-purple-600 ml-1">(+${sqftAddOn})</span>}
-                        </span>
-                      </div>
-                    )}
-                    {requiresEstimate && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
-                        📞 Call for estate estimate
-                      </div>
-                    )}
-                    {/* Laundry Items Summary */}
-                    {isLaundryService && laundryItemsTotal > 0 && (
-                      <div>
-                        <span className="text-muted-foreground text-xs">Items:</span>
-                        <div className="mt-1 space-y-1">
-                          {LAUNDRY_ITEMS.filter((i) => (laundryItemQuantities[i.id] || 0) > 0).map((item) => {
-                            const qty = laundryItemQuantities[item.id] || 0;
-                            return (
-                              <div key={item.id} className="flex justify-between text-xs">
-                                <span>{qty}x {item.name}</span>
-                                <span>${(item.price * qty).toFixed(2)}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    {isLaundryService && laundryVariableTotal > 0 && (
-                      <div className="space-y-1">
-                        {parseFloat(regularLaundryLbs) > 0 && (
-                          <div className="flex justify-between text-xs">
-                            <span>Regular ({regularLaundryLbs} lbs)</span>
-                            <span>${(parseFloat(regularLaundryLbs) * LAUNDRY_RATES.regularPerLb).toFixed(2)}</span>
-                          </div>
-                        )}
-                        {parseFloat(delicateLaundryLbs) > 0 && (
-                          <div className="flex justify-between text-xs">
-                            <span>Delicate ({delicateLaundryLbs} lbs)</span>
-                            <span>${(parseFloat(delicateLaundryLbs) * LAUNDRY_RATES.delicatePerLb).toFixed(2)}</span>
-                          </div>
-                        )}
-                        {needsPickupDelivery && parseFloat(deliveryMiles) > 0 && (
-                          <div className="flex justify-between text-xs">
-                            <span>Delivery ({deliveryMiles} mi)</span>
-                            <span>${(parseFloat(deliveryMiles) * LAUNDRY_RATES.deliveryPerMile).toFixed(2)}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {selectedSlot?.startAt && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Date</span>
-                          <span className="font-medium">{format(new Date(selectedSlot.startAt), "EEEE, MMM d")}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Time</span>
-                          <span className="font-medium">{format(new Date(selectedSlot.startAt), "h:mm a")}</span>
-                        </div>
-                      </>
-                    )}
-                    {selectedPrice && !requiresEstimate && (
-                      <>
-                        <div className="border-t border-purple-200 my-2" />
-                        {sqftAddOn > 0 && basePrice && (
-                          <>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Base Price</span>
-                              <span>${basePrice.toFixed(2)}</span>
+            {/* ───── Booking Summary (sticky on desktop, inline on mobile) ───── */}
+            {isStep4Complete && (
+              <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                <CardHeader>
+                  <CardTitle className="text-lg">Booking Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {selectedService && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Service</span>
+                      <span className="font-medium">{selectedService.title}</span>
+                    </div>
+                  )}
+                  {selectedPricingTier && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Property Size</span>
+                      <span className="font-medium">{selectedPricingTier}</span>
+                    </div>
+                  )}
+                  {squareFootage && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Square Footage</span>
+                      <span className="font-medium">
+                        {squareFootage}
+                        {sqftAddOn > 0 && <span className="text-purple-600 ml-1">(+${sqftAddOn})</span>}
+                      </span>
+                    </div>
+                  )}
+                  {requiresEstimate && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
+                      Call for estate estimate
+                    </div>
+                  )}
+                  {isLaundryService && laundryItemsTotal > 0 && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Items:</span>
+                      <div className="mt-1 space-y-1">
+                        {LAUNDRY_ITEMS.filter((i) => (laundryItemQuantities[i.id] || 0) > 0).map((item) => {
+                          const qty = laundryItemQuantities[item.id] || 0;
+                          return (
+                            <div key={item.id} className="flex justify-between text-xs">
+                              <span>{qty}x {item.name}</span>
+                              <span>${(item.price * qty).toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Sq Ft Add-on</span>
-                              <span>+${sqftAddOn.toFixed(2)}</span>
-                            </div>
-                          </>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="font-medium">Total Price</span>
-                          <span className="font-bold text-purple-600">${selectedPrice.toFixed(2)}</span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {isLaundryService && laundryVariableTotal > 0 && (
+                    <div className="space-y-1">
+                      {parseFloat(regularLaundryLbs) > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span>Regular ({regularLaundryLbs} lbs)</span>
+                          <span>${(parseFloat(regularLaundryLbs) * LAUNDRY_RATES.regularPerLb).toFixed(2)}</span>
                         </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                      )}
+                      {parseFloat(delicateLaundryLbs) > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span>Delicate ({delicateLaundryLbs} lbs)</span>
+                          <span>${(parseFloat(delicateLaundryLbs) * LAUNDRY_RATES.delicatePerLb).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {needsPickupDelivery && parseFloat(deliveryMiles) > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span>Delivery ({deliveryMiles} mi)</span>
+                          <span>${(parseFloat(deliveryMiles) * LAUNDRY_RATES.deliveryPerMile).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {selectedSlot?.startAt && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Date</span>
+                        <span className="font-medium">{format(new Date(selectedSlot.startAt), "EEEE, MMM d")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Time</span>
+                        <span className="font-medium">{format(new Date(selectedSlot.startAt), "h:mm a")}</span>
+                      </div>
+                    </>
+                  )}
+                  {selectedPrice && !requiresEstimate && (
+                    <>
+                      <div className="border-t border-purple-200 my-2" />
+                      {sqftAddOn > 0 && basePrice && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Base Price</span>
+                            <span>${basePrice.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Sq Ft Add-on</span>
+                            <span>+${sqftAddOn.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="font-medium">Total Price</span>
+                        <span className="font-bold text-purple-600">${selectedPrice.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-              {/* Cancellation Policy Notice */}
+            {/* Cancellation Policy */}
+            {isStep4Complete && (
               <Card className="border-emerald-200 bg-emerald-50/50">
                 <CardContent className="pt-4">
                   <div className="flex gap-3">
@@ -1031,133 +1169,149 @@ export default function BookingPage() {
                   </div>
                 </CardContent>
               </Card>
+            )}
 
-              {/* Contact Form */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">4</span>
-                    Your Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="customer-name">Full Name *</Label>
-                    <Input
-                      id="customer-name"
-                      placeholder="John Smith"
-                      value={customerName}
-                      onChange={(event) => setCustomerName(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="customer-email">Email *</Label>
-                    <Input
-                      id="customer-email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={customerEmail}
-                      onChange={(event) => setCustomerEmail(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="customer-phone">Phone</Label>
-                    <Input
-                      id="customer-phone"
-                      placeholder="(555) 123-4567"
-                      value={customerPhone}
-                      onChange={(event) => setCustomerPhone(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Special Requests</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Any special instructions or requests..."
-                      value={notes}
-                      onChange={(event) => setNotes(event.target.value)}
-                      rows={3}
-                    />
-                  </div>
-
-                  {bookingStatus && (
-                    <div
-                      className={`rounded-xl border px-4 py-3 text-sm ${
-                        bookingStatus.success
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                          : "border-destructive/30 bg-destructive/10 text-destructive"
-                      }`}
-                    >
-                      {bookingStatus.message}
+            {/* ───── STEP 5: Your Details + Card ───── */}
+            <div ref={stepRefs[STEP_CONTACT]} className="scroll-mt-24">
+              <Card className={`border-2 transition-all ${
+                activeStep === STEP_CONTACT ? "border-purple-300 shadow-lg shadow-purple-100/50"
+                : !isStep5Reachable ? "border-transparent opacity-40 pointer-events-none"
+                : "border-transparent"
+              }`}>
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => isStep5Reachable && setActiveStep(STEP_CONTACT)}
+                  disabled={!isStep5Reachable}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${isStep5Reachable ? "bg-gradient-to-br from-purple-500 to-pink-500" : "bg-gray-300"}`}>5</span>
+                      Your Details & Payment
+                    </CardTitle>
+                    <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${activeStep === STEP_CONTACT ? "rotate-180" : ""}`} />
+                  </CardHeader>
+                </button>
+                {activeStep === STEP_CONTACT && isStep5Reachable && (
+                  <CardContent className="pt-0 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customer-name">Full Name *</Label>
+                      <Input
+                        id="customer-name"
+                        placeholder="John Smith"
+                        value={customerName}
+                        onChange={(event) => setCustomerName(event.target.value)}
+                      />
                     </div>
-                  )}
+                    <div className="space-y-2">
+                      <Label htmlFor="customer-email">Email *</Label>
+                      <Input
+                        id="customer-email"
+                        type="email"
+                        placeholder="john@example.com"
+                        value={customerEmail}
+                        onChange={(event) => setCustomerEmail(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="customer-phone">Phone</Label>
+                      <Input
+                        id="customer-phone"
+                        placeholder="(555) 123-4567"
+                        value={customerPhone}
+                        onChange={(event) => setCustomerPhone(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Special Requests</Label>
+                      <Textarea
+                        id="notes"
+                        placeholder="Any special instructions or requests..."
+                        value={notes}
+                        onChange={(event) => setNotes(event.target.value)}
+                        rows={3}
+                      />
+                    </div>
 
-                  {/* Card on File + Confirm Button */}
-                  {applicationId && squareLocationId ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                        <span>Your card will not be charged. Held securely by Square.</span>
-                      </div>
-                      <PaymentForm
-                        applicationId={applicationId}
-                        locationId={squareLocationId}
-                        cardTokenizeResponseReceived={(tokenResult) => {
-                          if (tokenResult.status === "OK" && tokenResult.token) {
-                            handleSubmit(tokenResult.token);
-                          } else {
-                            setBookingStatus({
-                              success: false,
-                              message: "Please enter valid card details.",
-                            });
-                          }
-                        }}
-                        createPaymentRequest={() => ({
-                          countryCode: "US",
-                          currencyCode: "USD",
-                          total: { amount: "0.00", label: "Card on File" },
-                        })}
+                    {bookingStatus && (
+                      <div
+                        className={`rounded-xl border px-4 py-3 text-sm ${
+                          bookingStatus.success
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-destructive/30 bg-destructive/10 text-destructive"
+                        }`}
                       >
-                        <CreditCard
-                          buttonProps={{
-                            isLoading: isSubmitting,
-                            css: {
-                              backgroundColor: "#a855f7",
-                              fontSize: "16px",
-                              fontWeight: "600",
-                              padding: "12px",
-                              "&:hover": {
-                                backgroundColor: "#9333ea",
-                              },
-                            },
+                        {bookingStatus.message}
+                      </div>
+                    )}
+
+                    {/* Card on File + Confirm Button */}
+                    {applicationId && squareLocationId ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                          <span>Your card will not be charged. Held securely by Square.</span>
+                        </div>
+                        <PaymentForm
+                          applicationId={applicationId}
+                          locationId={squareLocationId}
+                          cardTokenizeResponseReceived={(tokenResult) => {
+                            if (tokenResult.status === "OK" && tokenResult.token) {
+                              handleSubmit(tokenResult.token);
+                            } else {
+                              setBookingStatus({
+                                success: false,
+                                message: "Please enter valid card details.",
+                              });
+                            }
                           }}
-                          style={{
-                            input: {
-                              fontSize: "16px",
-                            },
-                          }}
+                          createPaymentRequest={() => ({
+                            countryCode: "US",
+                            currencyCode: "USD",
+                            total: { amount: "0.00", label: "Card on File" },
+                          })}
                         >
-                          {isSubmitting ? "Booking..." : "Confirm Booking"}
-                        </CreditCard>
-                      </PaymentForm>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => handleSubmit()}
-                      disabled={
-                        isSubmitting ||
-                        !selectedServiceId ||
-                        !selectedSlot ||
-                        !customerName.trim() ||
-                        !customerEmail.trim()
-                      }
-                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                      size="lg"
-                    >
-                      {isSubmitting ? "Booking..." : "Confirm Booking"}
-                    </Button>
-                  )}
-                </CardContent>
+                          <CreditCard
+                            buttonProps={{
+                              isLoading: isSubmitting,
+                              css: {
+                                backgroundColor: "#a855f7",
+                                fontSize: "16px",
+                                fontWeight: "600",
+                                padding: "12px",
+                                "&:hover": {
+                                  backgroundColor: "#9333ea",
+                                },
+                              },
+                            }}
+                            style={{
+                              input: {
+                                fontSize: "16px",
+                              },
+                            }}
+                          >
+                            {isSubmitting ? "Booking..." : "Confirm Booking"}
+                          </CreditCard>
+                        </PaymentForm>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => handleSubmit()}
+                        disabled={
+                          isSubmitting ||
+                          !selectedServiceId ||
+                          !selectedSlot ||
+                          !customerName.trim() ||
+                          !customerEmail.trim()
+                        }
+                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        size="lg"
+                      >
+                        {isSubmitting ? "Booking..." : "Confirm Booking"}
+                      </Button>
+                    )}
+                  </CardContent>
+                )}
               </Card>
             </div>
           </div>
