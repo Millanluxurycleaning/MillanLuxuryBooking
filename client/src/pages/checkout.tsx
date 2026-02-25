@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/contexts/CartContext";
 
+const FLAT_SHIPPING = 10.0;
+
 export default function CheckoutPage() {
   const { cart, sessionId } = useCart();
   const [buyerName, setBuyerName] = useState("");
@@ -19,6 +21,15 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [postalCode, setPostalCode] = useState("");
+
+  // Shipping address
+  const [shipSameAsBilling, setShipSameAsBilling] = useState(true);
+  const [shipAddressLine1, setShipAddressLine1] = useState("");
+  const [shipAddressLine2, setShipAddressLine2] = useState("");
+  const [shipCity, setShipCity] = useState("");
+  const [shipState, setShipState] = useState("");
+  const [shipPostalCode, setShipPostalCode] = useState("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isApplePaySupported = useMemo(() => {
@@ -40,11 +51,19 @@ export default function CheckoutPage() {
   const achAccountHolderName = buyerName.trim();
   const redirectURI = typeof window !== "undefined" ? `${window.location.origin}/checkout` : undefined;
 
+  const shipping = FLAT_SHIPPING;
+  const tax = (subtotal + shipping) * 0.075;
+  const total = subtotal + shipping + tax;
+
+  const shippingAddress = shipSameAsBilling
+    ? { addressLine1, addressLine2, city, state, postalCode, country: "US" }
+    : { addressLine1: shipAddressLine1, addressLine2: shipAddressLine2, city: shipCity, state: shipState, postalCode: shipPostalCode, country: "US" };
+
   const createVerificationDetails = (): ChargeVerifyBuyerDetails => {
     const [givenName, ...rest] = buyerName.trim().split(" ");
     const familyName = rest.join(" ");
     return {
-      amount: subtotal.toFixed(2),
+      amount: total.toFixed(2),
       currencyCode: "USD",
       intent: "CHARGE",
       billingContact: {
@@ -61,9 +80,6 @@ export default function CheckoutPage() {
     };
   };
 
-  const tax = subtotal * 0.075;
-  const total = subtotal + tax;
-
   const createPaymentRequest = () => ({
     countryCode: "US",
     currencyCode: "USD",
@@ -79,16 +95,35 @@ export default function CheckoutPage() {
           : item.product?.name ?? "Item",
       })),
       {
+        amount: shipping.toFixed(2),
+        label: "Shipping",
+      },
+      {
         amount: tax.toFixed(2),
         label: "Sales Tax (7.5%)",
       },
     ],
     requestBillingContact: true,
+    requestShippingContact: true,
   });
+
+  // Validate required fields
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail);
+  const isValidPhone = buyerPhone.replace(/\D/g, "").length >= 10;
+  const billingComplete = Boolean(addressLine1.trim() && city.trim() && state.trim() && postalCode.trim());
+  const shippingComplete = shipSameAsBilling
+    ? billingComplete
+    : Boolean(shipAddressLine1.trim() && shipCity.trim() && shipState.trim() && shipPostalCode.trim());
+  const formReady = Boolean(buyerName.trim()) && isValidEmail && isValidPhone && billingComplete && shippingComplete;
 
   const handleTokenize = async (tokenResult: any, buyerVerificationToken?: { token?: string }) => {
     if (tokenResult.status !== "OK") {
       setError("Payment details are incomplete or invalid.");
+      return;
+    }
+
+    if (!formReady) {
+      setError("Please fill in all required fields (name, email, phone, billing & shipping address).");
       return;
     }
 
@@ -110,7 +145,9 @@ export default function CheckoutPage() {
           cartId: cart.id,
           sourceId: tokenResult.token,
           verificationToken: buyerVerificationToken?.token,
+          buyerName: buyerName.trim(),
           buyerEmail,
+          buyerPhone,
           billingAddress: {
             addressLine1,
             addressLine2,
@@ -119,6 +156,7 @@ export default function CheckoutPage() {
             postalCode,
             country: "US",
           },
+          shippingAddress,
         }),
       });
 
@@ -146,89 +184,187 @@ export default function CheckoutPage() {
               <CardTitle>Checkout</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="buyer-name">Full Name</Label>
-                  <Input
-                    id="buyer-name"
-                    name="name"
-                    autoComplete="name"
-                    value={buyerName}
-                    onChange={(event) => setBuyerName(event.target.value)}
-                  />
+              {/* Contact Info */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Contact Information</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="buyer-name">Full Name *</Label>
+                    <Input
+                      id="buyer-name"
+                      name="name"
+                      autoComplete="name"
+                      required
+                      value={buyerName}
+                      onChange={(event) => setBuyerName(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="buyer-email">Email *</Label>
+                    <Input
+                      id="buyer-email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={buyerEmail}
+                      onChange={(event) => setBuyerEmail(event.target.value)}
+                    />
+                    {buyerEmail && !isValidEmail && (
+                      <p className="text-xs text-destructive">Enter a valid email address</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="buyer-phone">Phone *</Label>
+                    <Input
+                      id="buyer-phone"
+                      name="phone"
+                      type="tel"
+                      autoComplete="tel"
+                      required
+                      placeholder="(555) 555-5555"
+                      value={buyerPhone}
+                      onChange={(event) => setBuyerPhone(event.target.value)}
+                    />
+                    {buyerPhone && !isValidPhone && (
+                      <p className="text-xs text-destructive">Enter a valid phone number</p>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="buyer-email">Email</Label>
-                  <Input
-                    id="buyer-email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    value={buyerEmail}
-                    onChange={(event) => setBuyerEmail(event.target.value)}
-                  />
+              </div>
+
+              {/* Billing Address */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Billing Address</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address-line-1">Address *</Label>
+                    <Input
+                      id="address-line-1"
+                      name="address-line1"
+                      autoComplete="billing address-line1"
+                      required
+                      value={addressLine1}
+                      onChange={(event) => setAddressLine1(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address-line-2">Address Line 2</Label>
+                    <Input
+                      id="address-line-2"
+                      name="address-line2"
+                      autoComplete="billing address-line2"
+                      value={addressLine2}
+                      onChange={(event) => setAddressLine2(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City *</Label>
+                    <Input
+                      id="city"
+                      name="city"
+                      autoComplete="billing address-level2"
+                      required
+                      value={city}
+                      onChange={(event) => setCity(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State *</Label>
+                    <Input
+                      id="state"
+                      name="state"
+                      autoComplete="billing address-level1"
+                      required
+                      value={state}
+                      onChange={(event) => setState(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="postal-code">Postal Code *</Label>
+                    <Input
+                      id="postal-code"
+                      name="postal-code"
+                      autoComplete="billing postal-code"
+                      required
+                      value={postalCode}
+                      onChange={(event) => setPostalCode(event.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="buyer-phone">Phone</Label>
-                  <Input
-                    id="buyer-phone"
-                    name="phone"
-                    type="tel"
-                    autoComplete="tel"
-                    value={buyerPhone}
-                    onChange={(event) => setBuyerPhone(event.target.value)}
+              </div>
+
+              {/* Shipping Address */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Shipping Address</h3>
+                <label className="flex items-center gap-2 text-sm mb-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={shipSameAsBilling}
+                    onChange={(e) => setShipSameAsBilling(e.target.checked)}
+                    className="rounded border-border"
                   />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="address-line-1">Address</Label>
-                  <Input
-                    id="address-line-1"
-                    name="address-line1"
-                    autoComplete="address-line1"
-                    value={addressLine1}
-                    onChange={(event) => setAddressLine1(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="address-line-2">Address Line 2</Label>
-                  <Input
-                    id="address-line-2"
-                    name="address-line2"
-                    autoComplete="address-line2"
-                    value={addressLine2}
-                    onChange={(event) => setAddressLine2(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    autoComplete="address-level2"
-                    value={city}
-                    onChange={(event) => setCity(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    name="state"
-                    autoComplete="address-level1"
-                    value={state}
-                    onChange={(event) => setState(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="postal-code">Postal Code</Label>
-                  <Input
-                    id="postal-code"
-                    name="postal-code"
-                    autoComplete="postal-code"
-                    value={postalCode}
-                    onChange={(event) => setPostalCode(event.target.value)}
-                  />
-                </div>
+                  Same as billing address
+                </label>
+
+                {!shipSameAsBilling && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="ship-address-line-1">Address *</Label>
+                      <Input
+                        id="ship-address-line-1"
+                        name="ship-address-line1"
+                        autoComplete="shipping address-line1"
+                        required
+                        value={shipAddressLine1}
+                        onChange={(event) => setShipAddressLine1(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="ship-address-line-2">Address Line 2</Label>
+                      <Input
+                        id="ship-address-line-2"
+                        name="ship-address-line2"
+                        autoComplete="shipping address-line2"
+                        value={shipAddressLine2}
+                        onChange={(event) => setShipAddressLine2(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ship-city">City *</Label>
+                      <Input
+                        id="ship-city"
+                        name="ship-city"
+                        autoComplete="shipping address-level2"
+                        required
+                        value={shipCity}
+                        onChange={(event) => setShipCity(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ship-state">State *</Label>
+                      <Input
+                        id="ship-state"
+                        name="ship-state"
+                        autoComplete="shipping address-level1"
+                        required
+                        value={shipState}
+                        onChange={(event) => setShipState(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ship-postal-code">Postal Code *</Label>
+                      <Input
+                        id="ship-postal-code"
+                        name="ship-postal-code"
+                        autoComplete="shipping postal-code"
+                        required
+                        value={shipPostalCode}
+                        onChange={(event) => setShipPostalCode(event.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {!applicationId || !locationId ? (
@@ -242,6 +378,11 @@ export default function CheckoutPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {!formReady && (
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-200">
+                      Please fill in all required fields (*) above before paying.
+                    </div>
+                  )}
               <PaymentForm
                     applicationId={applicationId}
                     locationId={locationId}
@@ -313,12 +454,16 @@ export default function CheckoutPage() {
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Shipping</span>
+                  <span>${shipping.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>Sales Tax (7.5%)</span>
-                  <span>${(subtotal * 0.075).toFixed(2)}</span>
+                  <span>${tax.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between font-semibold text-lg pt-2 border-t">
                   <span>Total</span>
-                  <span>${(subtotal * 1.075).toFixed(2)}</span>
+                  <span>${total.toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>

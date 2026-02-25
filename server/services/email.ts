@@ -197,8 +197,12 @@ export async function sendBookingNotificationEmail(params: {
 
 export async function sendOrderNotificationEmail(params: {
   orderId: number;
+  customerName?: string;
   customerEmail: string;
+  customerPhone?: string;
   total: number;
+  shipping?: number;
+  shippingAddress?: { addressLine1?: string; city?: string; state?: string; postalCode?: string };
   items: { name: string; quantity: number; price: number }[];
 }): Promise<boolean> {
   const transport = getSmtpTransport();
@@ -220,6 +224,10 @@ export async function sendOrderNotificationEmail(params: {
     )
     .join("");
 
+  const shipAddrHtml = params.shippingAddress?.addressLine1
+    ? `<p style="font-size: 14px; margin: 4px 0 0;">${params.shippingAddress.addressLine1}, ${params.shippingAddress.city || ""} ${params.shippingAddress.state || ""} ${params.shippingAddress.postalCode || ""}</p>`
+    : "";
+
   try {
     await transport.sendMail({
       from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
@@ -229,9 +237,30 @@ export async function sendOrderNotificationEmail(params: {
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
           <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">New Order #${params.orderId}</h1>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 8px;">
-            Customer: <a href="mailto:${params.customerEmail}" style="color: #b8860b;">${params.customerEmail}</a>
-          </p>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+            <tr style="border-bottom: 1px solid #e5e5e5;">
+              <td style="padding: 12px 0; font-size: 14px; color: #888; width: 120px;">Customer</td>
+              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${params.customerName || "—"}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e5e5;">
+              <td style="padding: 12px 0; font-size: 14px; color: #888;">Email</td>
+              <td style="padding: 12px 0; font-size: 16px;">
+                <a href="mailto:${params.customerEmail}" style="color: #b8860b;">${params.customerEmail}</a>
+              </td>
+            </tr>
+            ${params.customerPhone ? `
+            <tr style="border-bottom: 1px solid #e5e5e5;">
+              <td style="padding: 12px 0; font-size: 14px; color: #888;">Phone</td>
+              <td style="padding: 12px 0; font-size: 16px;">
+                <a href="tel:${params.customerPhone}" style="color: #b8860b;">${params.customerPhone}</a>
+              </td>
+            </tr>` : ""}
+            ${shipAddrHtml ? `
+            <tr style="border-bottom: 1px solid #e5e5e5;">
+              <td style="padding: 12px 0; font-size: 14px; color: #888;">Ship To</td>
+              <td style="padding: 12px 0; font-size: 14px;">${shipAddrHtml}</td>
+            </tr>` : ""}
+          </table>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
             <tr style="border-bottom: 2px solid #1a1a1a;">
               <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: left;">Item</th>
@@ -239,6 +268,11 @@ export async function sendOrderNotificationEmail(params: {
               <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: right;">Price</th>
             </tr>
             ${itemRows}
+            ${params.shipping ? `
+            <tr style="border-bottom: 1px solid #e5e5e5;">
+              <td style="padding: 10px 0; font-size: 14px;" colspan="2">Shipping</td>
+              <td style="padding: 10px 0; font-size: 14px; text-align: right;">$${params.shipping.toFixed(2)}</td>
+            </tr>` : ""}
           </table>
           <p style="font-size: 20px; font-weight: bold; text-align: right; margin-bottom: 24px;">
             Total: $${params.total.toFixed(2)}

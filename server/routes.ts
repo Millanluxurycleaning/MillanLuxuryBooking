@@ -2089,13 +2089,24 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       return;
     }
 
+    const addressSchema = z.object({
+      addressLine1: z.string().optional(),
+      addressLine2: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      postalCode: z.string().optional(),
+      country: z.string().optional(),
+    });
+
     const checkoutSchema = z.object({
       cartId: z.string().min(1),
       sourceId: z.string().min(1),
       verificationToken: z.string().min(1).optional(),
+      buyerName: z.string().optional(),
       buyerEmail: z.string().email().optional(),
-      shippingAddress: z.record(z.unknown()).optional(),
-      billingAddress: z.record(z.unknown()).optional(),
+      buyerPhone: z.string().optional(),
+      shippingAddress: addressSchema.optional(),
+      billingAddress: addressSchema.optional(),
     });
 
     try {
@@ -2159,9 +2170,11 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         };
       });
 
+      const FLAT_SHIPPING_CENTS = 1000; // $10.00
       const subtotal = cart.items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
-      const tax = subtotal * 0.075; // 7.5% Florida sales tax
-      const total = subtotal + tax;
+      const shipping = FLAT_SHIPPING_CENTS / 100;
+      const tax = (subtotal + shipping) * 0.075; // 7.5% sales tax (on subtotal + shipping, matching Square ORDER scope)
+      const total = subtotal + shipping + tax;
       const totalAmount = BigInt(Math.round(total * 100));
 
       const accessToken = await resolveSquareAccessToken();
@@ -2173,18 +2186,54 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       const orderIdempotencyKey = randomBytes(16).toString("hex");
       const paymentIdempotencyKey = randomBytes(16).toString("hex");
 
-      const taxAmount = BigInt(Math.round(tax * 100));
+      // Build fulfillment so the order shows as an active ticket in Square
+      const shipAddr = payload.shippingAddress;
+      const fulfillmentAddress = shipAddr?.addressLine1
+        ? {
+            addressLine1: shipAddr.addressLine1,
+            addressLine2: shipAddr.addressLine2 || undefined,
+            locality: shipAddr.city || undefined,
+            administrativeDistrictLevel1: shipAddr.state || undefined,
+            postalCode: shipAddr.postalCode || undefined,
+            country: "US",
+          }
+        : undefined;
 
       const orderResponse = await client.orders.create({
         idempotencyKey: orderIdempotencyKey,
         order: {
           locationId,
-          lineItems,
+          referenceId: payload.buyerEmail || undefined,
+          lineItems: [
+            ...lineItems,
+            {
+              name: "Shipping",
+              quantity: "1",
+              basePriceMoney: {
+                amount: BigInt(FLAT_SHIPPING_CENTS),
+                currency: Currency.Usd,
+              },
+            },
+          ],
           taxes: [
             {
               name: "Sales Tax",
               percentage: "7.5",
               scope: "ORDER",
+            },
+          ],
+          fulfillments: [
+            {
+              type: "SHIPMENT",
+              state: "PROPOSED",
+              shipmentDetails: {
+                recipient: {
+                  displayName: payload.buyerName || "Customer",
+                  emailAddress: payload.buyerEmail || undefined,
+                  phoneNumber: payload.buyerPhone || undefined,
+                  ...(fulfillmentAddress ? { address: fulfillmentAddress } : {}),
+                },
+              },
             },
           ],
           ...(affiliateId ? { metadata: { affiliate_id: String(affiliateId) } } : {}),
@@ -2218,10 +2267,10 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
 
       const email = payload.buyerEmail ?? authUser?.email ?? "";
 
-      const shippingAddress = payload.shippingAddress
+      const shippingAddressJson = payload.shippingAddress
         ? (payload.shippingAddress as Prisma.InputJsonValue)
         : Prisma.DbNull;
-      const billingAddress = payload.billingAddress
+      const billingAddressJson = payload.billingAddress
         ? (payload.billingAddress as Prisma.InputJsonValue)
         : Prisma.DbNull;
 
@@ -2234,10 +2283,11 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           total: Number(total.toFixed(2)),
           subtotal: Number(subtotal.toFixed(2)),
           tax: Number(tax.toFixed(2)),
+          shipping: Number(shipping.toFixed(2)),
           paymentId: payment.id,
           affiliateId,
-          shippingAddress,
-          billingAddress,
+          shippingAddress: shippingAddressJson,
+          billingAddress: billingAddressJson,
           items: {
             create: cart.items.map((item) => {
               const product = productMap.get(item.productId);
@@ -2292,8 +2342,12 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       // Send order notification (fire-and-forget)
       sendOrderNotificationEmail({
         orderId: orderRecord.id,
+        customerName: payload.buyerName || "Customer",
         customerEmail: email,
+        customerPhone: payload.buyerPhone,
         total,
+        shipping,
+        shippingAddress: payload.shippingAddress,
         items: cart.items.map((item) => {
           const product = productMap.get(item.productId);
           const displayName = product?.fragrance && product.fragrance !== "Signature"
