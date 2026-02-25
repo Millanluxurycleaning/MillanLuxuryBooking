@@ -2418,7 +2418,11 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         endAt: z.string().datetime().optional(),
       });
 
-      const { serviceId, startAt, endAt } = querySchema.parse(req.query);
+      const parsed = querySchema.parse(req.query);
+      const serviceId = parsed.serviceId;
+      const startAt = parsed.startAt;
+      // Square requires endAt — default to 30 days from startAt
+      const endAt = parsed.endAt ?? new Date(new Date(startAt).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
       const service = await prisma.serviceItem.findUnique({ where: { id: serviceId } });
 
       if (!service?.squareServiceId) {
