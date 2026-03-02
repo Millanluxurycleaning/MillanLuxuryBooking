@@ -22,7 +22,11 @@ const AFFILIATE_COOKIE_DEFAULT_DAYS = 30;
 // ============================================
 
 function getSigningKey(): string {
-  return process.env.ENCRYPTION_KEY || "dev-signing-key-not-for-production";
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key) {
+    throw new Error("ENCRYPTION_KEY is required for affiliate cookie signing");
+  }
+  return key;
 }
 
 function signCookiePayload(payload: { aid: number; ts: number }): string {

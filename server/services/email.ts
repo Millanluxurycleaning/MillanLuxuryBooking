@@ -1,6 +1,17 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 
+/** HTML-escape user-supplied strings to prevent XSS in email templates */
+function esc(str: string | undefined | null): string {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getSiteUrl(): string {
   return process.env.SITE_URL || "https://millanluxurycleaning.com";
 }
@@ -68,32 +79,32 @@ export async function sendContactNotificationEmail(params: {
       from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
       to: notifyTo,
       replyTo: params.email,
-      subject: `New Contact: ${params.name} — ${params.service}`,
+      subject: `New Contact: ${esc(params.name)} — ${esc(params.service)}`,
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
           <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">New Contact Form Submission</h1>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888; width: 120px;">Name</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${params.name}</td>
+              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.name)}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Email</td>
               <td style="padding: 12px 0; font-size: 16px;">
-                <a href="mailto:${params.email}" style="color: #b8860b;">${params.email}</a>
+                <a href="mailto:${esc(params.email)}" style="color: #b8860b;">${esc(params.email)}</a>
               </td>
             </tr>
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Service</td>
-              <td style="padding: 12px 0; font-size: 16px;">${params.service}</td>
+              <td style="padding: 12px 0; font-size: 16px;">${esc(params.service)}</td>
             </tr>
           </table>
           <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
             <p style="font-size: 14px; color: #888; margin: 0 0 8px 0;">Message</p>
-            <p style="font-size: 16px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${params.message}</p>
+            <p style="font-size: 16px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${esc(params.message)}</p>
           </div>
-          <a href="mailto:${params.email}" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
-            Reply to ${params.name}
+          <a href="mailto:${esc(params.email)}" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
+            Reply to ${esc(params.name)}
           </a>
           <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
           <p style="font-size: 12px; color: #888;">
@@ -158,7 +169,7 @@ export async function sendBookingNotificationEmail(params: {
   const addressRow = params.serviceAddress
     ? `<tr style="border-bottom: 1px solid #e5e5e5;">
         <td style="padding: 12px 0; font-size: 14px; color: #888;">Location</td>
-        <td style="padding: 12px 0; font-size: 16px; font-weight: bold; color: #b8860b;">${params.serviceAddress}, ${params.serviceCity}, ${params.serviceState} ${params.serviceZip}</td>
+        <td style="padding: 12px 0; font-size: 16px; font-weight: bold; color: #b8860b;">${esc(params.serviceAddress)}, ${esc(params.serviceCity)}, ${esc(params.serviceState)} ${esc(params.serviceZip)}</td>
       </tr>`
     : "";
 
@@ -167,32 +178,32 @@ export async function sendBookingNotificationEmail(params: {
       from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
       to: recipients,
       replyTo: params.customerEmail,
-      subject: `New Booking: ${params.customerName} — ${params.serviceName}`,
+      subject: `New Booking: ${esc(params.customerName)} — ${esc(params.serviceName)}`,
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
           <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">New Booking</h1>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888; width: 120px;">Customer</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${params.customerName}</td>
+              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.customerName)}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Email</td>
               <td style="padding: 12px 0; font-size: 16px;">
-                <a href="mailto:${params.customerEmail}" style="color: #b8860b;">${params.customerEmail}</a>
+                <a href="mailto:${esc(params.customerEmail)}" style="color: #b8860b;">${esc(params.customerEmail)}</a>
               </td>
             </tr>
             ${params.customerPhone ? `
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Phone</td>
               <td style="padding: 12px 0; font-size: 16px;">
-                <a href="tel:${params.customerPhone}" style="color: #b8860b;">${params.customerPhone}</a>
+                <a href="tel:${esc(params.customerPhone)}" style="color: #b8860b;">${esc(params.customerPhone)}</a>
               </td>
             </tr>` : ""}
             ${addressRow}
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Service</td>
-              <td style="padding: 12px 0; font-size: 16px;">${params.serviceName}</td>
+              <td style="padding: 12px 0; font-size: 16px;">${esc(params.serviceName)}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Date</td>
@@ -203,7 +214,7 @@ export async function sendBookingNotificationEmail(params: {
           ${params.notes ? `
           <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
             <p style="font-size: 14px; color: #888; margin: 0 0 8px 0;">Customer Notes</p>
-            <p style="font-size: 16px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${params.notes}</p>
+            <p style="font-size: 16px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${esc(params.notes)}</p>
           </div>` : ""}
           <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
           <p style="font-size: 12px; color: #888;">
@@ -252,12 +263,12 @@ export async function sendBookingConfirmationEmail(params: {
     timeZone: "America/Phoenix",
   });
 
-  const firstName = params.customerName.split(" ")[0];
+  const firstName = esc(params.customerName.split(" ")[0]);
 
   const addressRow = params.serviceAddress
     ? `<tr style="border-bottom: 1px solid #e5e5e5;">
         <td style="padding: 12px 0; font-size: 14px; color: #888;">Location</td>
-        <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${params.serviceAddress}, ${params.serviceCity}, ${params.serviceState} ${params.serviceZip}</td>
+        <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.serviceAddress)}, ${esc(params.serviceCity)}, ${esc(params.serviceState)} ${esc(params.serviceZip)}</td>
       </tr>`
     : "";
 
@@ -265,7 +276,7 @@ export async function sendBookingConfirmationEmail(params: {
     await sendWithRetry(transport, {
       from: `"Millan Luxury" <${process.env.SMTP_USER}>`,
       to: params.customerEmail,
-      subject: `Booking Confirmed — ${params.serviceName}`,
+      subject: `Booking Confirmed — ${esc(params.serviceName)}`,
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
           <div style="text-align: center; margin-bottom: 32px;">
@@ -281,7 +292,7 @@ export async function sendBookingConfirmationEmail(params: {
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888; width: 100px;">Service</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${params.serviceName}</td>
+              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.serviceName)}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Date &amp; Time</td>
@@ -357,7 +368,7 @@ export async function sendOrderConfirmationEmail(params: {
     .map(
       (item) => `
       <tr style="border-bottom: 1px solid #e5e5e5;">
-        <td style="padding: 10px 0; font-size: 14px;">${item.name}</td>
+        <td style="padding: 10px 0; font-size: 14px;">${esc(item.name)}</td>
         <td style="padding: 10px 0; font-size: 14px; text-align: center;">x${item.quantity}</td>
         <td style="padding: 10px 0; font-size: 14px; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
       </tr>`
@@ -374,20 +385,20 @@ export async function sendOrderConfirmationEmail(params: {
     ? `
       <div style="margin-bottom: 24px;">
         <p style="font-size: 14px; color: #888; margin: 0 0 4px;">Shipping to</p>
-        <p style="font-size: 15px; margin: 0;">${shipAddr!.addressLine1}</p>
-        <p style="font-size: 15px; margin: 0;">${shipAddr!.city || ""}, ${shipAddr!.state || ""} ${shipAddr!.postalCode || ""}</p>
+        <p style="font-size: 15px; margin: 0;">${esc(shipAddr!.addressLine1)}</p>
+        <p style="font-size: 15px; margin: 0;">${esc(shipAddr!.city)}, ${esc(shipAddr!.state)} ${esc(shipAddr!.postalCode)}</p>
       </div>`
     : "";
 
   try {
-    await transport.sendMail({
+    await sendWithRetry(transport, {
       from: `"Millan Luxury" <${process.env.SMTP_USER}>`,
       to: params.customerEmail,
       subject: `Order Confirmed — #${params.orderId}`,
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
           <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="font-size: 28px; color: #b8860b; margin: 0 0 8px;">Thank You, ${params.customerName.split(" ")[0]}!</h1>
+            <h1 style="font-size: 28px; color: #b8860b; margin: 0 0 8px;">Thank You, ${esc(params.customerName.split(" ")[0])}!</h1>
             <p style="font-size: 16px; color: #666; margin: 0;">Your order has been received and is being prepared.</p>
           </div>
 
@@ -482,7 +493,7 @@ export async function sendOrderNotificationEmail(params: {
     .map(
       (item) => `
       <tr style="border-bottom: 1px solid #e5e5e5;">
-        <td style="padding: 10px 0; font-size: 14px;">${item.name}</td>
+        <td style="padding: 10px 0; font-size: 14px;">${esc(item.name)}</td>
         <td style="padding: 10px 0; font-size: 14px; text-align: center;">x${item.quantity}</td>
         <td style="padding: 10px 0; font-size: 14px; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
       </tr>`
@@ -490,11 +501,11 @@ export async function sendOrderNotificationEmail(params: {
     .join("");
 
   const shipAddrHtml = params.shippingAddress?.addressLine1
-    ? `<p style="font-size: 14px; margin: 4px 0 0;">${params.shippingAddress.addressLine1}, ${params.shippingAddress.city || ""} ${params.shippingAddress.state || ""} ${params.shippingAddress.postalCode || ""}</p>`
+    ? `<p style="font-size: 14px; margin: 4px 0 0;">${esc(params.shippingAddress.addressLine1)}, ${esc(params.shippingAddress.city)} ${esc(params.shippingAddress.state)} ${esc(params.shippingAddress.postalCode)}</p>`
     : "";
 
   try {
-    await transport.sendMail({
+    await sendWithRetry(transport, {
       from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
       to: notifyTo,
       replyTo: params.customerEmail,
@@ -505,19 +516,19 @@ export async function sendOrderNotificationEmail(params: {
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888; width: 120px;">Customer</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${params.customerName || "—"}</td>
+              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.customerName) || "—"}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Email</td>
               <td style="padding: 12px 0; font-size: 16px;">
-                <a href="mailto:${params.customerEmail}" style="color: #b8860b;">${params.customerEmail}</a>
+                <a href="mailto:${esc(params.customerEmail)}" style="color: #b8860b;">${esc(params.customerEmail)}</a>
               </td>
             </tr>
             ${params.customerPhone ? `
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Phone</td>
               <td style="padding: 12px 0; font-size: 16px;">
-                <a href="tel:${params.customerPhone}" style="color: #b8860b;">${params.customerPhone}</a>
+                <a href="tel:${esc(params.customerPhone)}" style="color: #b8860b;">${esc(params.customerPhone)}</a>
               </td>
             </tr>` : ""}
             ${shipAddrHtml ? `

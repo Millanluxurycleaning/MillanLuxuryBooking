@@ -256,6 +256,26 @@ const isValidSquareWebhookSignature = (req: Request) => {
   return valid;
 };
 
+// Map Square booking statuses to our local status values
+const mapSquareBookingStatus = (squareStatus: string): string => {
+  switch (squareStatus) {
+    case "ACCEPTED":
+    case "CONFIRMED":
+      return "confirmed";
+    case "CANCELLED_BY_SELLER":
+    case "CANCELLED_BY_CUSTOMER":
+    case "DECLINED":
+      return "cancelled";
+    case "COMPLETED":
+      return "completed";
+    case "NO_SHOW":
+      return "no_show";
+    case "PENDING":
+    default:
+      return "pending";
+  }
+};
+
 const sanitizeFilenameBase = (filename: string) => {
   const base = filename.split(/[/\\]/).pop() ?? "upload";
   const asciiOnly = base.replace(/[^\x20-\x7E]+/g, "");
@@ -1643,115 +1663,6 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
     }
   });
 
-  // Seed pricing tiers for cleaning services (public GET for easy one-time call)
-  app.get("/api/seed-pricing-tiers", async (_req, res) => {
-    const prisma = assertPrisma();
-
-    const pricingData: Record<string, { tiers: Array<{ name: string; price: number; duration: string }>, description: string }> = {
-      "Deep Cleaning": {
-        description: "🫧Deep Cleaning – Best for homes that haven't been cleaned in the past month. Includes detailed sanitizing of kitchens and bathrooms, hard scrubbing of tubs/showers, sinks, toilets, and fixtures, dusting top to bottom, clean interior windows, polish stainless steel, deep vacuuming and mopping, trash emptied, beds made. Optional add-ons: Inside fridge, oven, cabinets, or closet refresh ($25–$100 per add-on).",
-        tiers: [
-          { name: "1BR/Studio", price: 175, duration: "2hr 30min" },
-          { name: "2BR", price: 225, duration: "3hr 30min" },
-          { name: "3BR", price: 290, duration: "4hr" },
-          { name: "4BR", price: 350, duration: "4hr 30min" },
-          { name: "5BR", price: 400, duration: "4hr 30min" },
-          { name: "6BR", price: 440, duration: "5hr" },
-          { name: "+ Extra Bedroom", price: 35, duration: "30min" },
-          { name: "+ Extra Bathroom", price: 45, duration: "30min" },
-        ]
-      },
-      "Basic": {
-        description: "🧼 Basic Cleaning – Perfect for maintaining a clean, fresh home. Recommended for weekly or bi-weekly service. Includes dusting all surfaces, vacuum carpets and mop floors, clean mirrors, kitchen wipe down, bathroom light cleaning and disinfecting, empty trash, make beds.",
-        tiers: [
-          { name: "1BR/Studio", price: 155, duration: "1hr 30min" },
-          { name: "2BR", price: 185, duration: "1hr 45min" },
-          { name: "3BR", price: 240, duration: "2hr 30min" },
-          { name: "4BR", price: 295, duration: "3hr 30min" },
-          { name: "5BR", price: 335, duration: "4hr 30min" },
-          { name: "6BR", price: 370, duration: "5hr 30min" },
-          { name: "+ Extra Room", price: 35, duration: "30min" },
-          { name: "+ Extra Bathroom", price: 45, duration: "30min" },
-        ]
-      },
-      "Move-In": {
-        description: "🪴 Move-In/Move-Out Cleaning – Ideal for empty homes. Full top-to-bottom clean including detailed dusting, closets, shelves, drawers inside & out, wall spot-cleaning, deep kitchen & bathroom sanitizing. Optional add-ons: Exterior windows, wall washing, garage sweeping, carpet deep cleaning.",
-        tiers: [
-          { name: "1BR/Studio", price: 285, duration: "3hr 30min" },
-          { name: "2BR", price: 350, duration: "4hr 30min" },
-          { name: "3BR", price: 459, duration: "4hr 50min" },
-          { name: "4BR", price: 559, duration: "5hr 30min" },
-          { name: "5BR", price: 769, duration: "6hr 30min" },
-          { name: "6BR", price: 899, duration: "6hr 30min" },
-          { name: "+ Extra Bedroom", price: 40, duration: "30min" },
-          { name: "+ Extra Bathroom", price: 60, duration: "30min" },
-        ]
-      },
-      "Move-Out": {
-        description: "🪴 Move-In/Move-Out Cleaning – Ideal for empty homes. Full top-to-bottom clean including detailed dusting, closets, shelves, drawers inside & out, wall spot-cleaning, deep kitchen & bathroom sanitizing. Optional add-ons: Exterior windows, wall washing, garage sweeping, carpet deep cleaning.",
-        tiers: [
-          { name: "1BR/Studio", price: 285, duration: "3hr 30min" },
-          { name: "2BR", price: 350, duration: "4hr 30min" },
-          { name: "3BR", price: 459, duration: "4hr 50min" },
-          { name: "4BR", price: 559, duration: "5hr 30min" },
-          { name: "5BR", price: 769, duration: "6hr 30min" },
-          { name: "6BR", price: 899, duration: "6hr 30min" },
-          { name: "+ Extra Bedroom", price: 40, duration: "30min" },
-          { name: "+ Extra Bathroom", price: 60, duration: "30min" },
-        ]
-      },
-      "Laundry": {
-        description: "🧺 Laundry Service – Standard full service includes sorting, fabric-safe wash cycles, delicate and specialty fabric care, gentle high-end detergent options, flawless folding or hanger presentation. Regular: $2.45/lb, Delicate: $3.80/lb, Pick-up/Delivery: $0.75/mile.",
-        tiers: [
-          { name: "King Comforter", price: 30, duration: "1hr 35min" },
-          { name: "King Bed Sheets", price: 15, duration: "30min" },
-          { name: "Queen Comforter", price: 25, duration: "30min" },
-          { name: "Queen Bed Sheets", price: 12, duration: "30min" },
-          { name: "Twin/Full Comforter", price: 20, duration: "30min" },
-          { name: "Twin/Full Bed Sheets", price: 10, duration: "30min" },
-          { name: "Small Blankets", price: 6, duration: "30min" },
-        ]
-      }
-    };
-
-    try {
-      const services = await prisma.serviceItem.findMany();
-      let updated = 0;
-
-      for (const service of services) {
-        const title = service.title.toLowerCase();
-        let matchedKey: string | null = null;
-
-        for (const key of Object.keys(pricingData)) {
-          if (title.includes(key.toLowerCase())) {
-            matchedKey = key;
-            break;
-          }
-        }
-
-        if (matchedKey) {
-          const data = pricingData[matchedKey];
-          await prisma.serviceItem.update({
-            where: { id: service.id },
-            data: {
-              pricingTiers: data.tiers,
-              description: data.description,
-              price: data.tiers[0]?.price ?? service.price,
-              requiresDeposit: true,
-              depositPercent: 25,
-            }
-          });
-          updated++;
-        }
-      }
-
-      res.json({ success: true, message: `Updated ${updated} services with pricing tiers` });
-    } catch (error) {
-      console.error("Failed to seed pricing tiers:", error);
-      res.status(500).json({ success: false, message: "Failed to seed pricing tiers" });
-    }
-  });
-
   app.post("/api/webhooks/square", async (req, res) => {
     if (process.env.SQUARE_ENABLED !== "true") {
       res.status(503).json({ message: "Square is not enabled" });
@@ -1874,13 +1785,35 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
             if (!existing) {
               // Booking was created externally (e.g., Square Dashboard)
               console.log(`[Webhook] External booking created: ${bookingData.id}`);
+
+              // Try to look up customer email from Square
+              let customerEmail = "";
+              let customerName = "Square Booking";
+              const custId = bookingData.customer_id ?? bookingData.customerId;
+              if (custId && process.env.SQUARE_ENABLED === "true") {
+                try {
+                  const client = createSquareClient();
+                  const custResp = await client.customers.get({ customerId: custId });
+                  customerEmail = custResp.customer?.emailAddress ?? "";
+                  const first = custResp.customer?.givenName ?? "";
+                  const last = custResp.customer?.familyName ?? "";
+                  customerName = [first, last].filter(Boolean).join(" ") || "Square Booking";
+                } catch (custErr) {
+                  console.warn("[Webhook] Could not look up customer:", custErr);
+                }
+              }
+
+              // Map Square status to local status values
+              const rawStatus = (bookingData.status ?? "pending").toUpperCase();
+              const mappedStatus = mapSquareBookingStatus(rawStatus);
+
               try {
                 await prisma.booking.create({
                   data: {
                     squareBookingId: bookingData.id,
-                    customerId: bookingData.customer_id ?? bookingData.customerId ?? null,
-                    customerEmail: bookingData.customer_note ?? "unknown",
-                    customerName: "Square Dashboard Booking",
+                    customerId: custId ?? null,
+                    customerEmail,
+                    customerName,
                     serviceAddress: "",
                     serviceCity: "",
                     serviceState: "",
@@ -1889,7 +1822,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
                     teamMemberId: bookingData.appointment_segments?.[0]?.team_member_id ?? null,
                     startAt: new Date(bookingData.start_at ?? bookingData.startAt ?? new Date()),
                     endAt: new Date(bookingData.start_at ?? bookingData.startAt ?? new Date()),
-                    status: bookingData.status ?? "pending",
+                    status: mappedStatus,
                     notes: bookingData.customer_note ?? bookingData.customerNote ?? null,
                   },
                 });
@@ -1906,13 +1839,14 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         case "booking.updated": {
           const updatedBooking = eventData?.booking;
           if (updatedBooking?.id) {
-            const status = updatedBooking.status ?? updatedBooking.booking_status;
-            if (status) {
+            const rawStatus = updatedBooking.status ?? updatedBooking.booking_status;
+            if (rawStatus) {
+              const mappedStatus = mapSquareBookingStatus(rawStatus.toUpperCase());
               const result = await prisma.booking.updateMany({
                 where: { squareBookingId: updatedBooking.id },
-                data: { status: status.toLowerCase() },
+                data: { status: mappedStatus },
               });
-              console.log(`[Webhook] Booking ${updatedBooking.id} status → ${status} (${result.count} updated)`);
+              console.log(`[Webhook] Booking ${updatedBooking.id} status ${rawStatus} → ${mappedStatus} (${result.count} updated)`);
             }
           }
           break;
@@ -2586,42 +2520,43 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         data: { updatedAt: new Date(), expiresAt: touchCartExpiry() },
       });
 
-      // Send order notification (fire-and-forget)
-      sendOrderNotificationEmail({
-        orderId: orderRecord.id,
-        customerName: payload.buyerName || "Customer",
-        customerEmail: email,
-        customerPhone: payload.buyerPhone,
-        total,
-        shipping,
-        shippingAddress: payload.shippingAddress,
-        items: cart.items.map((item) => {
-          const product = productMap.get(item.productId);
-          const displayName = product?.fragrance && product.fragrance !== "Signature"
-            ? `${product.name} (${product.fragrance})`
-            : product?.name ?? "Item";
-          return { name: displayName, quantity: item.quantity, price: Number(item.price) };
-        }),
-      }).catch((err) => console.error("[Email] Order notification error:", err));
+      // Send order emails — await with retry, but don't block order success
+      const orderItems = cart.items.map((item) => {
+        const product = productMap.get(item.productId);
+        const displayName = product?.fragrance && product.fragrance !== "Signature"
+          ? `${product.name} (${product.fragrance})`
+          : product?.name ?? "Item";
+        return { name: displayName, quantity: item.quantity, price: Number(item.price) };
+      });
 
-      // Send customer confirmation email (fire-and-forget)
-      sendOrderConfirmationEmail({
-        orderId: orderRecord.id,
-        customerName: payload.buyerName || "Customer",
-        customerEmail: email,
-        subtotal,
-        shipping,
-        tax,
-        total,
-        items: cart.items.map((item) => {
-          const product = productMap.get(item.productId);
-          const displayName = product?.fragrance && product.fragrance !== "Signature"
-            ? `${product.name} (${product.fragrance})`
-            : product?.name ?? "Item";
-          return { name: displayName, quantity: item.quantity, price: Number(item.price) };
+      const orderEmailResults = await Promise.allSettled([
+        sendOrderNotificationEmail({
+          orderId: orderRecord.id,
+          customerName: payload.buyerName || "Customer",
+          customerEmail: email,
+          customerPhone: payload.buyerPhone,
+          total,
+          shipping,
+          shippingAddress: payload.shippingAddress,
+          items: orderItems,
         }),
-        shippingAddress: payload.shippingAddress,
-      }).catch((err) => console.error("[Email] Order confirmation error:", err));
+        sendOrderConfirmationEmail({
+          orderId: orderRecord.id,
+          customerName: payload.buyerName || "Customer",
+          customerEmail: email,
+          subtotal,
+          shipping,
+          tax,
+          total,
+          items: orderItems,
+          shippingAddress: payload.shippingAddress,
+        }),
+      ]);
+      for (const result of orderEmailResults) {
+        if (result.status === "rejected") {
+          console.error("[CRITICAL] Order email failed after retries:", result.reason);
+        }
+      }
 
       res.json({
         success: true,
