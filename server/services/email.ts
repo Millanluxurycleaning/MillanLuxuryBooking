@@ -149,11 +149,7 @@ export async function sendBookingNotificationEmail(params: {
     return false;
   }
 
-  // Send to both ivan@ and info@ (info is alias but user wants both)
-  const recipients = [
-    "ivan@millanluxurycleaning.com",
-    "info@millanluxurycleaning.com",
-  ].join(", ");
+  const recipients = "ivan@millanluxurycleaning.com";
 
   const date = new Date(params.startAt);
   const formatted = date.toLocaleString("en-US", {
