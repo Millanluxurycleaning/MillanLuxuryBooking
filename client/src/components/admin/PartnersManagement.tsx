@@ -209,7 +209,7 @@ export function PartnersManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead>Brand</TableHead>
-                <TableHead>Slug</TableHead>
+                <TableHead>Partner Link</TableHead>
                 <TableHead>Rate</TableHead>
                 <TableHead>Conversions</TableHead>
                 <TableHead>Revenue</TableHead>
@@ -223,7 +223,19 @@ export function PartnersManagement() {
               {affiliates.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-medium">{a.brandName}</TableCell>
-                  <TableCell className="font-mono text-sm">/with/{a.slug}</TableCell>
+                  <TableCell>
+                    <button
+                      className="font-mono text-sm text-amber-700 hover:text-amber-900 underline cursor-pointer bg-transparent border-none p-0"
+                      onClick={() => {
+                        const url = `${window.location.origin}/with/${a.slug}`;
+                        navigator.clipboard.writeText(url);
+                        toast({ title: "Link Copied", description: url });
+                      }}
+                      title="Click to copy full link"
+                    >
+                      /with/{a.slug}
+                    </button>
+                  </TableCell>
                   <TableCell>{(a.commissionRate * 100).toFixed(0)}%</TableCell>
                   <TableCell>{a.totalConversions}</TableCell>
                   <TableCell>${a.totalRevenue.toFixed(2)}</TableCell>

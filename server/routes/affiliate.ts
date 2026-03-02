@@ -429,16 +429,24 @@ export function registerAffiliateRoutes(
           },
         });
 
-        // Send approval email (non-blocking)
-        sendPartnerApprovalEmail({
-          to: application.contactEmail,
-          brandName: application.brandName,
-          slug,
-        }).catch((err) =>
-          console.error("[Email] Approval email error:", err),
-        );
+        // Send approval email — await with retry, but don't block approval on failure
+        const siteUrl = process.env.SITE_URL || "https://millanluxurycleaning.com";
+        const vanityUrl = `${siteUrl}/with/${slug}`;
+        let emailSent = false;
+        try {
+          emailSent = await sendPartnerApprovalEmail({
+            to: application.contactEmail,
+            brandName: application.brandName,
+            slug,
+          });
+          if (!emailSent) {
+            console.error("[CRITICAL] Partner approval email was not sent (SMTP not configured or send returned false)");
+          }
+        } catch (err) {
+          console.error("[CRITICAL] Partner approval email failed:", err);
+        }
 
-        res.json({ success: true, affiliate });
+        res.json({ success: true, affiliate, vanityUrl, emailSent });
       } catch (error) {
         console.error(
           "[API] Error in PATCH /api/admin/partner-applications/:id/approve:",

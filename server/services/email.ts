@@ -1,28 +1,11 @@
-import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 
-// --- Resend (partner emails) ---
-
-let resendClient: Resend | null = null;
-
-function getResendClient(): Resend | null {
-  if (resendClient) return resendClient;
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return null;
-  resendClient = new Resend(apiKey);
-  return resendClient;
-}
-
-function getFromEmail(): string {
-  return process.env.EMAIL_FROM || "Millan Luxury <noreply@millanluxury.com>";
-}
-
 function getSiteUrl(): string {
-  return process.env.SITE_URL || "";
+  return process.env.SITE_URL || "https://millanluxurycleaning.com";
 }
 
-// --- Google SMTP (notifications) ---
+// --- Google SMTP (all emails) ---
 
 let smtpTransport: Transporter | null = null;
 
@@ -574,26 +557,27 @@ export async function sendOrderNotificationEmail(params: {
   }
 }
 
-// --- Partner emails (Resend) ---
+// --- Partner emails (Google SMTP) ---
 
 export async function sendPartnerApprovalEmail(params: {
   to: string;
   brandName: string;
   slug: string;
 }): Promise<boolean> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.warn("[Email] Resend not configured, skipping partner approval email");
+  const transport = getSmtpTransport();
+  if (!transport) {
+    console.error("[CRITICAL] SMTP not configured, cannot send partner approval email");
     return false;
   }
 
   const siteUrl = getSiteUrl();
   const loginUrl = `${siteUrl}/partner/login`;
   const vanityUrl = `${siteUrl}/with/${params.slug}`;
+  const fromEmail = getNotificationEmail();
 
   try {
-    await resend.emails.send({
-      from: getFromEmail(),
+    await sendWithRetry(transport, {
+      from: `"Millan Luxury Cleaning" <${fromEmail}>`,
       to: params.to,
       subject: "Welcome to the Millan Luxury Partner Program",
       html: `
@@ -607,7 +591,10 @@ export async function sendPartnerApprovalEmail(params: {
             <a href="${vanityUrl}" style="color: #b8860b;">${vanityUrl}</a>
           </p>
           <p style="font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            Sign in to your partner dashboard to view your performance, track commissions, and access your unique link.
+            Share this link with your audience. When someone books through your link, you earn a commission on every completed booking.
+          </p>
+          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+            Sign in to your partner dashboard to view your performance, track commissions, and access your unique link anytime.
           </p>
           <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
             Sign In to Dashboard
@@ -621,7 +608,7 @@ export async function sendPartnerApprovalEmail(params: {
     });
     return true;
   } catch (error) {
-    console.error("[Email] Failed to send partner approval email:", error);
+    console.error("[CRITICAL] Failed to send partner approval email after retries:", error);
     return false;
   }
 }
@@ -630,15 +617,17 @@ export async function sendPartnerDisabledEmail(params: {
   to: string;
   brandName: string;
 }): Promise<boolean> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.warn("[Email] Resend not configured, skipping partner disabled email");
+  const transport = getSmtpTransport();
+  if (!transport) {
+    console.error("[CRITICAL] SMTP not configured, cannot send partner disabled email");
     return false;
   }
 
+  const fromEmail = getNotificationEmail();
+
   try {
-    await resend.emails.send({
-      from: getFromEmail(),
+    await sendWithRetry(transport, {
+      from: `"Millan Luxury Cleaning" <${fromEmail}>`,
       to: params.to,
       subject: "Millan Luxury Partner Account Update",
       html: `
@@ -659,7 +648,7 @@ export async function sendPartnerDisabledEmail(params: {
     });
     return true;
   } catch (error) {
-    console.error("[Email] Failed to send partner disabled email:", error);
+    console.error("[CRITICAL] Failed to send partner disabled email after retries:", error);
     return false;
   }
 }
@@ -671,15 +660,17 @@ export async function sendPayoutNotificationEmail(params: {
   periodStart: string;
   periodEnd: string;
 }): Promise<boolean> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.warn("[Email] Resend not configured, skipping payout notification email");
+  const transport = getSmtpTransport();
+  if (!transport) {
+    console.error("[CRITICAL] SMTP not configured, cannot send payout notification email");
     return false;
   }
 
+  const fromEmail = getNotificationEmail();
+
   try {
-    await resend.emails.send({
-      from: getFromEmail(),
+    await sendWithRetry(transport, {
+      from: `"Millan Luxury Cleaning" <${fromEmail}>`,
       to: params.to,
       subject: "Millan Luxury Partner Payout Notification",
       html: `
@@ -706,7 +697,7 @@ export async function sendPayoutNotificationEmail(params: {
     });
     return true;
   } catch (error) {
-    console.error("[Email] Failed to send payout notification email:", error);
+    console.error("[CRITICAL] Failed to send payout notification email after retries:", error);
     return false;
   }
 }
@@ -720,15 +711,17 @@ export async function sendMonthlyStatementEmail(params: {
   conversions: number;
   outstandingBalance: number;
 }): Promise<boolean> {
-  const resend = getResendClient();
-  if (!resend) {
-    console.warn("[Email] Resend not configured, skipping monthly statement email");
+  const transport = getSmtpTransport();
+  if (!transport) {
+    console.error("[CRITICAL] SMTP not configured, cannot send monthly statement email");
     return false;
   }
 
+  const fromEmail = getNotificationEmail();
+
   try {
-    await resend.emails.send({
-      from: getFromEmail(),
+    await sendWithRetry(transport, {
+      from: `"Millan Luxury Cleaning" <${fromEmail}>`,
       to: params.to,
       subject: `Millan Luxury Partner Statement - ${params.month}`,
       html: `
@@ -767,7 +760,7 @@ export async function sendMonthlyStatementEmail(params: {
     });
     return true;
   } catch (error) {
-    console.error("[Email] Failed to send monthly statement email:", error);
+    console.error("[CRITICAL] Failed to send monthly statement email after retries:", error);
     return false;
   }
 }
