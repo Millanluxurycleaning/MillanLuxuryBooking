@@ -222,21 +222,38 @@ const getSquareSignatureHeader = (req: Request) => {
 const isValidSquareWebhookSignature = (req: Request) => {
   const signature = getSquareSignatureHeader(req);
   if (!signature) {
+    console.error("[WebhookSig] FAIL: No x-square-hmacsha256-signature header");
     return false;
   }
   const rawBodyValue = (req as Request & { rawBody?: unknown }).rawBody;
   if (!rawBodyValue) {
+    console.error("[WebhookSig] FAIL: No rawBody on request");
     return false;
   }
   const rawBody = Buffer.isBuffer(rawBodyValue) ? rawBodyValue.toString("utf8") : String(rawBodyValue);
-  const payload = `${resolveSquareWebhookUrl(req)}${rawBody}`;
-  const expected = createHmac("sha256", getSquareWebhookSignatureKey()).update(payload).digest("base64");
+  const webhookUrl = resolveSquareWebhookUrl(req);
+  const key = getSquareWebhookSignatureKey();
+  const payload = `${webhookUrl}${rawBody}`;
+  const expected = createHmac("sha256", key).update(payload).digest("base64");
   const expectedBuffer = Buffer.from(expected);
   const signatureBuffer = Buffer.from(signature);
+
+  // Debug logging for webhook signature issues
+  console.log(`[WebhookSig] URL used: ${webhookUrl}`);
+  console.log(`[WebhookSig] Key (first 6): ${key.slice(0, 6)}...`);
+  console.log(`[WebhookSig] Signature received: ${signature.slice(0, 12)}...`);
+  console.log(`[WebhookSig] Signature expected: ${expected.slice(0, 12)}...`);
+  console.log(`[WebhookSig] RawBody length: ${rawBody.length}`);
+
   if (expectedBuffer.length !== signatureBuffer.length) {
+    console.error(`[WebhookSig] FAIL: Length mismatch (expected=${expectedBuffer.length}, got=${signatureBuffer.length})`);
     return false;
   }
-  return timingSafeEqual(expectedBuffer, signatureBuffer);
+  const valid = timingSafeEqual(expectedBuffer, signatureBuffer);
+  if (!valid) {
+    console.error("[WebhookSig] FAIL: HMAC mismatch");
+  }
+  return valid;
 };
 
 const sanitizeFilenameBase = (filename: string) => {
@@ -1545,6 +1562,53 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       console.error("[API] Webhook registration error:", error);
       const msg = error instanceof Error ? error.message : "Failed to register webhooks";
       res.status(500).json({ success: false, message: msg });
+    }
+  });
+
+  // List all Square webhook subscriptions (admin-only, for debugging)
+  app.get("/api/square/webhooks/list", async (req, res) => {
+    const authUser = await getUserFromRequest(req);
+    if (!authUser || !(await isUserAdmin(authUser.userId, prisma))) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    try {
+      const client = createSquareClient();
+      const subs: { id?: string; name?: string; notificationUrl?: string | null; enabled?: boolean; eventTypes?: string[]; signatureKey?: string | null }[] = [];
+      const subsPage = await client.webhooks.subscriptions.list();
+      if (subsPage.data) {
+        for (const sub of subsPage.data) {
+          subs.push({
+            id: sub.id,
+            name: sub.name ?? undefined,
+            notificationUrl: sub.notificationUrl ?? undefined,
+            enabled: sub.enabled ?? undefined,
+            eventTypes: sub.eventTypes ?? undefined,
+            signatureKey: sub.signatureKey ?? undefined,
+          });
+        }
+      }
+      res.json({ success: true, subscriptions: subs });
+    } catch (error) {
+      console.error("[API] Webhook list error:", error);
+      res.status(500).json({ success: false, message: error instanceof Error ? error.message : "Failed to list webhooks" });
+    }
+  });
+
+  // Delete a Square webhook subscription by ID (admin-only)
+  app.delete("/api/square/webhooks/:subscriptionId", async (req, res) => {
+    const authUser = await getUserFromRequest(req);
+    if (!authUser || !(await isUserAdmin(authUser.userId, prisma))) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    try {
+      const client = createSquareClient();
+      await client.webhooks.subscriptions.delete({ subscriptionId: req.params.subscriptionId });
+      res.json({ success: true, deleted: req.params.subscriptionId });
+    } catch (error) {
+      console.error("[API] Webhook delete error:", error);
+      res.status(500).json({ success: false, message: error instanceof Error ? error.message : "Failed to delete webhook" });
     }
   });
 
