@@ -138,6 +138,10 @@ export default function BookingPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [serviceAddress, setServiceAddress] = useState("");
+  const [serviceCity, setServiceCity] = useState("");
+  const [serviceState, setServiceState] = useState("AZ");
+  const [serviceZip, setServiceZip] = useState("");
   const [notes, setNotes] = useState("");
   const [bookingStatus, setBookingStatus] = useState<{ success: boolean; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -394,6 +398,10 @@ export default function BookingPage() {
     if (!selectedServiceId || !selectedSlot?.startAt || !selectedSlot.appointmentSegments.length) {
       return;
     }
+    if (!serviceAddress.trim() || !serviceCity.trim() || !serviceState || !/^\d{5}(-\d{4})?$/.test(serviceZip)) {
+      setBookingStatus({ success: false, message: "Please enter a complete service address." });
+      return;
+    }
 
     const segment = selectedSlot.appointmentSegments[0];
 
@@ -442,6 +450,10 @@ export default function BookingPage() {
           customerName,
           customerEmail,
           customerPhone,
+          serviceAddress,
+          serviceCity,
+          serviceState,
+          serviceZip,
           notes: bookingNotes,
           serviceId: selectedServiceId,
           startAt: selectedSlot.startAt,
@@ -1222,6 +1234,58 @@ export default function BookingPage() {
                         onChange={(event) => setCustomerPhone(event.target.value)}
                       />
                     </div>
+
+                    {/* Service Address */}
+                    <div className="rounded-lg border border-purple-200/60 bg-purple-50/30 p-4 space-y-3">
+                      <p className="text-sm font-semibold text-purple-700">Service Location *</p>
+                      <div className="space-y-2">
+                        <Label htmlFor="service-address">Street Address</Label>
+                        <Input
+                          id="service-address"
+                          placeholder="123 Main St"
+                          value={serviceAddress}
+                          onChange={(event) => setServiceAddress(event.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-6 gap-2">
+                        <div className="col-span-3 space-y-2">
+                          <Label htmlFor="service-city">City</Label>
+                          <Input
+                            id="service-city"
+                            placeholder="Phoenix"
+                            value={serviceCity}
+                            onChange={(event) => setServiceCity(event.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="col-span-1 space-y-2">
+                          <Label htmlFor="service-state">State</Label>
+                          <select
+                            id="service-state"
+                            value={serviceState}
+                            onChange={(event) => setServiceState(event.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-2 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            {["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"].map((st) => (
+                              <option key={st} value={st}>{st}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-2 space-y-2">
+                          <Label htmlFor="service-zip">ZIP Code</Label>
+                          <Input
+                            id="service-zip"
+                            placeholder="85001"
+                            value={serviceZip}
+                            onChange={(event) => setServiceZip(event.target.value)}
+                            maxLength={10}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="notes">Special Requests</Label>
                       <Textarea
@@ -1302,7 +1366,11 @@ export default function BookingPage() {
                           !selectedServiceId ||
                           !selectedSlot ||
                           !customerName.trim() ||
-                          !customerEmail.trim()
+                          !customerEmail.trim() ||
+                          !serviceAddress.trim() ||
+                          !serviceCity.trim() ||
+                          !serviceState ||
+                          !/^\d{5}(-\d{4})?$/.test(serviceZip)
                         }
                         className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                         size="lg"

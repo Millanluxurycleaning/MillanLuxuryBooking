@@ -249,6 +249,10 @@ model Booking {
   customerEmail   String
   customerName    String
   customerPhone   String?
+  serviceAddress  String    @default("")
+  serviceCity     String    @default("")
+  serviceState    String    @default("")
+  serviceZip      String    @default("")
   serviceId       Int
   teamMemberId    String?
   startAt         DateTime

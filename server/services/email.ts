@@ -45,6 +45,25 @@ function getNotificationEmail(): string {
   return process.env.NOTIFICATION_EMAIL || process.env.SMTP_USER || "";
 }
 
+// --- Retry wrapper for reliable email delivery ---
+
+async function sendWithRetry(
+  transport: Transporter,
+  mailOptions: object,
+  maxRetries = 2,
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await transport.sendMail(mailOptions);
+      return;
+    } catch (err) {
+      console.error(`[Email] Attempt ${attempt}/${maxRetries} failed:`, err);
+      if (attempt === maxRetries) throw err;
+      await new Promise((r) => setTimeout(r, 2000 * attempt));
+    }
+  }
+}
+
 // --- Contact form notification ---
 
 export async function sendContactNotificationEmail(params: {
@@ -118,6 +137,10 @@ export async function sendBookingNotificationEmail(params: {
   startAt: string;
   notes?: string;
   cardOnFile?: boolean;
+  serviceAddress?: string;
+  serviceCity?: string;
+  serviceState?: string;
+  serviceZip?: string;
 }): Promise<boolean> {
   const transport = getSmtpTransport();
 
@@ -153,8 +176,15 @@ export async function sendBookingNotificationEmail(params: {
         <td style="padding: 12px 0; font-size: 16px; color: #dc2626;">Not provided</td>
       </tr>`;
 
+  const addressRow = params.serviceAddress
+    ? `<tr style="border-bottom: 1px solid #e5e5e5;">
+        <td style="padding: 12px 0; font-size: 14px; color: #888;">Location</td>
+        <td style="padding: 12px 0; font-size: 16px; font-weight: bold; color: #b8860b;">${params.serviceAddress}, ${params.serviceCity}, ${params.serviceState} ${params.serviceZip}</td>
+      </tr>`
+    : "";
+
   try {
-    await transport.sendMail({
+    await sendWithRetry(transport, {
       from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
       to: recipients,
       replyTo: params.customerEmail,
@@ -180,6 +210,7 @@ export async function sendBookingNotificationEmail(params: {
                 <a href="tel:${params.customerPhone}" style="color: #b8860b;">${params.customerPhone}</a>
               </td>
             </tr>` : ""}
+            ${addressRow}
             <tr style="border-bottom: 1px solid #e5e5e5;">
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Service</td>
               <td style="padding: 12px 0; font-size: 16px;">${params.serviceName}</td>
@@ -219,6 +250,10 @@ export async function sendBookingConfirmationEmail(params: {
   serviceName: string;
   startAt: string;
   cardOnFile?: boolean;
+  serviceAddress?: string;
+  serviceCity?: string;
+  serviceState?: string;
+  serviceZip?: string;
 }): Promise<boolean> {
   const transport = getSmtpTransport();
 
@@ -240,8 +275,15 @@ export async function sendBookingConfirmationEmail(params: {
 
   const firstName = params.customerName.split(" ")[0];
 
+  const addressRow = params.serviceAddress
+    ? `<tr style="border-bottom: 1px solid #e5e5e5;">
+        <td style="padding: 12px 0; font-size: 14px; color: #888;">Location</td>
+        <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${params.serviceAddress}, ${params.serviceCity}, ${params.serviceState} ${params.serviceZip}</td>
+      </tr>`
+    : "";
+
   try {
-    await transport.sendMail({
+    await sendWithRetry(transport, {
       from: `"Millan Luxury" <${process.env.SMTP_USER}>`,
       to: params.customerEmail,
       subject: `Booking Confirmed — ${params.serviceName}`,
@@ -266,6 +308,7 @@ export async function sendBookingConfirmationEmail(params: {
               <td style="padding: 12px 0; font-size: 14px; color: #888;">Date &amp; Time</td>
               <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${formatted}</td>
             </tr>
+            ${addressRow}
           </table>
 
           ${params.cardOnFile ? `
@@ -296,7 +339,7 @@ export async function sendBookingConfirmationEmail(params: {
 
           <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
           <p style="font-size: 12px; color: #888; text-align: center; line-height: 1.5;">
-            Millan Luxury Cleaning &bull; 811 N 3rd St, Phoenix, AZ 85004<br/>
+            Millan Luxury Cleaning<br/>
             <a href="https://millanluxurycleaning.com" style="color: #b8860b;">millanluxurycleaning.com</a>
           </p>
         </div>

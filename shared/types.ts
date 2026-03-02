@@ -402,6 +402,10 @@ export interface Booking {
   customerEmail: string;
   customerName: string;
   customerPhone: string | null;
+  serviceAddress: string;
+  serviceCity: string;
+  serviceState: string;
+  serviceZip: string;
   serviceId: number;
   teamMemberId: string | null;
   startAt: string | Date;
@@ -472,6 +476,10 @@ export const createBookingSchema = z.object({
   customerEmail: z.string().email(),
   customerName: z.string().min(1),
   customerPhone: z.string().optional(),
+  serviceAddress: z.string().min(3, "Street address is required"),
+  serviceCity: z.string().min(2, "City is required"),
+  serviceState: z.string().length(2, "State abbreviation required"),
+  serviceZip: z.string().regex(/^\d{5}(-\d{4})?$/, "Valid ZIP code required"),
   serviceId: z.number().int().positive(),
   startAt: z.string().datetime(),
   notes: z.string().optional(),

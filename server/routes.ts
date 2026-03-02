@@ -1502,6 +1502,8 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
               "payment.completed",
               "refund.created",
               "refund.updated",
+              "booking.created",
+              "booking.updated",
             ],
           },
         });
@@ -1525,6 +1527,8 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
               "payment.completed",
               "refund.created",
               "refund.updated",
+              "booking.created",
+              "booking.updated",
             ],
             apiVersion: "2025-01-23",
           },
@@ -1792,6 +1796,60 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
               }
             }
             console.log(`[Webhook] Inventory updated for ${updated} products`);
+          }
+          break;
+        }
+
+        case "booking.created": {
+          const bookingData = eventData?.booking;
+          if (bookingData?.id) {
+            // Check if we already have this booking (created via our site)
+            const existing = await prisma.booking.findFirst({
+              where: { squareBookingId: bookingData.id },
+            });
+            if (!existing) {
+              // Booking was created externally (e.g., Square Dashboard)
+              console.log(`[Webhook] External booking created: ${bookingData.id}`);
+              try {
+                await prisma.booking.create({
+                  data: {
+                    squareBookingId: bookingData.id,
+                    customerId: bookingData.customer_id ?? bookingData.customerId ?? null,
+                    customerEmail: bookingData.customer_note ?? "unknown",
+                    customerName: "Square Dashboard Booking",
+                    serviceAddress: "",
+                    serviceCity: "",
+                    serviceState: "",
+                    serviceZip: "",
+                    serviceId: 0,
+                    teamMemberId: bookingData.appointment_segments?.[0]?.team_member_id ?? null,
+                    startAt: new Date(bookingData.start_at ?? bookingData.startAt ?? new Date()),
+                    endAt: new Date(bookingData.start_at ?? bookingData.startAt ?? new Date()),
+                    status: bookingData.status ?? "pending",
+                    notes: bookingData.customer_note ?? bookingData.customerNote ?? null,
+                  },
+                });
+              } catch (createErr) {
+                console.error("[Webhook] Failed to create external booking record:", createErr);
+              }
+            } else {
+              console.log(`[Webhook] Booking ${bookingData.id} already exists locally`);
+            }
+          }
+          break;
+        }
+
+        case "booking.updated": {
+          const updatedBooking = eventData?.booking;
+          if (updatedBooking?.id) {
+            const status = updatedBooking.status ?? updatedBooking.booking_status;
+            if (status) {
+              const result = await prisma.booking.updateMany({
+                where: { squareBookingId: updatedBooking.id },
+                data: { status: status.toLowerCase() },
+              });
+              console.log(`[Webhook] Booking ${updatedBooking.id} status → ${status} (${result.count} updated)`);
+            }
           }
           break;
         }
@@ -2685,6 +2743,13 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         familyName: lastName || undefined,
         emailAddress: payload.customerEmail,
         phoneNumber: formattedPhone,
+        address: {
+          addressLine1: payload.serviceAddress,
+          locality: payload.serviceCity,
+          administrativeDistrictLevel1: payload.serviceState,
+          postalCode: payload.serviceZip,
+          country: "US",
+        },
       });
 
       const customerId = customerResponse.customer?.id ?? null;
@@ -2743,6 +2808,10 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           customerEmail: payload.customerEmail,
           customerName: payload.customerName,
           customerPhone: payload.customerPhone ?? null,
+          serviceAddress: payload.serviceAddress,
+          serviceCity: payload.serviceCity,
+          serviceState: payload.serviceState,
+          serviceZip: payload.serviceZip,
           serviceId: payload.serviceId,
           teamMemberId: payload.teamMemberId,
           startAt: startAtDate,
@@ -2753,26 +2822,39 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         },
       });
 
-      // Send booking notification (fire-and-forget)
-      sendBookingNotificationEmail({
-        customerName: payload.customerName,
-        customerEmail: payload.customerEmail,
-        customerPhone: payload.customerPhone,
-        serviceName: service.title,
-        startAt: payload.startAt,
-        notes: payload.notes,
-        cardOnFile: !!squareCardId,
-      }).catch((err) => console.error("[Email] Booking notification error:", err));
-
-      // Send booking confirmation to customer (fire-and-forget)
-      sendBookingConfirmationEmail({
-        bookingId: record.id,
-        customerName: payload.customerName,
-        customerEmail: payload.customerEmail,
-        serviceName: service.title,
-        startAt: payload.startAt,
-        cardOnFile: !!squareCardId,
-      }).catch((err) => console.error("[Email] Booking confirmation error:", err));
+      // Send emails — await with retry, but don't block booking success
+      const emailResults = await Promise.allSettled([
+        sendBookingNotificationEmail({
+          customerName: payload.customerName,
+          customerEmail: payload.customerEmail,
+          customerPhone: payload.customerPhone,
+          serviceName: service.title,
+          startAt: payload.startAt,
+          notes: payload.notes,
+          cardOnFile: !!squareCardId,
+          serviceAddress: payload.serviceAddress,
+          serviceCity: payload.serviceCity,
+          serviceState: payload.serviceState,
+          serviceZip: payload.serviceZip,
+        }),
+        sendBookingConfirmationEmail({
+          bookingId: record.id,
+          customerName: payload.customerName,
+          customerEmail: payload.customerEmail,
+          serviceName: service.title,
+          startAt: payload.startAt,
+          cardOnFile: !!squareCardId,
+          serviceAddress: payload.serviceAddress,
+          serviceCity: payload.serviceCity,
+          serviceState: payload.serviceState,
+          serviceZip: payload.serviceZip,
+        }),
+      ]);
+      for (const result of emailResults) {
+        if (result.status === "rejected") {
+          console.error("[CRITICAL] Booking email failed after retries:", result.reason);
+        }
+      }
 
       res.status(201).json({
         success: true,
