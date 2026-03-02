@@ -2405,7 +2405,9 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         idempotencyKey: orderIdempotencyKey,
         order: {
           locationId,
+          state: "OPEN",
           referenceId: payload.buyerEmail || undefined,
+          source: { name: "Millan Luxury Website" },
           lineItems: orderLineItems,
           taxes: [
             {
@@ -2442,6 +2444,31 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       if (!payment?.id) {
         res.status(500).json({ message: "Payment failed" });
         return;
+      }
+
+      // Move fulfillment from PROPOSED → RESERVED so the order stays OPEN in
+      // Square Dashboard and appears in the "Orders" tab needing fulfillment.
+      // Without this, Square auto-completes the order when payment clears.
+      const fulfillmentUid = squareOrder.fulfillments?.[0]?.uid;
+      if (fulfillmentUid) {
+        try {
+          await client.orders.update({
+            orderId: squareOrder.id!,
+            order: {
+              locationId,
+              version: squareOrder.version,
+              fulfillments: [
+                {
+                  uid: fulfillmentUid,
+                  state: FulfillmentState.Reserved,
+                },
+              ],
+            },
+          });
+        } catch (fulfillErr) {
+          console.error("[Checkout] Failed to update fulfillment to RESERVED:", fulfillErr);
+          // Non-fatal — order and payment are still valid
+        }
       }
 
       const email = payload.buyerEmail ?? authUser?.email ?? "";
