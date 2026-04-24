@@ -12,13 +12,19 @@ if (!supabaseServiceKey) {
   console.warn('[Supabase] SUPABASE_SERVICE_ROLE_KEY is not set');
 }
 
+const PLACEHOLDER = 'https://placeholder.supabase.co';
+
 // Server-side Supabase client with service role key (bypasses RLS)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+export const supabaseAdmin = createClient(
+  supabaseUrl || PLACEHOLDER,
+  supabaseServiceKey || 'placeholder-key',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
 
 // Extract user from request Authorization header
 export async function getUserFromRequest(req: Request): Promise<{ userId: string; email: string } | null> {

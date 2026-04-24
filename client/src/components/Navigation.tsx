@@ -4,6 +4,7 @@ import { Menu, ShoppingCart } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAssets } from "@/hooks/useAssets";
 import { useCart } from "@/contexts/CartContext";
+import { useAnnouncement } from "@/contexts/AnnouncementContext";
 
 const fallbackLogo =
   "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/IMG_5919%20-%20Millan%20Luxury%20Cleaning%20(1).png";
@@ -14,6 +15,7 @@ export function Navigation() {
   const logo = assets?.logo?.url ?? fallbackLogo;
   const { cart } = useCart();
   const cartCount = cart?.totals?.itemCount ?? 0;
+  const { isVisible: isBannerVisible } = useAnnouncement();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,10 +39,12 @@ export function Navigation() {
   ];
 
   return (
-    <nav 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled 
-          ? "bg-card/95 backdrop-blur-md shadow-md border-b border-border" 
+    <nav
+      className={`fixed left-0 right-0 z-50 transition-all duration-300 ${
+        isBannerVisible ? "top-10" : "top-0"
+      } ${
+        isScrolled
+          ? "bg-card/95 backdrop-blur-md shadow-md border-b border-border"
           : "bg-transparent"
       }`}
     >
