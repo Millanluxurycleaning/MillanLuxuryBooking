@@ -314,6 +314,19 @@ model FragranceProduct {
 // Affiliate / Partner System
 // ============================================
 
+model Announcement {
+  id        Int       @id @default(autoincrement())
+  message   String
+  type      String    @default("info") // info | warning | success
+  isActive  Boolean   @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("announcements")
+}
+
 model AffiliateApplication {
   id                  Int       @id @default(autoincrement())
   partnerType         String    @default("brand_affiliate") // brand_affiliate | cleaning_partner
@@ -404,4 +417,18 @@ model AffiliatePayout {
   @@index([affiliateId])
   @@index([status])
   @@map("affiliate_payouts")
+}
+
+model DiscountCode {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  email       String
+  discountPct Int       @default(10)
+  usedAt      DateTime?
+  orderId     Int?
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+  @@index([code])
+  @@map("discount_codes")
 }

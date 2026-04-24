@@ -6,11 +6,19 @@ import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, Trash2 } from "lucide-react";
+import { Sparkles, Trash2, Truck, Store } from "lucide-react";
 
 export default function CartPage() {
   const { cart, isLoading, error, updateItem, removeItem, clearCart } = useCart();
   const [isUpdating, setIsUpdating] = useState<number | null>(null);
+  const [fulfillment, setFulfillment] = useState<"shipping" | "pickup">(() => {
+    return (localStorage.getItem("fulfillmentType") as "shipping" | "pickup") ?? "pickup";
+  });
+
+  const handleFulfillment = (type: "shipping" | "pickup") => {
+    setFulfillment(type);
+    localStorage.setItem("fulfillmentType", type);
+  };
 
   const items = cart?.items ?? [];
   const subtotal = cart?.totals.subtotal ?? 0;
@@ -172,6 +180,48 @@ export default function CartPage() {
                     <span>Total</span>
                     <span>${subtotal.toFixed(2)}</span>
                   </div>
+
+                  {/* How to get it */}
+                  {items.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold">How to get it</p>
+                        <span className="text-xs text-rose-500 font-medium">Required</span>
+                      </div>
+                      <button
+                        onClick={() => handleFulfillment("shipping")}
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border-2 transition-all text-left ${
+                          fulfillment === "shipping" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          fulfillment === "shipping" ? "border-primary" : "border-muted-foreground"
+                        }`}>
+                          {fulfillment === "shipping" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        </div>
+                        <Truck className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium">Shipping</span>
+                      </button>
+                      <button
+                        onClick={() => handleFulfillment("pickup")}
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border-2 transition-all text-left ${
+                          fulfillment === "pickup" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          fulfillment === "pickup" ? "border-primary" : "border-muted-foreground"
+                        }`}>
+                          {fulfillment === "pickup" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        </div>
+                        <Store className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">Store Pickup</p>
+                          <p className="text-xs text-muted-foreground">Millan Luxury Cleaning · 811 N 3rd St Phoenix, AZ</p>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
                   <Button asChild className="w-full" disabled={items.length === 0}>
                     <Link href="/checkout">Proceed to Checkout</Link>
                   </Button>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, isSameDay, addDays, startOfDay } from "date-fns";
+import { format, isSameDay, addDays, startOfDay, startOfMonth, endOfMonth, addMonths, isBefore } from "date-fns";
 import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, Sparkles, Home, ShieldCheck, CheckCircle2, ChevronDown } from "lucide-react";
+import { Calendar, Clock, Sparkles, Home, ShieldCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Star, Copy, Check } from "lucide-react";
 import { BookingUpsellCarousel } from "@/components/BookingUpsellCarousel";
 import type { ServiceItem, ServicePricingTier } from "@shared/types";
 
@@ -151,6 +151,8 @@ export default function BookingPage() {
     date: string;
     time: string;
   } | null>(null);
+  const [reviewClicked, setReviewClicked] = useState(false);
+  const [reviewCodeCopied, setReviewCodeCopied] = useState(false);
 
   // Laundry add-ons state (quantities instead of just selected)
   const [laundryItemQuantities, setLaundryItemQuantities] = useState<Record<string, number>>({});
@@ -192,6 +194,12 @@ export default function BookingPage() {
 
   // Check if this is a laundry service
   const isLaundryService = selectedService?.title?.toLowerCase().includes("laundry") ?? false;
+
+  // Services that use tier-based pricing but don't need a separate sqft input
+  const isAddOnOrStandardService = (() => {
+    const t = (selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
+    return t.includes("add-on") || t.includes("optional add") || t.includes("standard service");
+  })();
 
   // Parse pricing tiers from service
   const pricingTiers = useMemo((): ServicePricingTier[] => {
@@ -281,6 +289,20 @@ export default function BookingPage() {
     setNeedsPickupDelivery(false);
   }, [selectedServiceId]);
 
+  // Calendar month navigation
+  const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
+  const today = startOfDay(new Date());
+  const maxMonth = startOfMonth(addMonths(today, 3));
+
+  const prevMonth = () => setViewMonth((m) => {
+    const prev = addMonths(m, -1);
+    return isBefore(prev, startOfMonth(today)) ? m : prev;
+  });
+  const nextMonth = () => setViewMonth((m) => {
+    const next = addMonths(m, 1);
+    return isBefore(maxMonth, next) ? m : next;
+  });
+
   // Update laundry item quantity
   const updateLaundryQuantity = (itemId: string, qty: number) => {
     setLaundryItemQuantities((prev) => ({
@@ -289,20 +311,27 @@ export default function BookingPage() {
     }));
   };
 
+  // Find the squareVariationId for the selected pricing tier (if any)
+  const selectedTierVariationId = useMemo(() => {
+    if (!selectedPricingTier || !pricingTiers.length) return null;
+    const tier = pricingTiers.find((t) => t.name === selectedPricingTier);
+    return tier?.squareVariationId ?? null;
+  }, [selectedPricingTier, pricingTiers]);
+
   const availabilityQuery = useQuery<AvailabilityResponse>({
-    queryKey: ["/api/bookings/availability", selectedServiceId],
+    queryKey: ["/api/bookings/availability", selectedServiceId, format(viewMonth, "yyyy-MM"), selectedTierVariationId],
     enabled: Boolean(selectedServiceId),
     queryFn: async () => {
-      const startAt = new Date().toISOString();
-      const endAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      const monthStart = startOfMonth(viewMonth);
+      const startAt = isBefore(monthStart, today) ? today.toISOString() : monthStart.toISOString();
+      const endAt = endOfMonth(viewMonth).toISOString();
+      const variationParam = selectedTierVariationId
+        ? `&variationId=${encodeURIComponent(selectedTierVariationId)}`
+        : "";
       const response = await fetch(
-        `/api/bookings/availability?serviceId=${selectedServiceId}&startAt=${encodeURIComponent(
-          startAt,
-        )}&endAt=${encodeURIComponent(endAt)}`,
+        `/api/bookings/availability?serviceId=${selectedServiceId}&startAt=${encodeURIComponent(startAt)}&endAt=${encodeURIComponent(endAt)}${variationParam}`,
       );
-      if (!response.ok) {
-        throw new Error("Failed to load availability");
-      }
+      if (!response.ok) throw new Error("Failed to load availability");
       return response.json();
     },
   });
@@ -346,32 +375,40 @@ export default function BookingPage() {
     return availabilitiesByDate.get(dateKey) || [];
   }, [selectedDate, availabilitiesByDate]);
 
-  // Generate calendar days (2 weeks)
+  // Generate all days in the viewed month
   const calendarDays = useMemo(() => {
     const days: Date[] = [];
-    const today = startOfDay(new Date());
-    for (let i = 0; i < 14; i++) {
-      days.push(addDays(today, i));
+    const start = startOfMonth(viewMonth);
+    const end = endOfMonth(viewMonth);
+    let current = start;
+    while (current <= end) {
+      days.push(current);
+      current = addDays(current, 1);
     }
     return days;
-  }, []);
+  }, [viewMonth]);
 
   // --- Step completion checks ---
   // Step 2 (details) is needed for non-laundry services that have pricing tiers or sqft
+  // Add-ons and Standard Service Offerings skip sqft — they just need a tier picked
   const needsDetailsStep = selectedService && !isLaundryService;
   const needsLaundryStep = selectedService && isLaundryService;
 
   const isStep1Complete = Boolean(selectedServiceId && selectedService);
   const isStep2Complete = (() => {
     if (!isStep1Complete) return false;
-    if (needsLaundryStep) return laundryTotal > 0; // Must select at least one laundry item
+    if (needsLaundryStep) return laundryTotal > 0;
     if (needsDetailsStep) {
-      // If service has pricing tiers, must pick one + sqft
-      if (pricingTiers.length > 0) return Boolean(selectedPricingTier) && Boolean(squareFootage);
-      // Otherwise just sqft
+      if (pricingTiers.length > 0) {
+        // Add-ons / Standard Services: just pick a tier, no sqft needed
+        if (isAddOnOrStandardService) return Boolean(selectedPricingTier);
+        return Boolean(selectedPricingTier) && Boolean(squareFootage);
+      }
+      // No tiers: still need sqft (unless add-on/standard)
+      if (isAddOnOrStandardService) return true;
       return Boolean(squareFootage);
     }
-    return true; // No details step needed
+    return true;
   })();
   const isStep3Complete = isStep2Complete && timesForSelectedDate.length > 0;
   const isStep4Complete = isStep3Complete && Boolean(selectedSlot);
@@ -530,6 +567,56 @@ export default function BookingPage() {
                 bookingDate={confirmedBooking.date}
                 bookingId={confirmedBooking.bookingId}
               />
+
+              {/* Review prompt card */}
+              <Card className="overflow-hidden border-0 shadow-lg">
+                <div className="p-6 text-center" style={{ background: "linear-gradient(135deg, #1a3a2a 0%, #2d5a3d 50%, #1e4030 100%)" }}>
+                  <div className="flex justify-center gap-1 mb-3">
+                    {[1,2,3,4,5].map((s) => (
+                      <Star key={s} className="w-5 h-5 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <h3 className="text-xl font-serif font-semibold text-white mb-1">
+                    Loved our service?
+                  </h3>
+                  <p className="text-sm text-white/70 mb-4 leading-relaxed">
+                    Leave us a Google review and get <strong className="text-white">5% off</strong> your next booking!
+                  </p>
+
+                  {reviewClicked ? (
+                    <div className="space-y-3">
+                      <p className="text-xs text-white/60">Thank you! Use this code on your next booking:</p>
+                      <div className="rounded-xl bg-white/10 border border-white/20 px-4 py-3 flex items-center justify-between gap-3 mx-auto max-w-xs">
+                        <span className="text-lg font-mono font-bold tracking-widest text-amber-300">REVIEW5</span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText("REVIEW5").then(() => {
+                              setReviewCodeCopied(true);
+                              setTimeout(() => setReviewCodeCopied(false), 2000);
+                            });
+                          }}
+                          className="flex items-center gap-1 text-xs font-medium text-white/60 hover:text-white transition-colors"
+                        >
+                          {reviewCodeCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                          {reviewCodeCopied ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-white/40">Valid for one use on your next service booking.</p>
+                    </div>
+                  ) : (
+                    <a
+                      href="https://www.google.com/maps/search/Millan+Luxury+Cleaning+Phoenix+AZ/@33.45,-112.07,15z"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setReviewClicked(true)}
+                      className="inline-flex items-center gap-2 h-11 px-8 rounded-xl font-semibold text-sm text-[#1a3a2a] transition-opacity hover:opacity-90"
+                      style={{ background: "linear-gradient(90deg, #d4af37, #f0d060)" }}
+                    >
+                      Leave a Google Review
+                    </a>
+                  )}
+                </div>
+              </Card>
             </div>
           ) : (
           <div className="max-w-3xl mx-auto space-y-4">
@@ -560,15 +647,29 @@ export default function BookingPage() {
                   </CardHeader>
                 </button>
                 {activeStep === STEP_SERVICE && (
-                  <CardContent className="grid gap-3 md:grid-cols-2 pt-0">
+                  <CardContent className="pt-0 space-y-6">
                     {servicesLoading && <p className="text-sm text-muted-foreground">Loading services...</p>}
-                    {!servicesLoading &&
-                      squareServices.map((service) => (
+                    {!servicesLoading && (() => {
+                      const isAirbnbTurnover = (title: string) => {
+                        const t = title.toLowerCase();
+                        return t.includes("weekly") || t.includes("bi-weekly") || t.includes("biweekly") ||
+                          t.includes("reset") || t.includes("monthly") || t.includes("one time") || t.includes("one-time") ||
+                          t.includes("final");
+                      };
+                      const isResidential = (title: string) => {
+                        const t = title.toLowerCase();
+                        return t.includes("deep") || t.includes("move-in") || t.includes("move in") ||
+                          t.includes("move-out") || t.includes("move out") || t.includes("basic") ||
+                          t.includes("vip") || t.includes("signature");
+                      };
+                      const airbnbServices = squareServices.filter((s) => isAirbnbTurnover(s.title ?? s.name ?? ""));
+                      const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? ""));
+                      const otherServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
+                      const renderServiceButton = (service: typeof squareServices[0]) => (
                         <button
                           key={service.id}
                           onClick={() => {
                             setSelectedServiceId(service.id);
-                            // Auto-advance after brief delay for visual feedback
                             setTimeout(() => {
                               setActiveStep(STEP_DETAILS);
                               scrollToStep(STEP_DETAILS);
@@ -587,7 +688,36 @@ export default function BookingPage() {
                             <p className="text-purple-600 font-bold mt-1">Starting at ${Number(service.price).toFixed(2)}</p>
                           )}
                         </button>
-                      ))}
+                      );
+                      return (
+                        <>
+                          {residentialServices.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-widest text-purple-600 mb-3">🏡 Residential Services</p>
+                              <div className="grid gap-3 md:grid-cols-2">
+                                {residentialServices.map(renderServiceButton)}
+                              </div>
+                            </div>
+                          )}
+                          {airbnbServices.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-widest text-purple-600 mb-3">🏠 Airbnb Turnovers</p>
+                              <div className="grid gap-3 md:grid-cols-2">
+                                {airbnbServices.map(renderServiceButton)}
+                              </div>
+                            </div>
+                          )}
+                          {otherServices.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Other Services</p>
+                              <div className="grid gap-3 md:grid-cols-2">
+                                {otherServices.map(renderServiceButton)}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </CardContent>
                 )}
               </Card>
@@ -681,6 +811,7 @@ export default function BookingPage() {
                                   ))}
                                 </div>
                               </div>
+                              {!isAddOnOrStandardService && (
                               <div className="border-t pt-4">
                                 <Label className="text-sm font-medium">Property Square Footage</Label>
                                 <Select value={squareFootage} onValueChange={setSquareFootage}>
@@ -704,10 +835,11 @@ export default function BookingPage() {
                                   </p>
                                 )}
                               </div>
+                              )}
                             </>
                           )}
 
-                          {pricingTiers.length === 0 && (
+                          {pricingTiers.length === 0 && !isAddOnOrStandardService && (
                             <div>
                               <Label className="text-sm font-medium">Property Square Footage</Label>
                               <Select value={squareFootage} onValueChange={setSquareFootage}>
@@ -914,10 +1046,30 @@ export default function BookingPage() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <div className="grid grid-cols-7 gap-2">
+                        {/* Month navigation */}
+                        <div className="flex items-center justify-between px-1">
+                          <button
+                            onClick={prevMonth}
+                            disabled={!isBefore(startOfMonth(today), viewMonth)}
+                            className="p-2 rounded-lg hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <ChevronLeft className="w-5 h-5 text-purple-600" />
+                          </button>
+                          <h3 className="font-semibold text-base">{format(viewMonth, "MMMM yyyy")}</h3>
+                          <button
+                            onClick={nextMonth}
+                            disabled={!isBefore(viewMonth, maxMonth)}
+                            className="p-2 rounded-lg hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <ChevronRight className="w-5 h-5 text-purple-600" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-1">
                           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                             <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">{day}</div>
                           ))}
+                          {/* Empty cells for offset */}
                           {Array.from({ length: calendarDays[0]?.getDay() || 0 }).map((_, i) => (
                             <div key={`empty-${i}`} />
                           ))}
@@ -926,12 +1078,13 @@ export default function BookingPage() {
                             const hasSlots = availabilitiesByDate.has(dateKey);
                             const isSelected = isSameDay(day, selectedDate);
                             const isToday = isSameDay(day, new Date());
+                            const isPast = isBefore(day, today);
 
                             return (
                               <button
                                 key={dateKey}
                                 onClick={() => {
-                                  if (hasSlots) {
+                                  if (hasSlots && !isPast) {
                                     setSelectedDate(day);
                                     setTimeout(() => {
                                       setActiveStep(STEP_TIME);
@@ -939,30 +1092,29 @@ export default function BookingPage() {
                                     }, 300);
                                   }
                                 }}
-                                disabled={!hasSlots}
+                                disabled={!hasSlots || isPast}
                                 className={`
-                                  relative p-3 rounded-xl text-center transition-all
+                                  relative p-2 rounded-xl text-center transition-all
                                   ${isSelected
                                     ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-200"
-                                    : hasSlots
-                                      ? "hover:bg-purple-50 hover:shadow-md border border-transparent hover:border-purple-200"
-                                      : "text-muted-foreground/40 cursor-not-allowed"
+                                    : hasSlots && !isPast
+                                      ? "hover:bg-purple-50 hover:shadow-md border border-transparent hover:border-purple-200 cursor-pointer"
+                                      : "text-muted-foreground/30 cursor-not-allowed"
                                   }
                                   ${isToday && !isSelected ? "ring-2 ring-purple-300" : ""}
                                 `}
                               >
-                                <div className="text-lg font-semibold">{format(day, "d")}</div>
-                                <div className="text-xs mt-0.5">{format(day, "MMM")}</div>
-                                {hasSlots && !isSelected && (
+                                <div className="text-sm font-semibold">{format(day, "d")}</div>
+                                {hasSlots && !isPast && !isSelected && (
                                   <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-green-500"></div>
                                 )}
                               </button>
                             );
                           })}
                         </div>
-                        {availableDates.length === 0 && (
+                        {availableDates.length === 0 && !availabilityQuery.isLoading && (
                           <p className="text-center text-muted-foreground py-4">
-                            No availability in the next 2 weeks. Please check back later.
+                            No availability in {format(viewMonth, "MMMM")}. Try the next month.
                           </p>
                         )}
                       </div>

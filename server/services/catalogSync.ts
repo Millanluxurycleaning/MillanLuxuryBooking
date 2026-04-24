@@ -25,6 +25,7 @@ type MappedItem = {
   category: string;
   fragrance: string;
   isService: boolean;
+  pricingTiers?: { name: string; price: number; squareVariationId: string | null; durationMinutes: number | null }[] | null;
 };
 
 const PRODUCT_KEYWORDS = ["candle", "diffuser", "spray", "cleaner"];
@@ -129,13 +130,34 @@ const mapCatalogItems = (item: CatalogObject, images: Map<string, string>): Mapp
   const category = categorizeProduct(name);
   const description = item.itemData.description?.trim() ?? null;
 
-  // Services: only create one record (use first priced variation)
+  // Services: create one record, storing all variations as pricingTiers (name, price, squareVariationId, durationMinutes)
   if (isServiceItem(item, name)) {
-    const firstPriced = item.itemData.variations.find((v) => getVariationPrice(v) !== null);
+    const pricedVariations = item.itemData.variations.filter((v) => getVariationPrice(v) !== null);
+    const firstPriced = pricedVariations[0];
     if (!firstPriced) {
       return [];
     }
     const price = getVariationPrice(firstPriced) ?? 0;
+
+    // Build pricing tiers from all variations so each size maps to its own Square variation
+    const pricingTiers = pricedVariations.length > 1
+      ? pricedVariations.map((v) => {
+          const vData = getVariationData(v) as any;
+          const durationMinutes =
+            vData?.serviceDuration != null
+              ? Math.round(Number(vData.serviceDuration) / 60000) // Square stores duration in ms
+              : vData?.duration != null
+              ? Math.round(Number(vData.duration) / 60000)
+              : null;
+          return {
+            name: vData?.name?.trim() || "Standard",
+            price: getVariationPrice(v) ?? price,
+            squareVariationId: v.id ?? null,
+            durationMinutes,
+          };
+        })
+      : null; // No tiers for single-variation services
+
     return [
       {
         name,
@@ -149,6 +171,7 @@ const mapCatalogItems = (item: CatalogObject, images: Map<string, string>): Mapp
         category,
         fragrance: "Signature",
         isService: true,
+        pricingTiers,
       },
     ];
   }
@@ -258,6 +281,9 @@ export const importSquareCatalog = async (): Promise<CatalogSyncResult> => {
               imageUrl: mapped.imageUrl,
               isVisible: true,
               displayPrice: true,
+              ...(mapped.pricingTiers !== undefined
+                ? { pricingTiers: mapped.pricingTiers ?? undefined }
+                : {}),
             },
           });
           updated += 1;
@@ -271,6 +297,7 @@ export const importSquareCatalog = async (): Promise<CatalogSyncResult> => {
               squareServiceId: mapped.squareCatalogId,
               isVisible: true,
               displayPrice: true,
+              ...(mapped.pricingTiers ? { pricingTiers: mapped.pricingTiers } : {}),
             },
           });
           created += 1;

@@ -22,6 +22,8 @@ import {
   createCartItemSchema,
   updateCartItemSchema,
   createBookingSchema,
+  createAnnouncementSchema,
+  updateAnnouncementSchema,
 } from "../shared/types.js";
 import { z, ZodError } from "zod";
 import multer from "multer";
@@ -614,6 +616,88 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           message: "Failed to submit contact form"
         });
       }
+    }
+  });
+
+  // Welcome popup: generate a one-time 10% discount code for a new email
+  app.post("/api/subscribe", async (req, res) => {
+    const schema = z.object({ email: z.string().email() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Invalid email" });
+      return;
+    }
+    const { email } = parsed.data;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    try {
+      // If this email already has a code, return it (idempotent)
+      const existing = await prisma.discountCode.findFirst({
+        where: { email: normalizedEmail },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (existing) {
+        if (existing.usedAt) {
+          res.json({ alreadyUsed: true });
+        } else {
+          res.json({ code: existing.code, discountPct: existing.discountPct });
+        }
+        return;
+      }
+
+      // Generate a unique code: MLC-XXXXXXXX
+      const suffix = randomBytes(4).toString("hex").toUpperCase();
+      const code = `MLC-${suffix}`;
+
+      await prisma.discountCode.create({
+        data: { code, email: normalizedEmail, discountPct: 10 },
+      });
+
+      res.json({ code, discountPct: 10 });
+    } catch (err) {
+      console.error("[subscribe] error:", err);
+      res.status(500).json({ message: "Failed to generate code" });
+    }
+  });
+
+  // Validate a discount code at checkout
+  app.post("/api/discount/validate", async (req, res) => {
+    const schema = z.object({ code: z.string().min(1), email: z.string().email().optional() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ valid: false, message: "Invalid request" });
+      return;
+    }
+    const { code, email } = parsed.data;
+
+    try {
+      // Static review reward code — always valid, not stored in DB
+      if (code.toUpperCase() === "REVIEW5") {
+        res.json({ valid: true, discountPct: 5, code: "REVIEW5" });
+        return;
+      }
+
+      const discount = await prisma.discountCode.findUnique({ where: { code: code.toUpperCase() } });
+
+      if (!discount) {
+        res.json({ valid: false, message: "Code not found" });
+        return;
+      }
+      if (discount.usedAt) {
+        res.json({ valid: false, message: "Code has already been used" });
+        return;
+      }
+      // Optional: enforce email match if provided
+      if (email && discount.email !== email.toLowerCase().trim()) {
+        res.json({ valid: false, message: "Code not valid for this email" });
+        return;
+      }
+
+      res.json({ valid: true, discountPct: discount.discountPct, code: discount.code });
+    } catch (err) {
+      console.error("[discount/validate] error:", err);
+      res.status(500).json({ valid: false, message: "Server error" });
     }
   });
 
@@ -2258,8 +2342,9 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       billingAddress: addressSchema.optional(),
       // Service delivery (products delivered with a booking)
       bookingId: z.number().int().positive().optional(),
-      fulfillmentType: z.enum(["shipment", "service_delivery"]).optional(),
+      fulfillmentType: z.enum(["shipment", "pickup", "service_delivery"]).optional(),
       bookingDate: z.string().optional(),
+      discountCode: z.string().optional(),
     });
 
     try {
@@ -2324,11 +2409,29 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       });
 
       const isServiceDelivery = payload.fulfillmentType === "service_delivery";
-      const FLAT_SHIPPING_CENTS = isServiceDelivery ? 0 : 1000; // $0 for service delivery, $10 for shipment
+      const isPickupOrder = payload.fulfillmentType === "pickup";
+      const FLAT_SHIPPING_CENTS = (isServiceDelivery || isPickupOrder) ? 0 : 999; // $0 for service/pickup, $9.99 for shipment
       const subtotal = cart.items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
       const shipping = FLAT_SHIPPING_CENTS / 100;
-      const tax = (subtotal + shipping) * 0.075; // 7.5% sales tax (on subtotal + shipping, matching Square ORDER scope)
-      const total = subtotal + shipping + tax;
+
+      // Validate and apply discount code
+      let discountRecord: { id: number; code: string; discountPct: number } | null = null;
+      let discountAmount = 0;
+      if (payload.discountCode) {
+        const upperCode = payload.discountCode.toUpperCase();
+        if (upperCode === "REVIEW5") {
+          // Static review reward — no DB record, always 5% off
+          discountAmount = Math.round((subtotal * 5) / 100 * 100) / 100;
+        } else {
+          const dc = await prisma.discountCode.findUnique({ where: { code: upperCode } });
+          if (dc && !dc.usedAt) {
+            discountRecord = dc;
+            discountAmount = Math.round((subtotal * dc.discountPct) / 100 * 100) / 100;
+          }
+        }
+      }
+
+      const total = Math.max(0, subtotal + shipping - discountAmount);
       const totalAmount = BigInt(Math.round(total * 100));
 
       const accessToken = await resolveSquareAccessToken();
@@ -2353,10 +2456,10 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           }
         : undefined;
 
-      // Build line items: include shipping only for non-service-delivery
+      // Build line items: include shipping only for standard shipment
       const orderLineItems = [
         ...lineItems,
-        ...(isServiceDelivery
+        ...((isServiceDelivery || isPickupOrder || FLAT_SHIPPING_CENTS === 0)
           ? []
           : [
               {
@@ -2370,6 +2473,25 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
             ]),
       ];
 
+      // Apply discount as a negative line item if a valid code was provided
+      const orderDiscounts = discountRecord
+        ? [
+            {
+              name: `Welcome Discount (${discountRecord.discountPct}% off)`,
+              percentage: String(discountRecord.discountPct),
+              scope: "ORDER" as const,
+            },
+          ]
+        : undefined;
+
+      const storePickupAddress = {
+        addressLine1: "811 N 3rd St",
+        locality: "Phoenix",
+        administrativeDistrictLevel1: "AZ",
+        postalCode: "85004",
+        country: Country.Us,
+      };
+
       // Build fulfillment based on delivery type
       const fulfillment = isServiceDelivery
         ? {
@@ -2382,6 +2504,20 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
                 phoneNumber: payload.buyerPhone || undefined,
               },
               note: `Deliver with booking #${payload.bookingId}${payload.bookingDate ? ` on ${payload.bookingDate}` : ""}`,
+            },
+          }
+        : isPickupOrder
+        ? {
+            type: FulfillmentType.Pickup,
+            state: FulfillmentState.Proposed,
+            pickupDetails: {
+              recipient: {
+                displayName: payload.buyerName || "Customer",
+                emailAddress: payload.buyerEmail || undefined,
+                phoneNumber: payload.buyerPhone || undefined,
+                address: storePickupAddress,
+              },
+              note: "Store pickup — Millan Luxury Cleaning · 811 N 3rd St, Phoenix, AZ 85004",
             },
           }
         : {
@@ -2409,13 +2545,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           referenceId: payload.buyerEmail || undefined,
           source: { name: "Millan Luxury Website" },
           lineItems: orderLineItems,
-          taxes: [
-            {
-              name: "Sales Tax",
-              percentage: "7.5",
-              scope: "ORDER",
-            },
-          ],
+          ...(orderDiscounts ? { discounts: orderDiscounts } : {}),
           fulfillments: [fulfillment],
           ...(Object.keys(orderMetadata).length > 0 ? { metadata: orderMetadata } : {}),
         },
@@ -2446,17 +2576,19 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         return;
       }
 
-      // Move fulfillment from PROPOSED → RESERVED so the order stays OPEN in
-      // Square Dashboard and appears in the "Orders" tab needing fulfillment.
-      // Without this, Square auto-completes the order when payment clears.
+      // Fetch the latest order version after payment (Square increments version on payment)
+      // then advance fulfillment PROPOSED → RESERVED so the order stays OPEN/Active
+      // in Square Dashboard and customers can track it.
       const fulfillmentUid = squareOrder.fulfillments?.[0]?.uid;
       if (fulfillmentUid) {
         try {
+          const latestOrder = await client.orders.get({ orderId: squareOrder.id! });
+          const latestVersion = latestOrder.order?.version ?? squareOrder.version;
           await client.orders.update({
             orderId: squareOrder.id!,
             order: {
               locationId,
-              version: squareOrder.version,
+              version: latestVersion,
               fulfillments: [
                 {
                   uid: fulfillmentUid,
@@ -2466,7 +2598,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
             },
           });
         } catch (fulfillErr) {
-          console.error("[Checkout] Failed to update fulfillment to RESERVED:", fulfillErr);
+          console.error("[Checkout] Failed to advance fulfillment to RESERVED:", fulfillErr);
           // Non-fatal — order and payment are still valid
         }
       }
@@ -2480,6 +2612,18 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         ? (payload.billingAddress as Prisma.InputJsonValue)
         : Prisma.DbNull;
 
+      // Mark discount code as used (non-fatal if it fails)
+      if (discountRecord) {
+        try {
+          await prisma.discountCode.update({
+            where: { id: discountRecord.id },
+            data: { usedAt: new Date() },
+          });
+        } catch (dcErr) {
+          console.error("[Checkout] Failed to mark discount code as used:", dcErr);
+        }
+      }
+
       const orderRecord = await prisma.order.create({
         data: {
           squareOrderId: squareOrder.id,
@@ -2488,12 +2632,12 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           status: payment.status === "COMPLETED" ? "paid" : "pending",
           total: Number(total.toFixed(2)),
           subtotal: Number(subtotal.toFixed(2)),
-          tax: Number(tax.toFixed(2)),
+          tax: 0,
           shipping: Number(shipping.toFixed(2)),
           paymentId: payment.id,
           affiliateId,
           bookingId: payload.bookingId ?? null,
-          fulfillmentType: isServiceDelivery ? "service_delivery" : "shipment",
+          fulfillmentType: isServiceDelivery ? "service_delivery" : isPickupOrder ? "pickup" : "shipment",
           shippingAddress: shippingAddressJson,
           billingAddress: billingAddressJson,
           items: {
@@ -2573,7 +2717,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           customerEmail: email,
           subtotal,
           shipping,
-          tax,
+          tax: 0,
           total,
           items: orderItems,
           shippingAddress: payload.shippingAddress,
@@ -2625,13 +2769,15 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         serviceId: z.coerce.number().int().positive(),
         startAt: z.string().datetime(),
         endAt: z.string().datetime().optional(),
+        variationId: z.string().optional(), // override when a specific size tier is selected
       });
 
       const parsed = querySchema.parse(req.query);
       const serviceId = parsed.serviceId;
       const startAt = parsed.startAt;
-      // Square requires endAt — default to 30 days from startAt
       const endAt = parsed.endAt ?? new Date(new Date(startAt).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const requestedVariationId = parsed.variationId ?? null;
+
       const service = await prisma.serviceItem.findUnique({ where: { id: serviceId } });
 
       if (!service?.squareServiceId) {
@@ -2653,7 +2799,13 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         res.status(500).json({ message: "Service variation not available" });
         return;
       }
-      const variation = catalogItem.itemData.variations[0];
+
+      // Use the requested variation (for size-based tiers) or fall back to the first one
+      const allVariations = catalogItem.itemData.variations;
+      const variation = requestedVariationId
+        ? (allVariations.find((v) => v.id === requestedVariationId) ?? allVariations[0])
+        : allVariations[0];
+
       const serviceVariationId = variation?.id;
       const serviceVariationVersion = variation?.version ?? catalogItem.version ?? null;
 
@@ -3374,6 +3526,94 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         success: false,
         message: "Failed to delete product"
       });
+    }
+  });
+
+  // Announcements — public: get active announcement
+  app.get("/api/announcements/active", async (_req, res) => {
+    try {
+      const now = new Date();
+      const item = await prisma.announcement.findFirst({
+        where: {
+          isActive: true,
+          OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+          AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      res.json(item ?? null);
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to retrieve announcement" });
+    }
+  });
+
+  // Announcements — admin: list all
+  app.get("/api/announcements", requireAdmin, async (_req, res) => {
+    try {
+      const items = await prisma.announcement.findMany({ orderBy: { createdAt: "desc" } });
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to retrieve announcements" });
+    }
+  });
+
+  // Announcements — admin: create
+  app.post("/api/announcements", requireAdmin, async (req, res) => {
+    try {
+      const data = createAnnouncementSchema.parse(req.body);
+      const item = await prisma.announcement.create({ data });
+      res.status(201).json({ success: true, data: item });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ success: false, errors: error.issues });
+        return;
+      }
+      res.status(500).json({ success: false, message: "Failed to create announcement" });
+    }
+  });
+
+  // Announcements — admin: update
+  app.patch("/api/announcements/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        res.status(400).json({ success: false, message: "Invalid ID" });
+        return;
+      }
+      const updates = updateAnnouncementSchema.parse(req.body);
+      const existing = await prisma.announcement.findUnique({ where: { id } });
+      if (!existing) {
+        res.status(404).json({ success: false, message: "Announcement not found" });
+        return;
+      }
+      const item = await prisma.announcement.update({ where: { id }, data: updates });
+      res.json({ success: true, data: item });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ success: false, errors: error.issues });
+        return;
+      }
+      res.status(500).json({ success: false, message: "Failed to update announcement" });
+    }
+  });
+
+  // Announcements — admin: delete
+  app.delete("/api/announcements/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        res.status(400).json({ success: false, message: "Invalid ID" });
+        return;
+      }
+      const existing = await prisma.announcement.findUnique({ where: { id } });
+      if (!existing) {
+        res.status(404).json({ success: false, message: "Announcement not found" });
+        return;
+      }
+      await prisma.announcement.delete({ where: { id } });
+      res.json({ success: true, message: "Announcement deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to delete announcement" });
     }
   });
 

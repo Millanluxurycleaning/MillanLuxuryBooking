@@ -52,6 +52,8 @@ export interface ServicePricingTier {
   name: string;
   price: number;
   description?: string;
+  squareVariationId?: string | null;
+  durationMinutes?: number | null;
 }
 
 export interface ServiceItem {
@@ -608,3 +610,28 @@ export type AffiliateStatus = z.infer<typeof affiliateStatusSchema>;
 
 export const conversionStatusSchema = z.enum(["pending", "approved", "refunded"]);
 export type ConversionStatus = z.infer<typeof conversionStatusSchema>;
+
+// Announcements
+export interface Announcement {
+  id: number;
+  message: string;
+  type: string;
+  isActive: boolean;
+  startsAt?: string | Date | null;
+  endsAt?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export const announcementTypeSchema = z.enum(["info", "warning", "success"]);
+
+export const createAnnouncementSchema = z.object({
+  message: z.string().min(1, "Message is required"),
+  type: announcementTypeSchema.default("info"),
+  isActive: z.boolean().optional().default(true),
+  startsAt: z.string().datetime({ offset: true }).optional().nullable(),
+  endsAt: z.string().datetime({ offset: true }).optional().nullable(),
+});
+export type CreateAnnouncement = z.infer<typeof createAnnouncementSchema>;
+export const updateAnnouncementSchema = optionalize(createAnnouncementSchema.shape);
+export type UpdateAnnouncement = z.infer<typeof updateAnnouncementSchema>;

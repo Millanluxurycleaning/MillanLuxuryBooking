@@ -146,10 +146,24 @@ const isLaundryAddonServiceName = (name: string) => {
   return lowerName.includes("comforter") || lowerName.includes("bed sheet");
 };
 
+const isAirbnbTurnover = (name: string) => {
+  const t = name.toLowerCase();
+  return t.includes("weekly") || t.includes("bi-weekly") || t.includes("biweekly") ||
+    t.includes("reset") || t.includes("monthly") || t.includes("one time") || t.includes("one-time") ||
+    t.includes("final");
+};
+
+const isResidential = (name: string) => {
+  const t = name.toLowerCase();
+  return t.includes("deep") || t.includes("move-in") || t.includes("move in") ||
+    t.includes("move-out") || t.includes("move out") || t.includes("basic") ||
+    t.includes("vip") || t.includes("signature");
+};
+
 const getServiceType = (name: string) => {
   const lowerName = name.toLowerCase();
   if (isRentalServiceName(name)) {
-    return "Rental";
+    return "Airbnb Turnovers";
   }
   if (lowerName.includes("laundry") || lowerName.includes("comforter") || lowerName.includes("bed sheet")) {
     return "Laundry";
@@ -241,7 +255,7 @@ export function Services({
               🏠 Airbnb Turn Over Services
             </CardTitle>
             <p className="text-xs uppercase tracking-[0.3em] text-white/70">
-              Rental Services
+              Airbnb Turnovers
             </p>
           </div>
         </div>
@@ -267,43 +281,45 @@ export function Services({
   const groupedServices = groupByCategory
     ? ([
         {
-          label: "Core Cleaning",
+          label: "🏡 Residential Services",
+          emoji: "🏡",
           items: limitedServices.filter((service) => {
             const name = normalizeServiceName(resolveServiceTitle(service));
-            const lowerName = name.toLowerCase();
-            return !isRentalServiceName(name) && !lowerName.includes("laundry") && !lowerName.includes("add-on");
+            return !isAirbnbTurnover(name) && isResidential(name);
           }),
         },
         {
-          label: "Rental Services",
+          label: "🏠 Airbnb Turnovers",
+          emoji: "🏠",
           items: limitedServices.filter((service) => {
             const name = normalizeServiceName(resolveServiceTitle(service));
-            return isRentalServiceName(name);
+            return isAirbnbTurnover(name);
           }),
         },
         {
-          label: "Maintenance",
+          label: "Other Services",
+          emoji: "✨",
           items: limitedServices.filter((service) => {
-            const name = normalizeServiceName(resolveServiceTitle(service)).toLowerCase();
-            return name.includes("laundry") || name.includes("add-on");
+            const name = normalizeServiceName(resolveServiceTitle(service));
+            return !isAirbnbTurnover(name) && !isResidential(name);
           }),
         },
-      ] as { label: string | null; items: ServiceItem[] }[]).filter((group) => group.items.length > 0)
+      ] as { label: string | null; emoji?: string; items: ServiceItem[] }[]).filter((group) => group.items.length > 0)
     : [{ label: null as string | null, items: limitedServices }];
   const needsRentalGroup =
-    showAirbnbOnlyCard && groupByCategory && !groupedServices.some((group) => group.label === "Rental Services");
+    showAirbnbOnlyCard && groupByCategory && !groupedServices.some((group) => group.label === "🏠 Airbnb Turnovers");
   let groupsToRender = groupedServices;
 
   if (needsRentalGroup) {
-    const rentalGroup = { label: "Rental Services", items: [] as ServiceItem[] };
-    const coreIndex = groupedServices.findIndex((group) => group.label === "Core Cleaning");
+    const rentalGroup = { label: "🏠 Airbnb Turnovers", emoji: "🏠", items: [] as ServiceItem[] };
+    const residentialIndex = groupedServices.findIndex((group) => group.label === "🏡 Residential Services");
     groupsToRender =
-      coreIndex === -1
-        ? [rentalGroup, ...groupedServices]
+      residentialIndex === -1
+        ? [...groupedServices, rentalGroup]
         : [
-            ...groupedServices.slice(0, coreIndex + 1),
+            ...groupedServices.slice(0, residentialIndex + 1),
             rentalGroup,
-            ...groupedServices.slice(coreIndex + 1),
+            ...groupedServices.slice(residentialIndex + 1),
           ];
   }
 
@@ -368,8 +384,11 @@ export function Services({
             {groupsToRender.map((group, groupIndex) => (
               <div key={group.label ?? `group-${groupIndex}`} className="space-y-6">
                 {group.label && (
-                  <div className="text-center">
-                    <p className="text-sm uppercase tracking-[0.3em] text-white/60">{group.label}</p>
+                  <div className="text-center mb-2">
+                    <h3 className="text-xl md:text-2xl font-serif font-semibold text-white mb-1">
+                      {group.label}
+                    </h3>
+                    <div className="mx-auto w-16 h-0.5 bg-white/20 rounded-full" />
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
@@ -508,7 +527,7 @@ export function Services({
                     );
                   })}
                   {showAirbnbOnlyCard &&
-                    (groupByCategory ? group.label === "Rental Services" : group.label === null) &&
+                    (groupByCategory ? group.label === "🏠 Airbnb Turnovers" : group.label === null) &&
                     renderAirbnbOnlyCard()}
                 </div>
               </div>
