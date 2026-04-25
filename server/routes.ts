@@ -627,9 +627,9 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         res.status(400).json({ success: false, message: "Name, email, and service type are required." });
         return;
       }
-      sendQuoteRequestEmail({ name, email, phone, address, city, serviceType, bedrooms, bathrooms, notes }).catch(
-        (err) => console.error("[Email] Quote request error:", err)
-      );
+      console.log(`[Quote] Request from ${email} — service: ${serviceType}`);
+      const sent = await sendQuoteRequestEmail({ name, email, phone, address, city, serviceType, bedrooms, bathrooms, notes });
+      console.log(`[Quote] Email result: ${sent}`);
       res.status(200).json({ success: true });
     } catch (error) {
       console.error("[Quote] Error:", error);

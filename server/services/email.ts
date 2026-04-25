@@ -717,7 +717,11 @@ export async function sendQuoteRequestEmail(params: {
 }): Promise<boolean> {
   const resend = getResend();
   const notifyTo = getNotificationEmail();
-  if (!resend) return false;
+  if (!resend) {
+    console.warn("[Quote Email] RESEND_API_KEY not set — skipping");
+    return false;
+  }
+  console.log(`[Quote Email] Sending to admin: ${notifyTo}, client: ${params.email}`);
 
   const serviceLabels: Record<string, string> = {
     standard: "Standard Cleaning",
