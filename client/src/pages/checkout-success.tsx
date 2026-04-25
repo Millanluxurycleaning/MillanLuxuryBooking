@@ -35,6 +35,7 @@ export default function CheckoutSuccess() {
               <a href="/services">Book a Service</a>
             </Button>
           </div>
+
         </div>
       </section>
 

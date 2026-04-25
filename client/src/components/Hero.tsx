@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { useAssets } from "@/hooks/useAssets";
+import { QuoteModal } from "@/components/QuoteModal";
 
 const fallbackCrown =
   "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/millan-logo%20-%20Edited.png";
@@ -10,6 +12,7 @@ export function Hero() {
   const { data: assets = {} } = useAssets();
   const crown = assets?.heroCrown?.url ?? assets?.logo?.url ?? fallbackCrown;
   const background = assets?.heroBackground?.url ?? assets?.servicesBackground?.url ?? fallbackBg;
+  const [quoteOpen, setQuoteOpen] = useState(false);
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -70,18 +73,28 @@ export function Hero() {
           with a dedication to precision and care that sets us apart.
         </p>
         
-        {/* CTA Button */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700">
-          <Button 
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700">
+          <Button
             asChild
             variant="default"
             size="lg"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/50 border-2 border-primary-foreground/20 px-12 py-6 text-lg font-bold tracking-wider"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/50 border-2 border-primary-foreground/20 px-10 py-6 text-lg font-bold tracking-wider"
             data-testid="button-book-hero"
           >
             <a href="/book">BOOK NOW</a>
           </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setQuoteOpen(true)}
+            className="border-2 border-white/60 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm px-10 py-6 text-lg font-bold tracking-wider"
+            data-testid="button-quote-hero"
+          >
+            GET A FREE QUOTE
+          </Button>
         </div>
+        <QuoteModal open={quoteOpen} onClose={() => setQuoteOpen(false)} />
         
         {/* Location */}
         <p className="text-white/70 text-sm md:text-base mt-8 animate-in fade-in duration-1000 delay-1000">

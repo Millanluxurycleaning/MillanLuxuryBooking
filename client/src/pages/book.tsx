@@ -635,6 +635,7 @@ export default function BookingPage() {
                   )}
                 </div>
               </Card>
+
             </div>
           ) : (
           <div className="max-w-3xl mx-auto space-y-4">

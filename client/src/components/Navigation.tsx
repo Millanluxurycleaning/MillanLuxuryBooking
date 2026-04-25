@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, ShoppingCart } from "lucide-react";
+import { Menu, ShoppingCart, Phone } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAssets } from "@/hooks/useAssets";
 import { useCart } from "@/contexts/CartContext";
@@ -96,17 +96,25 @@ export function Navigation() {
               )}
             </a>
 
-            {/* CTA Button */}
+            {/* CTA Buttons */}
             <div className="hidden lg:flex items-center gap-3">
+              <a
+                href="tel:6025967393"
+                className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary ${
+                  isScrolled ? "text-foreground" : "text-white"
+                }`}
+                aria-label="Call us"
+              >
+                <Phone className="w-4 h-4" />
+                (602) 596-7393
+              </a>
               <Button
                 asChild
                 variant="default"
                 size="default"
                 data-testid="button-book-nav"
               >
-                <a href="/book">
-                  Book Now
-                </a>
+                <a href="/book">Book Now</a>
               </Button>
             </div>
 
@@ -134,7 +142,7 @@ export function Navigation() {
                       {link.label}
                     </a>
                   ))}
-                  <Button 
+                  <Button
                     asChild
                     variant="default"
                     className="w-full mt-4"
@@ -142,6 +150,13 @@ export function Navigation() {
                   >
                     <a href="/book">Book Now</a>
                   </Button>
+                  <a
+                    href="tel:6025967393"
+                    className="flex items-center justify-center gap-2 w-full rounded-md border border-border py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                    (602) 596-7393
+                  </a>
                 </div>
               </SheetContent>
             </Sheet>

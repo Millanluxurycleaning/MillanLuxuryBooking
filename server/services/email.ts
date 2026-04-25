@@ -701,3 +701,117 @@ export async function sendMonthlyStatementEmail(params: {
     return false;
   }
 }
+
+// ─── Quote request (lead) ─────────────────────────────────────────────────────
+
+export async function sendQuoteRequestEmail(params: {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  serviceType: string;
+  bedrooms?: string;
+  bathrooms?: string;
+  notes?: string;
+}): Promise<boolean> {
+  const resend = getResend();
+  const notifyTo = getNotificationEmail();
+  if (!resend) return false;
+
+  const serviceLabels: Record<string, string> = {
+    standard: "Standard Cleaning",
+    deep: "Deep Cleaning",
+    "move-in-out": "Move-In / Move-Out",
+    "recurring-weekly": "Recurring — Weekly",
+    "recurring-biweekly": "Recurring — Bi-Weekly",
+    "recurring-monthly": "Recurring — Monthly",
+    other: "Other / Not Sure",
+  };
+  const serviceLabel = serviceLabels[params.serviceType] ?? esc(params.serviceType);
+  const location = [params.address, params.city].filter(Boolean).join(", ");
+
+  const adminBody = `
+    <h2 style="margin:0 0 4px;font-size:22px;color:#ffffff;">New Quote Request</h2>
+    <p style="margin:0 0 32px;font-size:14px;color:#888;">A potential client requested a free quote from the website.</p>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Contact Details")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Name", esc(params.name))}
+        ${detailRow("Email", `<a href="mailto:${esc(params.email)}" style="color:#d4af37;">${esc(params.email)}</a>`)}
+        ${params.phone ? detailRow("Phone", `<a href="tel:${esc(params.phone.replace(/\D/g, ""))}" style="color:#d4af37;">${esc(params.phone)}</a>`) : ""}
+        ${location ? detailRow("Location", esc(location)) : ""}
+      </table>
+    </div>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Service Details")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Service Type", serviceLabel)}
+        ${params.bedrooms ? detailRow("Bedrooms", esc(params.bedrooms)) : ""}
+        ${params.bathrooms ? detailRow("Bathrooms", esc(params.bathrooms)) : ""}
+      </table>
+    </div>
+
+    ${params.notes ? `
+    <div style="background:#222;border-left:3px solid #d4af37;border-radius:0 8px 8px 0;padding:20px 24px;margin-bottom:32px;">
+      ${sectionHeader("Additional Notes")}
+      <p style="margin:0;font-size:15px;color:#ccc;line-height:1.7;white-space:pre-wrap;">${esc(params.notes)}</p>
+    </div>` : ""}
+
+    <a href="mailto:${esc(params.email)}" style="display:inline-block;padding:13px 28px;background:linear-gradient(90deg,#d4af37,#f0d060);color:#111;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:1px;">
+      REPLY WITH QUOTE
+    </a>
+  `;
+
+  const clientBody = `
+    <h2 style="margin:0 0 4px;font-size:22px;color:#ffffff;">We received your quote request!</h2>
+    <p style="margin:0 0 32px;font-size:14px;color:#888;">Here's a summary of what you submitted.</p>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Your Request")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Service", serviceLabel)}
+        ${location ? detailRow("Location", esc(location)) : ""}
+        ${params.bedrooms ? detailRow("Bedrooms", esc(params.bedrooms)) : ""}
+        ${params.bathrooms ? detailRow("Bathrooms", esc(params.bathrooms)) : ""}
+      </table>
+    </div>
+
+    <div style="background:#222;border-radius:8px;padding:20px 24px;margin-bottom:32px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:16px;color:#fff;">We'll send your personalized quote within a few hours.</p>
+      <p style="margin:0;font-size:14px;color:#888;">Need it sooner? Call or text us:</p>
+      <a href="tel:6025967393" style="display:inline-block;margin-top:12px;font-size:20px;color:#d4af37;text-decoration:none;font-weight:700;">(602) 596-7393</a>
+    </div>
+
+    <p style="font-size:13px;color:#666;text-align:center;">Ready to skip the quote and book directly?</p>
+    <div style="text-align:center;margin-top:12px;">
+      <a href="${getSiteUrl()}/book" style="display:inline-block;padding:13px 28px;background:linear-gradient(90deg,#d4af37,#f0d060);color:#111;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:1px;">
+        BOOK ONLINE NOW
+      </a>
+    </div>
+  `;
+
+  try {
+    await Promise.all([
+      sendWithRetry(resend, {
+        from: getFromAddress("Millan Luxury Cleaning"),
+        to: [notifyTo],
+        replyTo: params.email,
+        subject: `Quote Request: ${esc(params.name)} — ${serviceLabel}`,
+        html: luxuryLayout(adminBody),
+      }),
+      sendWithRetry(resend, {
+        from: getFromAddress("Millan Luxury Cleaning"),
+        to: [params.email],
+        subject: "Your quote request — Millan Luxury Cleaning",
+        html: luxuryLayout(clientBody),
+      }),
+    ]);
+    return true;
+  } catch (error) {
+    console.error("[Email] Failed to send quote request emails:", error);
+    return false;
+  }
+}

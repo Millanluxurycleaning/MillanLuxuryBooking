@@ -44,7 +44,7 @@ import { createSquareClient } from "./services/square.js";
 import { resolveSquareAccessToken, resolveSquareLocationId } from "./services/squareAccess.js";
 import { Country, Currency, FulfillmentState, FulfillmentType, type Availability } from "square";
 import { registerAffiliateRoutes, readAffiliateCookie } from "./routes/affiliate.js";
-import { sendContactNotificationEmail, sendBookingNotificationEmail, sendBookingConfirmationEmail, sendOrderNotificationEmail, sendOrderConfirmationEmail } from "./services/email.js";
+import { sendContactNotificationEmail, sendBookingNotificationEmail, sendBookingConfirmationEmail, sendOrderNotificationEmail, sendOrderConfirmationEmail, sendQuoteRequestEmail } from "./services/email.js";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 let lastCatalogSyncAt = 0; // Debounce for catalog webhook sync (epoch ms)
@@ -616,6 +616,24 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           message: "Failed to submit contact form"
         });
       }
+    }
+  });
+
+  // Free quote request
+  app.post("/api/quote-request", async (req, res) => {
+    try {
+      const { name, email, phone, address, city, serviceType, bedrooms, bathrooms, notes } = req.body;
+      if (!name || !email || !serviceType) {
+        res.status(400).json({ success: false, message: "Name, email, and service type are required." });
+        return;
+      }
+      sendQuoteRequestEmail({ name, email, phone, address, city, serviceType, bedrooms, bathrooms, notes }).catch(
+        (err) => console.error("[Email] Quote request error:", err)
+      );
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[Quote] Error:", error);
+      res.status(500).json({ success: false, message: "Failed to send quote request." });
     }
   });
 

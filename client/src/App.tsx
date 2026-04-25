@@ -2,6 +2,7 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
+import { FloatingContact } from "@/components/FloatingContact";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
@@ -59,6 +60,7 @@ function App() {
                 <Analytics />
                 <AnnouncementBanner />
                 <WelcomePopup />
+                <FloatingContact />
                 <Router />
               </AppErrorBoundary>
             </TooltipProvider>
