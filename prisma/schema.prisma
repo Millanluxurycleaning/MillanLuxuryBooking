@@ -259,6 +259,7 @@ model Booking {
   endAt           DateTime
   status          String   @default("pending")
   notes           String?
+  frequency       String?
   squareCardId    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

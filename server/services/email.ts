@@ -180,6 +180,7 @@ export async function sendBookingNotificationEmail(params: {
   serviceState?: string;
   serviceZip?: string;
   totalPrice?: number;
+  frequency?: string;
 }): Promise<boolean> {
   const resend = getResend();
   if (!resend) {
@@ -216,9 +217,17 @@ export async function sendBookingNotificationEmail(params: {
       ${sectionHeader("Booking Details")}
       <table width="100%" cellpadding="0" cellspacing="0">
         ${detailRow("Service", esc(params.serviceName))}
+        ${params.frequency ? detailRow("Frequency", esc(params.frequency === "one-time" ? "One-Time" : params.frequency === "bi-weekly" ? "Bi-Weekly" : params.frequency.charAt(0).toUpperCase() + params.frequency.slice(1))) : ""}
         ${detailRow("Date & Time", `<strong style="color:#d4af37;">${formatted}</strong>`)}
         ${detailRow("Location", addressStr)}
-        ${params.totalPrice != null ? detailRow("Est. Total", `<strong style="color:#d4af37;">$${params.totalPrice.toFixed(2)}</strong>`) : ""}
+        ${params.totalPrice != null ? detailRow("1st Visit", `<strong style="color:#d4af37;">$${params.totalPrice.toFixed(2)}</strong>`) : ""}
+        ${(() => {
+          const discounts: Record<string, number> = { weekly: 20, "bi-weekly": 15, monthly: 10 };
+          const pct = params.frequency ? discounts[params.frequency] : 0;
+          return pct && params.totalPrice != null
+            ? detailRow("Recurring", `<span style="color:#4ade80;">$${(params.totalPrice * (1 - pct / 100)).toFixed(2)} (${pct}% off)</span>`)
+            : "";
+        })()}
         ${detailRow("Card", params.cardOnFile
           ? `<span style="color:#4ade80;">✓ On file</span>`
           : `<span style="color:#f87171;">✗ Not provided</span>`)}
@@ -262,6 +271,7 @@ export async function sendBookingConfirmationEmail(params: {
   serviceState?: string;
   serviceZip?: string;
   totalPrice?: number;
+  frequency?: string;
 }): Promise<boolean> {
   const resend = getResend();
   if (!resend || !params.customerEmail) {
@@ -296,9 +306,17 @@ export async function sendBookingConfirmationEmail(params: {
       ${sectionHeader("Booking Details")}
       <table width="100%" cellpadding="0" cellspacing="0">
         ${detailRow("Service", `<strong style="color:#fff;">${esc(params.serviceName)}</strong>`)}
+        ${params.frequency ? detailRow("Frequency", esc(params.frequency === "one-time" ? "One-Time" : params.frequency === "bi-weekly" ? "Bi-Weekly" : params.frequency.charAt(0).toUpperCase() + params.frequency.slice(1))) : ""}
         ${detailRow("Date & Time", `<strong style="color:#d4af37;">${formatted}</strong>`)}
         ${addressStr ? detailRow("Address", addressStr) : ""}
-        ${params.totalPrice != null ? detailRow("Estimated Total", `<strong style="color:#d4af37;font-size:17px;">$${params.totalPrice.toFixed(2)}</strong>`) : ""}
+        ${params.totalPrice != null ? detailRow("1st Visit Total", `<strong style="color:#d4af37;font-size:17px;">$${params.totalPrice.toFixed(2)}</strong>`) : ""}
+        ${(() => {
+          const discounts: Record<string, number> = { weekly: 20, "bi-weekly": 15, monthly: 10 };
+          const pct = params.frequency ? discounts[params.frequency] : 0;
+          return pct && params.totalPrice != null
+            ? detailRow("Recurring Rate", `<span style="color:#4ade80;">$${(params.totalPrice * (1 - pct / 100)).toFixed(2)} (${pct}% off from 2nd visit)</span>`)
+            : "";
+        })()}
       </table>
     </div>
 

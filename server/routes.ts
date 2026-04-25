@@ -2996,6 +2996,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           endAt: endAtDate,
           status: booking.status ?? "pending",
           notes: payload.notes ?? null,
+          frequency: payload.frequency ?? null,
           squareCardId,
         },
       });
@@ -3015,6 +3016,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           serviceState: payload.serviceState,
           serviceZip: payload.serviceZip,
           totalPrice: payload.totalPrice,
+          frequency: payload.frequency,
         }),
         sendBookingConfirmationEmail({
           bookingId: record.id,
@@ -3028,6 +3030,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           serviceState: payload.serviceState,
           serviceZip: payload.serviceZip,
           totalPrice: payload.totalPrice,
+          frequency: payload.frequency,
         }),
       ]);
       for (const result of emailResults) {

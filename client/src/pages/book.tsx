@@ -143,6 +143,7 @@ export default function BookingPage() {
   const [serviceState, setServiceState] = useState("AZ");
   const [serviceZip, setServiceZip] = useState("");
   const [notes, setNotes] = useState("");
+  const [frequency, setFrequency] = useState<"one-time" | "weekly" | "bi-weekly" | "monthly">("one-time");
   const [bookingStatus, setBookingStatus] = useState<{ success: boolean; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<{
@@ -260,13 +261,22 @@ export default function BookingPage() {
 
   // Calculate total price including square footage add-on and laundry
   const selectedPrice = useMemo(() => {
-    // For laundry, price is entirely from add-ons
-    if (isLaundryService) {
-      return laundryTotal > 0 ? laundryTotal : null;
-    }
+    if (isLaundryService) return laundryTotal > 0 ? laundryTotal : null;
     if (basePrice === null) return null;
     return basePrice + sqftAddOn;
   }, [basePrice, sqftAddOn, isLaundryService, laundryTotal]);
+
+  const FREQUENCY_DISCOUNTS: Record<string, number> = {
+    "one-time": 0,
+    "weekly": 20,
+    "bi-weekly": 15,
+    "monthly": 10,
+  };
+
+  const frequencyDiscount = FREQUENCY_DISCOUNTS[frequency] ?? 0;
+  const recurringPrice = selectedPrice != null && frequencyDiscount > 0
+    ? selectedPrice * (1 - frequencyDiscount / 100)
+    : null;
 
   // Square Web Payments SDK for card-on-file
   const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID as string | undefined;
@@ -499,6 +509,7 @@ export default function BookingPage() {
           serviceVariationVersion: segment.serviceVariationVersion,
           sourceId,
           totalPrice: selectedPrice ?? undefined,
+          frequency,
         }),
       });
 
@@ -1163,7 +1174,39 @@ export default function BookingPage() {
                   </CardHeader>
                 </button>
                 {activeStep === STEP_TIME && isStep3Complete && (
-                  <CardContent className="pt-0">
+                  <CardContent className="pt-0 space-y-4">
+                    {/* Cleaning Frequency */}
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Cleaning Frequency</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {([
+                          { value: "one-time", label: "One-Time", discount: 0 },
+                          { value: "weekly", label: "Weekly", discount: 20 },
+                          { value: "bi-weekly", label: "Bi-Weekly", discount: 15 },
+                          { value: "monthly", label: "Monthly", discount: 10 },
+                        ] as const).map((f) => (
+                          <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => setFrequency(f.value)}
+                            className={`py-2 px-3 rounded-xl border text-sm font-medium transition-all flex flex-col items-center gap-0.5 ${
+                              frequency === f.value
+                                ? "border-purple-400 bg-purple-50 text-purple-700"
+                                : "border-border bg-background text-muted-foreground hover:border-purple-300"
+                            }`}
+                          >
+                            <span>{f.label}</span>
+                            {f.discount > 0 && (
+                              <span className={`text-[10px] font-semibold ${frequency === f.value ? "text-purple-500" : "text-emerald-600"}`}>
+                                {f.discount}% off*
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">* Discount applies from 2nd visit onward. First visit is full price.</p>
+                    </div>
+
                     {timesForSelectedDate.length === 0 ? (
                       <p className="text-center text-muted-foreground py-6">
                         {availabilityQuery.isLoading ? "Loading times..." : "No times available for this date. Please select another date."}
@@ -1309,9 +1352,15 @@ export default function BookingPage() {
                         </>
                       )}
                       <div className="flex justify-between">
-                        <span className="font-medium">Total Price</span>
+                        <span className="font-medium">1st Visit</span>
                         <span className="font-bold text-purple-600">${selectedPrice.toFixed(2)}</span>
                       </div>
+                      {recurringPrice != null && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Recurring ({frequencyDiscount}% off)</span>
+                          <span className="font-semibold text-emerald-600">${recurringPrice.toFixed(2)}</span>
+                        </div>
+                      )}
                     </>
                   )}
                 </CardContent>
@@ -1359,6 +1408,54 @@ export default function BookingPage() {
                 </button>
                 {activeStep === STEP_CONTACT && isStep5Reachable && (
                   <CardContent className="pt-0 space-y-4">
+
+                    {/* Booking Summary confirmation */}
+                    {selectedService && selectedSlot && (
+                      <div className="rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-5 space-y-3">
+                        <p className="text-sm font-bold text-purple-700 uppercase tracking-wide">Booking Summary</p>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Service</span>
+                            <span className="font-semibold text-right">{selectedService.title}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Frequency</span>
+                            <span className="font-semibold">
+                              {frequency === "one-time" ? "One-Time" : frequency === "bi-weekly" ? "Bi-Weekly" : frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                              {frequencyDiscount > 0 && <span className="ml-1 text-emerald-600 text-xs">({frequencyDiscount}% off*)</span>}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Date</span>
+                            <span className="font-semibold">{format(new Date(selectedSlot.startAt!), "EEEE, MMMM d, yyyy")}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Time</span>
+                            <span className="font-semibold">{format(new Date(selectedSlot.startAt!), "h:mm a")}</span>
+                          </div>
+                          {selectedPrice && !requiresEstimate && (
+                            <>
+                              <div className="border-t border-purple-200 pt-2 flex justify-between">
+                                <span className="text-muted-foreground">1st Visit Price</span>
+                                <span className="font-bold text-purple-700">${selectedPrice.toFixed(2)}</span>
+                              </div>
+                              {recurringPrice != null && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Recurring Rate</span>
+                                  <span className="font-bold text-emerald-600">${recurringPrice.toFixed(2)}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {recurringPrice != null && (
+                          <p className="text-[11px] text-muted-foreground border-t border-purple-200 pt-2">
+                            * First visit is full price. Discount applies from the 2nd visit onward.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="customer-name">Full Name *</Label>
                       <Input

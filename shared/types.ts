@@ -487,6 +487,7 @@ export const createBookingSchema = z.object({
   notes: z.string().optional(),
   sourceId: z.string().optional(),
   totalPrice: z.number().optional(),
+  frequency: z.enum(["one-time", "weekly", "bi-weekly", "monthly"]).optional(),
 });
 export type CreateBooking = z.infer<typeof createBookingSchema>;
 
