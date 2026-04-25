@@ -27,7 +27,7 @@ function getFromAddress(display: string): string {
 }
 
 function getNotificationEmail(): string {
-  return process.env.NOTIFICATION_EMAIL || "ivan@millanluxurycleaning.com";
+  return process.env.NOTIFICATION_EMAIL || "info@millanluxurycleaning.com";
 }
 
 async function sendWithRetry(
@@ -133,7 +133,7 @@ export async function sendBookingNotificationEmail(params: {
     return false;
   }
 
-  const recipients = "ivan@millanluxurycleaning.com";
+  const recipients = "info@millanluxurycleaning.com";
 
   const date = new Date(params.startAt);
   const formatted = date.toLocaleString("en-US", {
