@@ -1,5 +1,4 @@
-import nodemailer from "nodemailer";
-import type { Transporter } from "nodemailer";
+import { Resend } from "resend";
 
 /** HTML-escape user-supplied strings to prevent XSS in email templates */
 function esc(str: string | undefined | null): string {
@@ -16,39 +15,30 @@ function getSiteUrl(): string {
   return process.env.SITE_URL || "https://millanluxurycleaning.com";
 }
 
-// --- Google SMTP (all emails) ---
+function getResend(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
-let smtpTransport: Transporter | null = null;
-
-function getSmtpTransport(): Transporter | null {
-  if (smtpTransport) return smtpTransport;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!user || !pass) return null;
-
-  smtpTransport = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: Number(process.env.SMTP_PORT || "587"),
-    secure: false,
-    auth: { user, pass },
-  });
-  return smtpTransport;
+function getFromAddress(display: string): string {
+  const domain = process.env.EMAIL_FROM_DOMAIN || "millanluxurycleaning.com";
+  return `${display} <noreply@${domain}>`;
 }
 
 function getNotificationEmail(): string {
-  return process.env.NOTIFICATION_EMAIL || process.env.SMTP_USER || "";
+  return process.env.NOTIFICATION_EMAIL || "ivan@millanluxurycleaning.com";
 }
 
-// --- Retry wrapper for reliable email delivery ---
-
 async function sendWithRetry(
-  transport: Transporter,
-  mailOptions: object,
+  resend: Resend,
+  payload: Parameters<Resend["emails"]["send"]>[0],
   maxRetries = 2,
 ): Promise<void> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      await transport.sendMail(mailOptions);
+      const { error } = await resend.emails.send(payload);
+      if (error) throw new Error(error.message);
       return;
     } catch (err) {
       console.error(`[Email] Attempt ${attempt}/${maxRetries} failed:`, err);
@@ -66,18 +56,18 @@ export async function sendContactNotificationEmail(params: {
   service: string;
   message: string;
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
+  const resend = getResend();
   const notifyTo = getNotificationEmail();
 
-  if (!transport || !notifyTo) {
-    console.warn("[Email] SMTP not configured, skipping contact notification");
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured, skipping contact notification");
     return false;
   }
 
   try {
-    await transport.sendMail({
-      from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
-      to: notifyTo,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury Website"),
+      to: [notifyTo],
       replyTo: params.email,
       subject: `New Contact: ${esc(params.name)} — ${esc(params.service)}`,
       html: `
@@ -121,7 +111,7 @@ export async function sendContactNotificationEmail(params: {
   }
 }
 
-// --- Booking notification ---
+// --- Booking notification (to Ivan) ---
 
 export async function sendBookingNotificationEmail(params: {
   customerName: string;
@@ -136,10 +126,10 @@ export async function sendBookingNotificationEmail(params: {
   serviceState?: string;
   serviceZip?: string;
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
+  const resend = getResend();
 
-  if (!transport) {
-    console.warn("[Email] SMTP not configured, skipping booking notification");
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured, skipping booking notification");
     return false;
   }
 
@@ -174,9 +164,9 @@ export async function sendBookingNotificationEmail(params: {
     : "";
 
   try {
-    await sendWithRetry(transport, {
-      from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
-      to: recipients,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury Website"),
+      to: [recipients],
       replyTo: params.customerEmail,
       subject: `New Booking: ${esc(params.customerName)} — ${esc(params.serviceName)}`,
       html: `
@@ -245,10 +235,10 @@ export async function sendBookingConfirmationEmail(params: {
   serviceState?: string;
   serviceZip?: string;
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
+  const resend = getResend();
 
-  if (!transport || !params.customerEmail) {
-    console.warn("[Email] SMTP not configured or no customer email, skipping booking confirmation");
+  if (!resend || !params.customerEmail) {
+    console.warn("[Email] RESEND_API_KEY not configured or no customer email, skipping booking confirmation");
     return false;
   }
 
@@ -273,9 +263,9 @@ export async function sendBookingConfirmationEmail(params: {
     : "";
 
   try {
-    await sendWithRetry(transport, {
-      from: `"Millan Luxury" <${process.env.SMTP_USER}>`,
-      to: params.customerEmail,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury"),
+      to: [params.customerEmail],
       subject: `Booking Confirmed — ${esc(params.serviceName)}`,
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
@@ -357,10 +347,10 @@ export async function sendOrderConfirmationEmail(params: {
   shippingAddress?: { addressLine1?: string; city?: string; state?: string; postalCode?: string };
   isPickup?: boolean;
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
+  const resend = getResend();
 
-  if (!transport || !params.customerEmail) {
-    console.warn("[Email] SMTP not configured or no customer email, skipping confirmation");
+  if (!resend || !params.customerEmail) {
+    console.warn("[Email] RESEND_API_KEY not configured or no customer email, skipping order confirmation");
     return false;
   }
 
@@ -391,9 +381,9 @@ export async function sendOrderConfirmationEmail(params: {
     : "";
 
   try {
-    await sendWithRetry(transport, {
-      from: `"Millan Luxury" <${process.env.SMTP_USER}>`,
-      to: params.customerEmail,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury"),
+      to: [params.customerEmail],
       subject: `Order Confirmed — #${params.orderId}`,
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
@@ -426,10 +416,6 @@ export async function sendOrderConfirmationEmail(params: {
             <tr>
               <td style="padding: 6px 0; font-size: 14px; color: #666;">Shipping</td>
               <td style="padding: 6px 0; font-size: 14px; text-align: right;">$${params.shipping.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; font-size: 14px; color: #666;">Tax</td>
-              <td style="padding: 6px 0; font-size: 14px; text-align: right;">$${params.tax.toFixed(2)}</td>
             </tr>
             <tr style="border-top: 2px solid #1a1a1a;">
               <td style="padding: 12px 0; font-size: 18px; font-weight: bold;">Total</td>
@@ -469,7 +455,7 @@ export async function sendOrderConfirmationEmail(params: {
   }
 }
 
-// --- Order notification ---
+// --- Order notification (to Ivan) ---
 
 export async function sendOrderNotificationEmail(params: {
   orderId: number;
@@ -481,11 +467,11 @@ export async function sendOrderNotificationEmail(params: {
   shippingAddress?: { addressLine1?: string; city?: string; state?: string; postalCode?: string };
   items: { name: string; quantity: number; price: number }[];
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
+  const resend = getResend();
   const notifyTo = getNotificationEmail();
 
-  if (!transport || !notifyTo) {
-    console.warn("[Email] SMTP not configured, skipping order notification");
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured, skipping order notification");
     return false;
   }
 
@@ -505,9 +491,9 @@ export async function sendOrderNotificationEmail(params: {
     : "";
 
   try {
-    await sendWithRetry(transport, {
-      from: `"Millan Luxury Website" <${process.env.SMTP_USER}>`,
-      to: notifyTo,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury Website"),
+      to: [notifyTo],
       replyTo: params.customerEmail,
       subject: `New Order #${params.orderId} — $${params.total.toFixed(2)}`,
       html: `
@@ -568,28 +554,27 @@ export async function sendOrderNotificationEmail(params: {
   }
 }
 
-// --- Partner emails (Google SMTP) ---
+// --- Partner emails ---
 
 export async function sendPartnerApprovalEmail(params: {
   to: string;
   brandName: string;
   slug: string;
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
-  if (!transport) {
-    console.error("[CRITICAL] SMTP not configured, cannot send partner approval email");
+  const resend = getResend();
+  if (!resend) {
+    console.error("[CRITICAL] RESEND_API_KEY not configured, cannot send partner approval email");
     return false;
   }
 
   const siteUrl = getSiteUrl();
   const loginUrl = `${siteUrl}/partner/login`;
   const vanityUrl = `${siteUrl}/with/${params.slug}`;
-  const fromEmail = getNotificationEmail();
 
   try {
-    await sendWithRetry(transport, {
-      from: `"Millan Luxury Cleaning" <${fromEmail}>`,
-      to: params.to,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury Cleaning"),
+      to: [params.to],
       subject: "Welcome to the Millan Luxury Partner Program",
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
@@ -604,22 +589,19 @@ export async function sendPartnerApprovalEmail(params: {
           <p style="font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
             Share this link with your audience. When someone books through your link, you earn a commission on every completed booking.
           </p>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            Sign in to your partner dashboard to view your performance, track commissions, and access your unique link anytime.
-          </p>
           <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
             Sign In to Dashboard
           </a>
           <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
           <p style="font-size: 12px; color: #888; line-height: 1.5;">
-            You received this email because your partner application was approved. If you did not apply, please disregard this message.
+            You received this email because your partner application was approved.
           </p>
         </div>
       `,
     });
     return true;
   } catch (error) {
-    console.error("[CRITICAL] Failed to send partner approval email after retries:", error);
+    console.error("[CRITICAL] Failed to send partner approval email:", error);
     return false;
   }
 }
@@ -628,38 +610,34 @@ export async function sendPartnerDisabledEmail(params: {
   to: string;
   brandName: string;
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
-  if (!transport) {
-    console.error("[CRITICAL] SMTP not configured, cannot send partner disabled email");
+  const resend = getResend();
+  if (!resend) {
+    console.error("[CRITICAL] RESEND_API_KEY not configured, cannot send partner disabled email");
     return false;
   }
 
-  const fromEmail = getNotificationEmail();
-
   try {
-    await sendWithRetry(transport, {
-      from: `"Millan Luxury Cleaning" <${fromEmail}>`,
-      to: params.to,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury Cleaning"),
+      to: [params.to],
       subject: "Millan Luxury Partner Account Update",
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
           <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 24px;">Account Update</h1>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Dear ${params.brandName},
-          </p>
+          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">Dear ${params.brandName},</p>
           <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
             Your partner account with Millan Luxury has been deactivated. If you believe this is an error or would like more information, please reach out to us.
           </p>
           <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
           <p style="font-size: 12px; color: #888; line-height: 1.5;">
-            You received this email because your partner account status changed. If you did not apply, please disregard this message.
+            You received this email because your partner account status changed.
           </p>
         </div>
       `,
     });
     return true;
   } catch (error) {
-    console.error("[CRITICAL] Failed to send partner disabled email after retries:", error);
+    console.error("[CRITICAL] Failed to send partner disabled email:", error);
     return false;
   }
 }
@@ -671,44 +649,37 @@ export async function sendPayoutNotificationEmail(params: {
   periodStart: string;
   periodEnd: string;
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
-  if (!transport) {
-    console.error("[CRITICAL] SMTP not configured, cannot send payout notification email");
+  const resend = getResend();
+  if (!resend) {
+    console.error("[CRITICAL] RESEND_API_KEY not configured, cannot send payout notification email");
     return false;
   }
 
-  const fromEmail = getNotificationEmail();
-
   try {
-    await sendWithRetry(transport, {
-      from: `"Millan Luxury Cleaning" <${fromEmail}>`,
-      to: params.to,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury Cleaning"),
+      to: [params.to],
       subject: "Millan Luxury Partner Payout Notification",
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
           <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">Payout Notification</h1>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Dear ${params.brandName},
-          </p>
+          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">Dear ${params.brandName},</p>
           <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
             A payout of <strong>$${params.amount.toFixed(2)}</strong> has been processed for the period ${params.periodStart} to ${params.periodEnd}.
-          </p>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Sign in to your partner dashboard for full details.
           </p>
           <a href="${getSiteUrl()}/partner/dashboard" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
             View Dashboard
           </a>
           <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
           <p style="font-size: 12px; color: #888; line-height: 1.5;">
-            You received this email because you are a Millan Luxury partner. If you did not apply, please disregard this message.
+            You received this email because you are a Millan Luxury partner.
           </p>
         </div>
       `,
     });
     return true;
   } catch (error) {
-    console.error("[CRITICAL] Failed to send payout notification email after retries:", error);
+    console.error("[CRITICAL] Failed to send payout notification email:", error);
     return false;
   }
 }
@@ -722,18 +693,16 @@ export async function sendMonthlyStatementEmail(params: {
   conversions: number;
   outstandingBalance: number;
 }): Promise<boolean> {
-  const transport = getSmtpTransport();
-  if (!transport) {
-    console.error("[CRITICAL] SMTP not configured, cannot send monthly statement email");
+  const resend = getResend();
+  if (!resend) {
+    console.error("[CRITICAL] RESEND_API_KEY not configured, cannot send monthly statement email");
     return false;
   }
 
-  const fromEmail = getNotificationEmail();
-
   try {
-    await sendWithRetry(transport, {
-      from: `"Millan Luxury Cleaning" <${fromEmail}>`,
-      to: params.to,
+    await sendWithRetry(resend, {
+      from: getFromAddress("Millan Luxury Cleaning"),
+      to: [params.to],
       subject: `Millan Luxury Partner Statement - ${params.month}`,
       html: `
         <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
@@ -764,14 +733,14 @@ export async function sendMonthlyStatementEmail(params: {
           </a>
           <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
           <p style="font-size: 12px; color: #888; line-height: 1.5;">
-            You received this email because you are a Millan Luxury partner. If you did not apply, please disregard this message.
+            You received this email because you are a Millan Luxury partner.
           </p>
         </div>
       `,
     });
     return true;
   } catch (error) {
-    console.error("[CRITICAL] Failed to send monthly statement email after retries:", error);
+    console.error("[CRITICAL] Failed to send monthly statement email:", error);
     return false;
   }
 }
