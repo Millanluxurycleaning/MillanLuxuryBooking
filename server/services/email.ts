@@ -1,6 +1,5 @@
 import { Resend } from "resend";
 
-/** HTML-escape user-supplied strings to prevent XSS in email templates */
 function esc(str: string | undefined | null): string {
   if (!str) return "";
   return str
@@ -48,7 +47,71 @@ async function sendWithRetry(
   }
 }
 
-// --- Contact form notification ---
+// ─── Shared layout wrapper ───────────────────────────────────────────────────
+
+function luxuryLayout(body: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#0f0f0f;font-family:Georgia,serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#1a3a2a 0%,#2d5a3d 60%,#1e4030 100%);border-radius:16px 16px 0 0;padding:40px 40px 32px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#d4af37;font-family:Georgia,serif;">Millan Luxury Cleaning</p>
+            <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;font-family:Georgia,serif;line-height:1.3;">✦ Crowning Every Space in Sparkle ✦</h1>
+            <div style="margin:20px auto 0;width:60px;height:2px;background:linear-gradient(90deg,transparent,#d4af37,transparent);"></div>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#1a1a1a;padding:40px;border-left:1px solid #2a2a2a;border-right:1px solid #2a2a2a;">
+            ${body}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#111;border-radius:0 0 16px 16px;border:1px solid #2a2a2a;border-top:none;padding:28px 40px;text-align:center;">
+            <p style="margin:0 0 8px;font-size:13px;color:#888;">
+              <a href="tel:6025967393" style="color:#d4af37;text-decoration:none;">(602) 596-7393</a>
+              &nbsp;·&nbsp;
+              <a href="mailto:info@millanluxurycleaning.com" style="color:#d4af37;text-decoration:none;">info@millanluxurycleaning.com</a>
+            </p>
+            <p style="margin:0 0 8px;font-size:13px;color:#888;">
+              <a href="https://instagram.com/millan_luxury_cleaning" style="color:#d4af37;text-decoration:none;">@millan_luxury_cleaning</a>
+            </p>
+            <p style="margin:16px 0 0;font-size:12px;color:#555;">
+              811 N 3rd St, Phoenix, AZ 85004 &nbsp;·&nbsp;
+              <a href="${getSiteUrl()}" style="color:#555;text-decoration:none;">millanluxurycleaning.com</a>
+            </p>
+            <p style="margin:16px 0 0;font-size:13px;color:#777;font-style:italic;">— The Millan Luxury Cleaning Team 🖤</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function detailRow(label: string, value: string): string {
+  return `<tr>
+    <td style="padding:12px 0;border-bottom:1px solid #2a2a2a;font-size:13px;color:#888;width:140px;vertical-align:top;">${label}</td>
+    <td style="padding:12px 0;border-bottom:1px solid #2a2a2a;font-size:15px;color:#e8e8e8;vertical-align:top;">${value}</td>
+  </tr>`;
+}
+
+function sectionHeader(title: string): string {
+  return `<p style="margin:0 0 16px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#d4af37;">${title}</p>`;
+}
+
+// ─── Contact form notification ────────────────────────────────────────────────
 
 export async function sendContactNotificationEmail(params: {
   name: string;
@@ -58,50 +121,41 @@ export async function sendContactNotificationEmail(params: {
 }): Promise<boolean> {
   const resend = getResend();
   const notifyTo = getNotificationEmail();
-
   if (!resend) {
     console.warn("[Email] RESEND_API_KEY not configured, skipping contact notification");
     return false;
   }
 
+  const body = `
+    <h2 style="margin:0 0 4px;font-size:22px;color:#ffffff;">New Contact Message</h2>
+    <p style="margin:0 0 32px;font-size:14px;color:#888;">Someone reached out via the website contact form.</p>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Contact Details")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Name", esc(params.name))}
+        ${detailRow("Email", `<a href="mailto:${esc(params.email)}" style="color:#d4af37;">${esc(params.email)}</a>`)}
+        ${detailRow("Service", esc(params.service))}
+      </table>
+    </div>
+
+    <div style="background:#222;border-left:3px solid #d4af37;border-radius:0 8px 8px 0;padding:20px 24px;margin-bottom:32px;">
+      ${sectionHeader("Message")}
+      <p style="margin:0;font-size:15px;color:#ccc;line-height:1.7;white-space:pre-wrap;">${esc(params.message)}</p>
+    </div>
+
+    <a href="mailto:${esc(params.email)}" style="display:inline-block;padding:13px 28px;background:linear-gradient(90deg,#d4af37,#f0d060);color:#111;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:1px;">
+      REPLY TO ${esc(params.name.toUpperCase())}
+    </a>
+  `;
+
   try {
     await sendWithRetry(resend, {
-      from: getFromAddress("Millan Luxury Website"),
+      from: getFromAddress("Millan Luxury Cleaning"),
       to: [notifyTo],
       replyTo: params.email,
       subject: `New Contact: ${esc(params.name)} — ${esc(params.service)}`,
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">New Contact Form Submission</h1>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888; width: 120px;">Name</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.name)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Email</td>
-              <td style="padding: 12px 0; font-size: 16px;">
-                <a href="mailto:${esc(params.email)}" style="color: #b8860b;">${esc(params.email)}</a>
-              </td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Service</td>
-              <td style="padding: 12px 0; font-size: 16px;">${esc(params.service)}</td>
-            </tr>
-          </table>
-          <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
-            <p style="font-size: 14px; color: #888; margin: 0 0 8px 0;">Message</p>
-            <p style="font-size: 16px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${esc(params.message)}</p>
-          </div>
-          <a href="mailto:${esc(params.email)}" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
-            Reply to ${esc(params.name)}
-          </a>
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888;">
-            This message was sent from the contact form at millanluxurycleaning.com
-          </p>
-        </div>
-      `,
+      html: luxuryLayout(body),
     });
     console.log(`[Email] Contact notification sent to ${notifyTo}`);
     return true;
@@ -111,7 +165,7 @@ export async function sendContactNotificationEmail(params: {
   }
 }
 
-// --- Booking notification (to Ivan) ---
+// ─── Booking notification (to admin) ─────────────────────────────────────────
 
 export async function sendBookingNotificationEmail(params: {
   customerName: string;
@@ -127,91 +181,62 @@ export async function sendBookingNotificationEmail(params: {
   serviceZip?: string;
 }): Promise<boolean> {
   const resend = getResend();
-
   if (!resend) {
     console.warn("[Email] RESEND_API_KEY not configured, skipping booking notification");
     return false;
   }
 
   const recipients = "info@millanluxurycleaning.com";
-
   const date = new Date(params.startAt);
   const formatted = date.toLocaleString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    weekday: "long", month: "long", day: "numeric",
+    year: "numeric", hour: "numeric", minute: "2-digit",
     timeZone: "America/Phoenix",
   });
 
-  const cardRow = params.cardOnFile
-    ? `<tr style="border-bottom: 1px solid #e5e5e5;">
-        <td style="padding: 12px 0; font-size: 14px; color: #888;">Card</td>
-        <td style="padding: 12px 0; font-size: 16px; color: #16a34a; font-weight: bold;">On file for cancellation protection</td>
-      </tr>`
-    : `<tr style="border-bottom: 1px solid #e5e5e5;">
-        <td style="padding: 12px 0; font-size: 14px; color: #888;">Card</td>
-        <td style="padding: 12px 0; font-size: 16px; color: #dc2626;">Not provided</td>
-      </tr>`;
+  const addressStr = params.serviceAddress
+    ? `${esc(params.serviceAddress)}, ${esc(params.serviceCity)}, ${esc(params.serviceState)} ${esc(params.serviceZip)}`
+    : "Not provided";
 
-  const addressRow = params.serviceAddress
-    ? `<tr style="border-bottom: 1px solid #e5e5e5;">
-        <td style="padding: 12px 0; font-size: 14px; color: #888;">Location</td>
-        <td style="padding: 12px 0; font-size: 16px; font-weight: bold; color: #b8860b;">${esc(params.serviceAddress)}, ${esc(params.serviceCity)}, ${esc(params.serviceState)} ${esc(params.serviceZip)}</td>
-      </tr>`
-    : "";
+  const body = `
+    <h2 style="margin:0 0 4px;font-size:22px;color:#ffffff;">New Booking ✦</h2>
+    <p style="margin:0 0 32px;font-size:14px;color:#888;">A new booking was just submitted on your website.</p>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Customer")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Name", `<strong style="color:#fff;">${esc(params.customerName)}</strong>`)}
+        ${detailRow("Email", `<a href="mailto:${esc(params.customerEmail)}" style="color:#d4af37;">${esc(params.customerEmail)}</a>`)}
+        ${params.customerPhone ? detailRow("Phone", `<a href="tel:${esc(params.customerPhone)}" style="color:#d4af37;">${esc(params.customerPhone)}</a>`) : ""}
+      </table>
+    </div>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Booking Details")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Service", esc(params.serviceName))}
+        ${detailRow("Date & Time", `<strong style="color:#d4af37;">${formatted}</strong>`)}
+        ${detailRow("Location", addressStr)}
+        ${detailRow("Card", params.cardOnFile
+          ? `<span style="color:#4ade80;">✓ On file</span>`
+          : `<span style="color:#f87171;">✗ Not provided</span>`)}
+      </table>
+    </div>
+
+    ${params.notes ? `
+    <div style="background:#222;border-left:3px solid #d4af37;border-radius:0 8px 8px 0;padding:20px 24px;margin-bottom:32px;">
+      ${sectionHeader("Customer Notes")}
+      <p style="margin:0;font-size:15px;color:#ccc;line-height:1.7;white-space:pre-wrap;">${esc(params.notes)}</p>
+    </div>` : ""}
+  `;
 
   try {
     await sendWithRetry(resend, {
-      from: getFromAddress("Millan Luxury Website"),
+      from: getFromAddress("Millan Luxury Cleaning"),
       to: [recipients],
       replyTo: params.customerEmail,
       subject: `New Booking: ${esc(params.customerName)} — ${esc(params.serviceName)}`,
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">New Booking</h1>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888; width: 120px;">Customer</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.customerName)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Email</td>
-              <td style="padding: 12px 0; font-size: 16px;">
-                <a href="mailto:${esc(params.customerEmail)}" style="color: #b8860b;">${esc(params.customerEmail)}</a>
-              </td>
-            </tr>
-            ${params.customerPhone ? `
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Phone</td>
-              <td style="padding: 12px 0; font-size: 16px;">
-                <a href="tel:${esc(params.customerPhone)}" style="color: #b8860b;">${esc(params.customerPhone)}</a>
-              </td>
-            </tr>` : ""}
-            ${addressRow}
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Service</td>
-              <td style="padding: 12px 0; font-size: 16px;">${esc(params.serviceName)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Date</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${formatted}</td>
-            </tr>
-            ${cardRow}
-          </table>
-          ${params.notes ? `
-          <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
-            <p style="font-size: 14px; color: #888; margin: 0 0 8px 0;">Customer Notes</p>
-            <p style="font-size: 16px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${esc(params.notes)}</p>
-          </div>` : ""}
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888;">
-            This booking was created at millanluxurycleaning.com
-          </p>
-        </div>
-      `,
+      html: luxuryLayout(body),
     });
     console.log(`[Email] Booking notification sent to ${recipients}`);
     return true;
@@ -221,7 +246,7 @@ export async function sendBookingNotificationEmail(params: {
   }
 }
 
-// --- Customer booking confirmation ---
+// ─── Customer booking confirmation ────────────────────────────────────────────
 
 export async function sendBookingConfirmationEmail(params: {
   bookingId: number;
@@ -236,7 +261,6 @@ export async function sendBookingConfirmationEmail(params: {
   serviceZip?: string;
 }): Promise<boolean> {
   const resend = getResend();
-
   if (!resend || !params.customerEmail) {
     console.warn("[Email] RESEND_API_KEY not configured or no customer email, skipping booking confirmation");
     return false;
@@ -244,86 +268,64 @@ export async function sendBookingConfirmationEmail(params: {
 
   const date = new Date(params.startAt);
   const formatted = date.toLocaleString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    weekday: "long", month: "long", day: "numeric",
+    year: "numeric", hour: "numeric", minute: "2-digit",
     timeZone: "America/Phoenix",
   });
 
   const firstName = esc(params.customerName.split(" ")[0]);
-
-  const addressRow = params.serviceAddress
-    ? `<tr style="border-bottom: 1px solid #e5e5e5;">
-        <td style="padding: 12px 0; font-size: 14px; color: #888;">Location</td>
-        <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.serviceAddress)}, ${esc(params.serviceCity)}, ${esc(params.serviceState)} ${esc(params.serviceZip)}</td>
-      </tr>`
+  const addressStr = params.serviceAddress
+    ? `${esc(params.serviceAddress)}, ${esc(params.serviceCity)}, ${esc(params.serviceState)} ${esc(params.serviceZip)}`
     : "";
+
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:26px;color:#ffffff;">Thank you for booking with<br/>Millan Luxury Cleaning! ✨</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#aaa;line-height:1.6;">
+      We've received your request and will be in touch shortly to confirm your appointment.
+    </p>
+
+    <div style="background:#222;border-radius:10px;padding:8px 24px 4px;margin-bottom:32px;border:1px solid #333;">
+      <p style="margin:12px 0 4px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#d4af37;">Booking Reference</p>
+      <p style="margin:0 0 12px;font-size:28px;font-weight:700;color:#d4af37;">#${params.bookingId}</p>
+    </div>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Booking Details")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Service", `<strong style="color:#fff;">${esc(params.serviceName)}</strong>`)}
+        ${detailRow("Date & Time", `<strong style="color:#d4af37;">${formatted}</strong>`)}
+        ${addressStr ? detailRow("Address", addressStr) : ""}
+      </table>
+    </div>
+
+    ${params.cardOnFile ? `
+    <div style="background:#1a2e1a;border:1px solid #2d5a3d;border-radius:8px;padding:16px 20px;margin-bottom:32px;">
+      <p style="margin:0;font-size:14px;color:#86efac;line-height:1.6;">
+        ✓ Your card is securely on file but <strong>has not been charged</strong>. It is held in accordance with our cancellation policy.
+      </p>
+    </div>` : ""}
+
+    <div style="background:#222;border-left:3px solid #d4af37;border-radius:0 8px 8px 0;padding:20px 24px;margin-bottom:32px;">
+      ${sectionHeader("Cancellation Policy")}
+      <p style="margin:0;font-size:14px;color:#aaa;line-height:1.7;">
+        Cancellations within <strong style="color:#e8e8e8;">24 hours</strong> incur a <strong style="color:#e8e8e8;">25% fee</strong>.
+        No-shows or same-day cancellations incur a <strong style="color:#e8e8e8;">50% fee</strong>.
+      </p>
+    </div>
+
+    <div style="text-align:center;margin-bottom:8px;">
+      <a href="${getSiteUrl()}" style="display:inline-block;padding:14px 36px;background:linear-gradient(90deg,#d4af37,#f0d060);color:#111;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:1px;">
+        VISIT MILLAN LUXURY
+      </a>
+    </div>
+  `;
 
   try {
     await sendWithRetry(resend, {
-      from: getFromAddress("Millan Luxury"),
+      from: getFromAddress("Millan Luxury Cleaning"),
       to: [params.customerEmail],
       subject: `Booking Confirmed — ${esc(params.serviceName)}`,
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="font-size: 28px; color: #b8860b; margin: 0 0 8px;">You're All Set, ${firstName}!</h1>
-            <p style="font-size: 16px; color: #666; margin: 0;">Your booking has been confirmed.</p>
-          </div>
-
-          <div style="background: #f9f9f6; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
-            <p style="font-size: 14px; color: #888; margin: 0 0 4px;">Booking Reference</p>
-            <p style="font-size: 20px; font-weight: bold; color: #b8860b; margin: 0;">#${params.bookingId}</p>
-          </div>
-
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888; width: 100px;">Service</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.serviceName)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Date &amp; Time</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${formatted}</td>
-            </tr>
-            ${addressRow}
-          </table>
-
-          ${params.cardOnFile ? `
-          <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px 20px; margin-bottom: 24px;">
-            <p style="font-size: 15px; line-height: 1.6; margin: 0; color: #166534;">
-              Your card is securely on file but <strong>has not been charged</strong>. It is held in accordance with our cancellation policy.
-            </p>
-          </div>` : ""}
-
-          <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
-            <p style="font-size: 14px; color: #888; margin: 0 0 8px;">Cancellation Policy</p>
-            <p style="font-size: 15px; line-height: 1.6; margin: 0;">
-              Cancellations within <strong>24 hours</strong> of your scheduled service will incur a <strong>25% fee</strong> of the total service cost.
-              Cancellations within <strong>a few hours</strong> of service or no-shows will incur a <strong>50% fee</strong>.
-            </p>
-          </div>
-
-          <p style="font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
-            We look forward to seeing you! If you have any questions, feel free to contact us at
-            <a href="tel:6025967393" style="color: #b8860b;">(602) 596-7393</a>.
-          </p>
-
-          <div style="text-align: center; margin-bottom: 24px;">
-            <a href="https://millanluxurycleaning.com" style="display: inline-block; padding: 12px 32px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
-              Visit Millan Luxury
-            </a>
-          </div>
-
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888; text-align: center; line-height: 1.5;">
-            Millan Luxury Cleaning<br/>
-            <a href="https://millanluxurycleaning.com" style="color: #b8860b;">millanluxurycleaning.com</a>
-          </p>
-        </div>
-      `,
+      html: luxuryLayout(body),
     });
     console.log(`[Email] Booking confirmation sent to ${params.customerEmail}`);
     return true;
@@ -333,7 +335,7 @@ export async function sendBookingConfirmationEmail(params: {
   }
 }
 
-// --- Customer order confirmation ---
+// ─── Customer order confirmation ──────────────────────────────────────────────
 
 export async function sendOrderConfirmationEmail(params: {
   orderId: number;
@@ -348,104 +350,78 @@ export async function sendOrderConfirmationEmail(params: {
   isPickup?: boolean;
 }): Promise<boolean> {
   const resend = getResend();
-
   if (!resend || !params.customerEmail) {
     console.warn("[Email] RESEND_API_KEY not configured or no customer email, skipping order confirmation");
     return false;
   }
 
-  const itemRows = params.items
-    .map(
-      (item) => `
-      <tr style="border-bottom: 1px solid #e5e5e5;">
-        <td style="padding: 10px 0; font-size: 14px;">${esc(item.name)}</td>
-        <td style="padding: 10px 0; font-size: 14px; text-align: center;">x${item.quantity}</td>
-        <td style="padding: 10px 0; font-size: 14px; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
-      </tr>`
-    )
-    .join("");
+  const firstName = esc(params.customerName.split(" ")[0]);
+  const itemRows = params.items.map((item) =>
+    `<tr>
+      <td style="padding:10px 0;border-bottom:1px solid #2a2a2a;font-size:14px;color:#ccc;">${esc(item.name)}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #2a2a2a;font-size:14px;color:#888;text-align:center;">×${item.quantity}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #2a2a2a;font-size:14px;color:#e8e8e8;text-align:right;">$${(item.price * item.quantity).toFixed(2)}</td>
+    </tr>`
+  ).join("");
 
   const shipAddr = params.shippingAddress;
   const hasShipping = !params.isPickup && shipAddr?.addressLine1;
-  const fulfillmentMessage = hasShipping
-    ? "We'll send you a notification when your order has been shipped."
-    : "We'll notify you when your order is ready for pick-up.";
+  const fulfillmentNote = hasShipping
+    ? "We'll notify you when your order has shipped."
+    : "We'll notify you when your order is ready for pick-up at <strong style='color:#e8e8e8;'>811 N 3rd St, Phoenix, AZ 85004</strong>.";
 
-  const shipAddrBlock = hasShipping
-    ? `
-      <div style="margin-bottom: 24px;">
-        <p style="font-size: 14px; color: #888; margin: 0 0 4px;">Shipping to</p>
-        <p style="font-size: 15px; margin: 0;">${esc(shipAddr!.addressLine1)}</p>
-        <p style="font-size: 15px; margin: 0;">${esc(shipAddr!.city)}, ${esc(shipAddr!.state)} ${esc(shipAddr!.postalCode)}</p>
-      </div>`
-    : "";
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:24px;color:#ffffff;">Thank You, ${firstName}! ✨</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#aaa;">Your order has been received and is being prepared.</p>
+
+    <div style="background:#222;border-radius:10px;padding:8px 24px 4px;margin-bottom:32px;border:1px solid #333;">
+      <p style="margin:12px 0 4px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#d4af37;">Order Number</p>
+      <p style="margin:0 0 12px;font-size:28px;font-weight:700;color:#d4af37;">#${params.orderId}</p>
+    </div>
+
+    ${hasShipping ? `
+    <div style="margin-bottom:24px;">
+      ${sectionHeader("Shipping To")}
+      <p style="margin:0;font-size:15px;color:#ccc;">${esc(shipAddr!.addressLine1)}<br/>${esc(shipAddr!.city)}, ${esc(shipAddr!.state)} ${esc(shipAddr!.postalCode)}</p>
+    </div>` : ""}
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Order Summary")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <th style="padding:8px 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#666;text-align:left;border-bottom:1px solid #333;">Item</th>
+          <th style="padding:8px 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#666;text-align:center;border-bottom:1px solid #333;">Qty</th>
+          <th style="padding:8px 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#666;text-align:right;border-bottom:1px solid #333;">Price</th>
+        </tr>
+        ${itemRows}
+        <tr>
+          <td colspan="2" style="padding:10px 0;font-size:14px;color:#888;">Shipping</td>
+          <td style="padding:10px 0;font-size:14px;color:#e8e8e8;text-align:right;">$${params.shipping.toFixed(2)}</td>
+        </tr>
+        <tr style="border-top:1px solid #d4af37;">
+          <td colspan="2" style="padding:14px 0;font-size:17px;font-weight:700;color:#fff;">Total</td>
+          <td style="padding:14px 0;font-size:17px;font-weight:700;color:#d4af37;text-align:right;">$${params.total.toFixed(2)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="background:#222;border-left:3px solid #d4af37;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:32px;">
+      <p style="margin:0;font-size:14px;color:#aaa;line-height:1.7;">${fulfillmentNote}</p>
+    </div>
+
+    <div style="text-align:center;">
+      <a href="${getSiteUrl()}" style="display:inline-block;padding:14px 36px;background:linear-gradient(90deg,#d4af37,#f0d060);color:#111;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:1px;">
+        VISIT MILLAN LUXURY
+      </a>
+    </div>
+  `;
 
   try {
     await sendWithRetry(resend, {
-      from: getFromAddress("Millan Luxury"),
+      from: getFromAddress("Millan Luxury Cleaning"),
       to: [params.customerEmail],
       subject: `Order Confirmed — #${params.orderId}`,
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="font-size: 28px; color: #b8860b; margin: 0 0 8px;">Thank You, ${esc(params.customerName.split(" ")[0])}!</h1>
-            <p style="font-size: 16px; color: #666; margin: 0;">Your order has been received and is being prepared.</p>
-          </div>
-
-          <div style="background: #f9f9f6; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
-            <p style="font-size: 14px; color: #888; margin: 0 0 4px;">Order Number</p>
-            <p style="font-size: 20px; font-weight: bold; color: #b8860b; margin: 0;">#${params.orderId}</p>
-          </div>
-
-          ${shipAddrBlock}
-
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-            <tr style="border-bottom: 2px solid #1a1a1a;">
-              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: left;">Item</th>
-              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: center;">Qty</th>
-              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: right;">Price</th>
-            </tr>
-            ${itemRows}
-          </table>
-
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-            <tr>
-              <td style="padding: 6px 0; font-size: 14px; color: #666;">Subtotal</td>
-              <td style="padding: 6px 0; font-size: 14px; text-align: right;">$${params.subtotal.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; font-size: 14px; color: #666;">Shipping</td>
-              <td style="padding: 6px 0; font-size: 14px; text-align: right;">$${params.shipping.toFixed(2)}</td>
-            </tr>
-            <tr style="border-top: 2px solid #1a1a1a;">
-              <td style="padding: 12px 0; font-size: 18px; font-weight: bold;">Total</td>
-              <td style="padding: 12px 0; font-size: 18px; font-weight: bold; text-align: right;">$${params.total.toFixed(2)}</td>
-            </tr>
-          </table>
-
-          <div style="background: #f9f9f6; border-left: 4px solid #b8860b; padding: 16px 20px; margin-bottom: 24px;">
-            <p style="font-size: 15px; line-height: 1.6; margin: 0;">
-              ${fulfillmentMessage}
-            </p>
-          </div>
-
-          <p style="font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
-            We truly appreciate your business. If you have any questions about your order, feel free to reply to this email or contact us at <a href="tel:6025967393" style="color: #b8860b;">(602) 596-7393</a>.
-          </p>
-
-          <div style="text-align: center; margin-bottom: 24px;">
-            <a href="https://millanluxurycleaning.com" style="display: inline-block; padding: 12px 32px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
-              Visit Millan Luxury
-            </a>
-          </div>
-
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888; text-align: center; line-height: 1.5;">
-            Millan Luxury Cleaning &bull; 811 N 3rd St, Phoenix, AZ 85004<br/>
-            <a href="https://millanluxurycleaning.com" style="color: #b8860b;">millanluxurycleaning.com</a>
-          </p>
-        </div>
-      `,
+      html: luxuryLayout(body),
     });
     console.log(`[Email] Order confirmation sent to ${params.customerEmail}`);
     return true;
@@ -455,7 +431,7 @@ export async function sendOrderConfirmationEmail(params: {
   }
 }
 
-// --- Order notification (to Ivan) ---
+// ─── Order notification (to admin) ───────────────────────────────────────────
 
 export async function sendOrderNotificationEmail(params: {
   orderId: number;
@@ -469,82 +445,64 @@ export async function sendOrderNotificationEmail(params: {
 }): Promise<boolean> {
   const resend = getResend();
   const notifyTo = getNotificationEmail();
-
   if (!resend) {
     console.warn("[Email] RESEND_API_KEY not configured, skipping order notification");
     return false;
   }
 
-  const itemRows = params.items
-    .map(
-      (item) => `
-      <tr style="border-bottom: 1px solid #e5e5e5;">
-        <td style="padding: 10px 0; font-size: 14px;">${esc(item.name)}</td>
-        <td style="padding: 10px 0; font-size: 14px; text-align: center;">x${item.quantity}</td>
-        <td style="padding: 10px 0; font-size: 14px; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
-      </tr>`
-    )
-    .join("");
+  const itemRows = params.items.map((item) =>
+    `<tr>
+      <td style="padding:10px 0;border-bottom:1px solid #2a2a2a;font-size:14px;color:#ccc;">${esc(item.name)}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #2a2a2a;font-size:14px;color:#888;text-align:center;">×${item.quantity}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #2a2a2a;font-size:14px;color:#e8e8e8;text-align:right;">$${(item.price * item.quantity).toFixed(2)}</td>
+    </tr>`
+  ).join("");
 
-  const shipAddrHtml = params.shippingAddress?.addressLine1
-    ? `<p style="font-size: 14px; margin: 4px 0 0;">${esc(params.shippingAddress.addressLine1)}, ${esc(params.shippingAddress.city)} ${esc(params.shippingAddress.state)} ${esc(params.shippingAddress.postalCode)}</p>`
-    : "";
+  const shipAddr = params.shippingAddress;
+
+  const body = `
+    <h2 style="margin:0 0 4px;font-size:22px;color:#ffffff;">New Order #${params.orderId} ✦</h2>
+    <p style="margin:0 0 32px;font-size:14px;color:#888;">A new order was just placed on your website.</p>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Customer")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Name", `<strong style="color:#fff;">${esc(params.customerName) || "—"}</strong>`)}
+        ${detailRow("Email", `<a href="mailto:${esc(params.customerEmail)}" style="color:#d4af37;">${esc(params.customerEmail)}</a>`)}
+        ${params.customerPhone ? detailRow("Phone", `<a href="tel:${esc(params.customerPhone)}" style="color:#d4af37;">${esc(params.customerPhone)}</a>`) : ""}
+        ${shipAddr?.addressLine1 ? detailRow("Ship To", `${esc(shipAddr.addressLine1)}, ${esc(shipAddr.city)} ${esc(shipAddr.state)} ${esc(shipAddr.postalCode)}`) : ""}
+      </table>
+    </div>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Items")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <th style="padding:8px 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#666;text-align:left;border-bottom:1px solid #333;">Item</th>
+          <th style="padding:8px 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#666;text-align:center;border-bottom:1px solid #333;">Qty</th>
+          <th style="padding:8px 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#666;text-align:right;border-bottom:1px solid #333;">Price</th>
+        </tr>
+        ${itemRows}
+        ${params.shipping ? `
+        <tr>
+          <td colspan="2" style="padding:10px 0;font-size:14px;color:#888;">Shipping</td>
+          <td style="padding:10px 0;font-size:14px;color:#e8e8e8;text-align:right;">$${params.shipping.toFixed(2)}</td>
+        </tr>` : ""}
+        <tr style="border-top:1px solid #d4af37;">
+          <td colspan="2" style="padding:14px 0;font-size:17px;font-weight:700;color:#fff;">Total</td>
+          <td style="padding:14px 0;font-size:17px;font-weight:700;color:#d4af37;text-align:right;">$${params.total.toFixed(2)}</td>
+        </tr>
+      </table>
+    </div>
+  `;
 
   try {
     await sendWithRetry(resend, {
-      from: getFromAddress("Millan Luxury Website"),
+      from: getFromAddress("Millan Luxury Cleaning"),
       to: [notifyTo],
       replyTo: params.customerEmail,
       subject: `New Order #${params.orderId} — $${params.total.toFixed(2)}`,
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">New Order #${params.orderId}</h1>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888; width: 120px;">Customer</td>
-              <td style="padding: 12px 0; font-size: 16px; font-weight: bold;">${esc(params.customerName) || "—"}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Email</td>
-              <td style="padding: 12px 0; font-size: 16px;">
-                <a href="mailto:${esc(params.customerEmail)}" style="color: #b8860b;">${esc(params.customerEmail)}</a>
-              </td>
-            </tr>
-            ${params.customerPhone ? `
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Phone</td>
-              <td style="padding: 12px 0; font-size: 16px;">
-                <a href="tel:${esc(params.customerPhone)}" style="color: #b8860b;">${esc(params.customerPhone)}</a>
-              </td>
-            </tr>` : ""}
-            ${shipAddrHtml ? `
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 14px; color: #888;">Ship To</td>
-              <td style="padding: 12px 0; font-size: 14px;">${shipAddrHtml}</td>
-            </tr>` : ""}
-          </table>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-            <tr style="border-bottom: 2px solid #1a1a1a;">
-              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: left;">Item</th>
-              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: center;">Qty</th>
-              <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; text-align: right;">Price</th>
-            </tr>
-            ${itemRows}
-            ${params.shipping ? `
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 10px 0; font-size: 14px;" colspan="2">Shipping</td>
-              <td style="padding: 10px 0; font-size: 14px; text-align: right;">$${params.shipping.toFixed(2)}</td>
-            </tr>` : ""}
-          </table>
-          <p style="font-size: 20px; font-weight: bold; text-align: right; margin-bottom: 24px;">
-            Total: $${params.total.toFixed(2)}
-          </p>
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888;">
-            This order was placed at millanluxurycleaning.com
-          </p>
-        </div>
-      `,
+      html: luxuryLayout(body),
     });
     console.log(`[Email] Order notification sent to ${notifyTo}`);
     return true;
@@ -554,7 +512,7 @@ export async function sendOrderNotificationEmail(params: {
   }
 }
 
-// --- Partner emails ---
+// ─── Partner emails ───────────────────────────────────────────────────────────
 
 export async function sendPartnerApprovalEmail(params: {
   to: string;
@@ -562,42 +520,38 @@ export async function sendPartnerApprovalEmail(params: {
   slug: string;
 }): Promise<boolean> {
   const resend = getResend();
-  if (!resend) {
-    console.error("[CRITICAL] RESEND_API_KEY not configured, cannot send partner approval email");
-    return false;
-  }
+  if (!resend) return false;
 
-  const siteUrl = getSiteUrl();
-  const loginUrl = `${siteUrl}/partner/login`;
-  const vanityUrl = `${siteUrl}/with/${params.slug}`;
+  const vanityUrl = `${getSiteUrl()}/with/${params.slug}`;
+  const loginUrl = `${getSiteUrl()}/partner/login`;
+
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:24px;color:#ffffff;">Welcome, ${esc(params.brandName)}! ✦</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#aaa;line-height:1.6;">
+      Your application to the Millan Luxury Partner Program has been approved. We're thrilled to have you.
+    </p>
+
+    <div style="background:#222;border-left:3px solid #d4af37;border-radius:0 8px 8px 0;padding:20px 24px;margin-bottom:32px;">
+      ${sectionHeader("Your Partner Link")}
+      <a href="${vanityUrl}" style="font-size:15px;color:#d4af37;word-break:break-all;">${vanityUrl}</a>
+      <p style="margin:12px 0 0;font-size:14px;color:#888;line-height:1.6;">
+        Share this link with your audience. You earn a commission on every booking made through it.
+      </p>
+    </div>
+
+    <div style="text-align:center;">
+      <a href="${loginUrl}" style="display:inline-block;padding:14px 36px;background:linear-gradient(90deg,#d4af37,#f0d060);color:#111;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:1px;">
+        SIGN IN TO DASHBOARD
+      </a>
+    </div>
+  `;
 
   try {
     await sendWithRetry(resend, {
       from: getFromAddress("Millan Luxury Cleaning"),
       to: [params.to],
       subject: "Welcome to the Millan Luxury Partner Program",
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">Welcome, ${params.brandName}</h1>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Your application to the Millan Luxury Partner Program has been approved. We're excited to collaborate with you.
-          </p>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            <strong>Your partner link:</strong><br/>
-            <a href="${vanityUrl}" style="color: #b8860b;">${vanityUrl}</a>
-          </p>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            Share this link with your audience. When someone books through your link, you earn a commission on every completed booking.
-          </p>
-          <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
-            Sign In to Dashboard
-          </a>
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888; line-height: 1.5;">
-            You received this email because your partner application was approved.
-          </p>
-        </div>
-      `,
+      html: luxuryLayout(body),
     });
     return true;
   } catch (error) {
@@ -611,29 +565,23 @@ export async function sendPartnerDisabledEmail(params: {
   brandName: string;
 }): Promise<boolean> {
   const resend = getResend();
-  if (!resend) {
-    console.error("[CRITICAL] RESEND_API_KEY not configured, cannot send partner disabled email");
-    return false;
-  }
+  if (!resend) return false;
+
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:24px;color:#ffffff;">Account Update</h2>
+    <p style="margin:0 0 24px;font-size:15px;color:#aaa;line-height:1.6;">Dear ${esc(params.brandName)},</p>
+    <p style="margin:0 0 24px;font-size:15px;color:#aaa;line-height:1.6;">
+      Your partner account with Millan Luxury has been deactivated. If you believe this is an error or would like more information, please reach out to us at
+      <a href="mailto:info@millanluxurycleaning.com" style="color:#d4af37;">info@millanluxurycleaning.com</a>.
+    </p>
+  `;
 
   try {
     await sendWithRetry(resend, {
       from: getFromAddress("Millan Luxury Cleaning"),
       to: [params.to],
       subject: "Millan Luxury Partner Account Update",
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 24px;">Account Update</h1>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">Dear ${params.brandName},</p>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Your partner account with Millan Luxury has been deactivated. If you believe this is an error or would like more information, please reach out to us.
-          </p>
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888; line-height: 1.5;">
-            You received this email because your partner account status changed.
-          </p>
-        </div>
-      `,
+      html: luxuryLayout(body),
     });
     return true;
   } catch (error) {
@@ -650,32 +598,31 @@ export async function sendPayoutNotificationEmail(params: {
   periodEnd: string;
 }): Promise<boolean> {
   const resend = getResend();
-  if (!resend) {
-    console.error("[CRITICAL] RESEND_API_KEY not configured, cannot send payout notification email");
-    return false;
-  }
+  if (!resend) return false;
+
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:24px;color:#ffffff;">Payout Notification ✦</h2>
+    <p style="margin:0 0 24px;font-size:15px;color:#aaa;">Dear ${esc(params.brandName)},</p>
+
+    <div style="background:#222;border-radius:10px;padding:24px;margin-bottom:32px;border:1px solid #333;text-align:center;">
+      <p style="margin:0 0 4px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#d4af37;">Amount Processed</p>
+      <p style="margin:0;font-size:36px;font-weight:700;color:#d4af37;">$${params.amount.toFixed(2)}</p>
+      <p style="margin:8px 0 0;font-size:13px;color:#888;">${params.periodStart} — ${params.periodEnd}</p>
+    </div>
+
+    <div style="text-align:center;">
+      <a href="${getSiteUrl()}/partner/dashboard" style="display:inline-block;padding:14px 36px;background:linear-gradient(90deg,#d4af37,#f0d060);color:#111;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:1px;">
+        VIEW DASHBOARD
+      </a>
+    </div>
+  `;
 
   try {
     await sendWithRetry(resend, {
       from: getFromAddress("Millan Luxury Cleaning"),
       to: [params.to],
       subject: "Millan Luxury Partner Payout Notification",
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">Payout Notification</h1>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">Dear ${params.brandName},</p>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            A payout of <strong>$${params.amount.toFixed(2)}</strong> has been processed for the period ${params.periodStart} to ${params.periodEnd}.
-          </p>
-          <a href="${getSiteUrl()}/partner/dashboard" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
-            View Dashboard
-          </a>
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888; line-height: 1.5;">
-            You received this email because you are a Millan Luxury partner.
-          </p>
-        </div>
-      `,
+      html: luxuryLayout(body),
     });
     return true;
   } catch (error) {
@@ -694,49 +641,37 @@ export async function sendMonthlyStatementEmail(params: {
   outstandingBalance: number;
 }): Promise<boolean> {
   const resend = getResend();
-  if (!resend) {
-    console.error("[CRITICAL] RESEND_API_KEY not configured, cannot send monthly statement email");
-    return false;
-  }
+  if (!resend) return false;
+
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:24px;color:#ffffff;">Monthly Statement</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#aaa;">
+      Dear ${esc(params.brandName)}, here is your partner summary for <strong style="color:#d4af37;">${esc(params.month)}</strong>:
+    </p>
+
+    <div style="margin-bottom:32px;">
+      ${sectionHeader("Performance")}
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${detailRow("Conversions", `<strong style="color:#fff;">${params.conversions}</strong>`)}
+        ${detailRow("Attributed Revenue", `<strong style="color:#fff;">$${params.totalRevenue.toFixed(2)}</strong>`)}
+        ${detailRow("Commission Earned", `<strong style="color:#4ade80;">$${params.totalCommission.toFixed(2)}</strong>`)}
+        ${detailRow("Outstanding Balance", `<strong style="color:#d4af37;">$${params.outstandingBalance.toFixed(2)}</strong>`)}
+      </table>
+    </div>
+
+    <div style="text-align:center;">
+      <a href="${getSiteUrl()}/partner/dashboard" style="display:inline-block;padding:14px 36px;background:linear-gradient(90deg,#d4af37,#f0d060);color:#111;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:1px;">
+        VIEW FULL DASHBOARD
+      </a>
+    </div>
+  `;
 
   try {
     await sendWithRetry(resend, {
       from: getFromAddress("Millan Luxury Cleaning"),
       to: [params.to],
-      subject: `Millan Luxury Partner Statement - ${params.month}`,
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-          <h1 style="font-size: 24px; color: #b8860b; margin-bottom: 24px;">Monthly Statement - ${params.month}</h1>
-          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            Dear ${params.brandName}, here is your partner summary for ${params.month}:
-          </p>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 16px;">Conversions</td>
-              <td style="padding: 12px 0; font-size: 16px; text-align: right; font-weight: bold;">${params.conversions}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 16px;">Attributed Revenue</td>
-              <td style="padding: 12px 0; font-size: 16px; text-align: right; font-weight: bold;">$${params.totalRevenue.toFixed(2)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e5e5;">
-              <td style="padding: 12px 0; font-size: 16px;">Commission Earned</td>
-              <td style="padding: 12px 0; font-size: 16px; text-align: right; font-weight: bold;">$${params.totalCommission.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 12px 0; font-size: 16px;">Outstanding Balance</td>
-              <td style="padding: 12px 0; font-size: 16px; text-align: right; font-weight: bold; color: #b8860b;">$${params.outstandingBalance.toFixed(2)}</td>
-            </tr>
-          </table>
-          <a href="${getSiteUrl()}/partner/dashboard" style="display: inline-block; padding: 12px 24px; background: #b8860b; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px;">
-            View Full Dashboard
-          </a>
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #888; line-height: 1.5;">
-            You received this email because you are a Millan Luxury partner.
-          </p>
-        </div>
-      `,
+      subject: `Millan Luxury Partner Statement — ${params.month}`,
+      html: luxuryLayout(body),
     });
     return true;
   } catch (error) {
