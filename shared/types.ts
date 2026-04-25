@@ -486,6 +486,7 @@ export const createBookingSchema = z.object({
   startAt: z.string().datetime(),
   notes: z.string().optional(),
   sourceId: z.string().optional(),
+  totalPrice: z.number().optional(),
 });
 export type CreateBooking = z.infer<typeof createBookingSchema>;
 

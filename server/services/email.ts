@@ -179,6 +179,7 @@ export async function sendBookingNotificationEmail(params: {
   serviceCity?: string;
   serviceState?: string;
   serviceZip?: string;
+  totalPrice?: number;
 }): Promise<boolean> {
   const resend = getResend();
   if (!resend) {
@@ -217,6 +218,7 @@ export async function sendBookingNotificationEmail(params: {
         ${detailRow("Service", esc(params.serviceName))}
         ${detailRow("Date & Time", `<strong style="color:#d4af37;">${formatted}</strong>`)}
         ${detailRow("Location", addressStr)}
+        ${params.totalPrice != null ? detailRow("Est. Total", `<strong style="color:#d4af37;">$${params.totalPrice.toFixed(2)}</strong>`) : ""}
         ${detailRow("Card", params.cardOnFile
           ? `<span style="color:#4ade80;">✓ On file</span>`
           : `<span style="color:#f87171;">✗ Not provided</span>`)}
@@ -259,6 +261,7 @@ export async function sendBookingConfirmationEmail(params: {
   serviceCity?: string;
   serviceState?: string;
   serviceZip?: string;
+  totalPrice?: number;
 }): Promise<boolean> {
   const resend = getResend();
   if (!resend || !params.customerEmail) {
@@ -295,6 +298,7 @@ export async function sendBookingConfirmationEmail(params: {
         ${detailRow("Service", `<strong style="color:#fff;">${esc(params.serviceName)}</strong>`)}
         ${detailRow("Date & Time", `<strong style="color:#d4af37;">${formatted}</strong>`)}
         ${addressStr ? detailRow("Address", addressStr) : ""}
+        ${params.totalPrice != null ? detailRow("Estimated Total", `<strong style="color:#d4af37;font-size:17px;">$${params.totalPrice.toFixed(2)}</strong>`) : ""}
       </table>
     </div>
 

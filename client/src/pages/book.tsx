@@ -498,6 +498,7 @@ export default function BookingPage() {
           serviceVariationId: segment.serviceVariationId,
           serviceVariationVersion: segment.serviceVariationVersion,
           sourceId,
+          totalPrice: selectedPrice ?? undefined,
         }),
       });
 

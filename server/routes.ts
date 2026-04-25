@@ -3014,6 +3014,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           serviceCity: payload.serviceCity,
           serviceState: payload.serviceState,
           serviceZip: payload.serviceZip,
+          totalPrice: payload.totalPrice,
         }),
         sendBookingConfirmationEmail({
           bookingId: record.id,
@@ -3026,6 +3027,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
           serviceCity: payload.serviceCity,
           serviceState: payload.serviceState,
           serviceZip: payload.serviceZip,
+          totalPrice: payload.totalPrice,
         }),
       ]);
       for (const result of emailResults) {
