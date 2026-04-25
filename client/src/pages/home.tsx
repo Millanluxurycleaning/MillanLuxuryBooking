@@ -8,11 +8,16 @@ import { Testimonials } from "@/components/Testimonials";
 import { FAQ } from "@/components/FAQ";
 import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
+import { PageSEO } from "@/components/PageSEO";
 
-// Main landing page for Millan Luxury Cleaning
 export default function Home() {
   return (
     <div className="min-h-screen">
+      <PageSEO
+        title="Premium Cleaning Services in Phoenix, Surprise, Scottsdale & the East Valley"
+        description="Millan Luxury Cleaning offers high-end residential cleaning in Phoenix, Surprise, Chandler, Glendale, Mesa, Scottsdale, and Tempe AZ. Deep cleaning, move-in/move-out, and recurring service."
+        path="/"
+      />
       <Navigation />
       <main>
         <Hero />

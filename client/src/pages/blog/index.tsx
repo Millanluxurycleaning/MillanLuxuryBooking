@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import type { Post } from "@shared/types";
 import { Navigation } from "@/components/Navigation";
+import { PageSEO } from "@/components/PageSEO";
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return "";
@@ -23,6 +24,11 @@ export default function BlogIndex() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageSEO
+        title="Blog — Cleaning Tips, News & Behind-the-Scenes"
+        description="Read cleaning tips, home care guides, and company updates from the Millan Luxury Cleaning team. Expert advice for keeping your home spotless."
+        path="/blog"
+      />
       <Navigation />
       <div className="container mx-auto px-6 py-12 max-w-4xl pt-32">
         <div className="mb-10 text-center">

@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { PageSEO } from "@/components/PageSEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,6 +126,11 @@ export default function PartnersPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageSEO
+        title="Partner With Us — Brand Affiliates & Cleaning Partners"
+        description="Join the Millan Luxury Cleaning partner network. Apply as a brand affiliate or cleaning partner and grow your business alongside a premium Arizona cleaning brand."
+        path="/partners"
+      />
       <Navigation />
 
       {/* Hero Section */}

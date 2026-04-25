@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import type { Post } from "@shared/types";
 import { ApiError } from "@/lib/queryClient";
 import { Navigation } from "@/components/Navigation";
+import { PageSEO } from "@/components/PageSEO";
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return "";
@@ -18,8 +19,47 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
 
   const notFound = error instanceof ApiError && error.status === 404;
 
+  const articleSchema = post
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        headline: post.title,
+        description: post.excerpt,
+        datePublished: post.createdAt,
+        dateModified: post.updatedAt,
+        author: {
+          "@type": "Organization",
+          name: "Millan Luxury Cleaning",
+          url: "https://millanluxurycleaning.com",
+        },
+        publisher: {
+          "@type": "Organization",
+          name: "Millan Luxury Cleaning",
+          logo: {
+            "@type": "ImageObject",
+            url: "https://millanluxurycleaning.com/favicon.png",
+          },
+        },
+        mainEntityOfPage: {
+          "@type": "WebPage",
+          "@id": `https://millanluxurycleaning.com/blog/${params.slug}`,
+        },
+      }
+    : undefined;
+
   return (
     <div className="min-h-screen bg-background">
+      {post && (
+        <PageSEO
+          title={post.title}
+          description={post.excerpt}
+          path={`/blog/${params.slug}`}
+          type="article"
+          publishedAt={post.createdAt ? new Date(post.createdAt).toISOString() : undefined}
+          modifiedAt={post.updatedAt ? new Date(post.updatedAt).toISOString() : undefined}
+          schema={articleSchema}
+        />
+      )}
       <Navigation />
       <div className="container mx-auto px-6 py-12 max-w-3xl pt-32">
         <div className="mb-6 text-sm">
