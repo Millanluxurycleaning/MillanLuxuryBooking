@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ImageIcon, Loader2 } from "lucide-react";
-import { parseJsonResponse, throwIfResNotOk } from "@/lib/queryClient";
+import { apiRequest, parseJsonResponse } from "@/lib/queryClient";
 import type { BlobImage } from "@/types/blob";
 
 export type BlobBrowserModalProps = {
@@ -23,11 +23,7 @@ export function BlobBrowserModal({ open, onClose, onOpenChange, onSelect, prefix
     queryFn: async () => {
       const params = new URLSearchParams({ prefix });
 
-      const res = await fetch(`/api/blob/list?${params.toString()}`, {
-        credentials: "include",
-      });
-
-      await throwIfResNotOk(res);
+      const res = await apiRequest("GET", `/api/blob/list?${params.toString()}`);
       const payload = await parseJsonResponse(res, "/api/blob/list");
       const files = payload?.images ?? payload?.data ?? payload;
       return Array.isArray(files) ? files : [];
