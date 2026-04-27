@@ -16,12 +16,32 @@ import { handleUnauthorizedError, getErrorMessage } from "@/lib/authUtils";
 import { ImageIcon, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import type { GalleryItem, InsertGalleryItem } from "@shared/types";
 import { insertGalleryItemSchema } from "@shared/types";
-import { upload } from "@vercel/blob/client";
 import { apiRequest, parseJsonResponse, queryClient } from "@/lib/queryClient";
 import { normalizeArrayData } from "@/lib/arrayUtils";
 import { BlobBrowserModal, type BlobBrowserModalProps } from "./BlobBrowserModal";
 import type { BlobImage } from "@/types/blob";
 import { supabase } from "@/lib/supabase";
+
+async function clientUploadToBlob(pathname: string, file: File, accessToken: string): Promise<{ url: string; pathname: string }> {
+  const tokenRes = await fetch('/api/blob/handle-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'blob.generate-client-token', payload: { pathname, clientPayload: accessToken, multipart: false } }),
+  });
+  if (!tokenRes.ok) {
+    const err = await tokenRes.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error || 'Failed to get upload token');
+  }
+  const { clientToken } = await tokenRes.json() as { clientToken: string };
+  const params = new URLSearchParams({ pathname });
+  const blobRes = await fetch(`https://vercel.com/api/blob/?${params.toString()}`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${clientToken}`, 'x-content-type': file.type },
+    body: file,
+  });
+  if (!blobRes.ok) throw new Error('Upload to storage failed');
+  return blobRes.json() as Promise<{ url: string; pathname: string }>;
+}
 
 type GalleryFormData = InsertGalleryItem;
 const placeholderImage = "https://placehold.co/600x600?text=Image+coming+soon";
@@ -357,11 +377,7 @@ export function GalleryManagement() {
         const safeName = file.name.replace(/\s+/g, '-');
         const pathname = `static/${prefix}/${Date.now()}-${safeName}`;
 
-        const blob = await upload(pathname, file, {
-          access: 'public',
-          handleUploadUrl: '/api/blob/handle-upload',
-          clientPayload: session?.access_token ?? '',
-        });
+        const blob = await clientUploadToBlob(pathname, file, session?.access_token ?? '');
 
         form.setValue(fieldName, blob.url);
 
