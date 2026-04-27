@@ -49,7 +49,7 @@ import { Country, Currency, FulfillmentState, FulfillmentType, type Availability
 import { registerAffiliateRoutes, readAffiliateCookie } from "./routes/affiliate.js";
 import { sendContactNotificationEmail, sendBookingNotificationEmail, sendBookingConfirmationEmail, sendOrderNotificationEmail, sendOrderConfirmationEmail, sendQuoteRequestEmail } from "./services/email.js";
 
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 let lastCatalogSyncAt = 0; // Debounce for catalog webhook sync (epoch ms)
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
