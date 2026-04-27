@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -325,7 +326,27 @@ export function GalleryManagement() {
   }) => {
     const rootError = form.formState.errors.root?.message;
     const [uploading, setUploading] = useState(false);
-    
+    const [photoType, setPhotoType] = useState<'single' | 'before-after'>(() => {
+      const values = form.getValues();
+      return (values.beforeImageUrl || values.afterImageUrl) ? 'before-after' : 'single';
+    });
+
+    const handlePhotoTypeChange = (type: 'single' | 'before-after') => {
+      setPhotoType(type);
+      if (type === 'single') {
+        form.setValue('beforeImageUrl', undefined);
+        form.setValue('afterImageUrl', undefined);
+        form.setValue('beforeImagePublicId', undefined);
+        form.setValue('afterImagePublicId', undefined);
+        form.setValue('beforeImageFilename', undefined);
+        form.setValue('afterImageFilename', undefined);
+      } else {
+        form.setValue('imageUrl', undefined);
+        form.setValue('imagePublicId', undefined);
+        form.setValue('imageFilename', undefined);
+      }
+    };
+
     const handleFileUpload = async (file: File, fieldName: 'imageUrl' | 'beforeImageUrl' | 'afterImageUrl') => {
       setUploading(true);
       try {
@@ -396,29 +417,28 @@ export function GalleryManagement() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  list="gallery-category-options"
-                  placeholder="e.g. deep-cleaning, kitchens, move-in-out"
-                  data-testid="input-category"
-                />
-              </FormControl>
-              <p className="text-xs text-muted-foreground">
-                Use <span className="font-medium">all</span> to show in every filter.
-              </p>
+              <Select onValueChange={field.onChange} value={field.value ?? ""} data-testid="input-category">
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="all">All (show in every filter)</SelectItem>
+                  <SelectItem value="basic-cleaning">Basic Cleaning</SelectItem>
+                  <SelectItem value="deep-cleaning">Deep Cleaning</SelectItem>
+                  <SelectItem value="move-in-out">Move In / Move Out</SelectItem>
+                  <SelectItem value="bedroom">Bedroom</SelectItem>
+                  <SelectItem value="living-room">Living Room</SelectItem>
+                  <SelectItem value="office">Office</SelectItem>
+                  <SelectItem value="kitchen">Kitchen</SelectItem>
+                  <SelectItem value="bathroom">Bathroom</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
-
-        <datalist id="gallery-category-options">
-          {categoryOptions.map((option) => (
-            <option key={option.key} value={option.raw}>
-              {option.label}
-            </option>
-          ))}
-        </datalist>
 
         <FormField
           control={form.control}
@@ -451,23 +471,35 @@ export function GalleryManagement() {
         />
 
         <div className="border-t pt-4">
-          <p className="text-sm font-medium mb-3">Image Options (choose one)</p>
-          
-          <FormField
-            control={form.control}
-            name="imageUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Single Image</FormLabel>
-                <FormControl>
-                  <div className="space-y-2">
-                    <Input
-                      {...field}
-                      type="url"
-                      placeholder="https://example.com/image.jpg"
-                      data-testid="input-imageUrl-url"
-                    />
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <p className="text-sm font-medium mb-3">Photo Type</p>
+
+          {/* Toggle */}
+          <div className="flex rounded-md border overflow-hidden mb-5">
+            <button
+              type="button"
+              onClick={() => handlePhotoTypeChange('single')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${photoType === 'single' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+            >
+              Single Photo
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePhotoTypeChange('before-after')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors border-l ${photoType === 'before-after' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+            >
+              Before &amp; After
+            </button>
+          </div>
+
+          {photoType === 'single' ? (
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Photo</FormLabel>
+                  <FormControl>
+                    <div className="space-y-2">
                       <Input
                         type="file"
                         accept="image/*"
@@ -488,44 +520,32 @@ export function GalleryManagement() {
                           setBlobBrowserOpen(true);
                         }}
                       >
-                        Choose Existing Image
+                        Choose Existing
                       </Button>
+                      {field.value && (
+                        <div className="relative h-48 w-full rounded border overflow-hidden bg-muted">
+                          <img src={field.value} alt="Preview" className="h-full w-full object-cover" />
+                        </div>
+                      )}
                     </div>
-                    {field.value && (
-                      <div className="flex items-center gap-3">
-                        <div className="h-16 w-16 rounded border overflow-hidden bg-muted">
-                          <img src={field.value} alt="Selected gallery" className="h-full w-full object-cover" />
-                        </div>
-                        <div className="text-xs text-muted-foreground break-all">
-                          {field.value}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <p className="text-sm text-muted-foreground my-3 text-center">OR</p>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="beforeImageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Before Image</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <Input
-                        {...field}
-                        type="url"
-                        placeholder="https://example.com/before.jpg"
-                        data-testid="input-beforeImageUrl-url"
-                      />
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <div className="space-y-5">
+              <FormField
+                control={form.control}
+                name="beforeImageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-bold tracking-wide">BEFORE</span>
+                      Before Photo
+                    </FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
                         <Input
                           type="file"
                           accept="image/*"
@@ -546,41 +566,32 @@ export function GalleryManagement() {
                             setBlobBrowserOpen(true);
                           }}
                         >
-                          Choose Existing Image
+                          Choose Existing
                         </Button>
+                        {field.value && (
+                          <div className="relative h-48 w-full rounded border overflow-hidden bg-muted">
+                            <img src={field.value} alt="Before preview" className="h-full w-full object-cover" />
+                            <span className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded font-bold">BEFORE</span>
+                          </div>
+                        )}
                       </div>
-                      {field.value && (
-                        <div className="flex items-center gap-3">
-                          <div className="h-14 w-14 rounded border overflow-hidden bg-muted">
-                            <img src={field.value} alt="Selected before image" className="h-full w-full object-cover" />
-                          </div>
-                          <div className="text-[11px] text-muted-foreground break-all">
-                            {field.value}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="afterImageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>After Image</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <Input
-                        {...field}
-                        type="url"
-                        placeholder="https://example.com/after.jpg"
-                        data-testid="input-afterImageUrl-url"
-                      />
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <FormField
+                control={form.control}
+                name="afterImageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold tracking-wide">AFTER</span>
+                      After Photo
+                    </FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
                         <Input
                           type="file"
                           accept="image/*"
@@ -601,27 +612,23 @@ export function GalleryManagement() {
                             setBlobBrowserOpen(true);
                           }}
                         >
-                          Choose Existing Image
+                          Choose Existing
                         </Button>
+                        {field.value && (
+                          <div className="relative h-48 w-full rounded border overflow-hidden bg-muted">
+                            <img src={field.value} alt="After preview" className="h-full w-full object-cover" />
+                            <span className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded font-bold">AFTER</span>
+                          </div>
+                        )}
                       </div>
-                      {field.value && (
-                        <div className="flex items-center gap-3">
-                          <div className="h-14 w-14 rounded border overflow-hidden bg-muted">
-                            <img src={field.value} alt="Selected after image" className="h-full w-full object-cover" />
-                          </div>
-                          <div className="text-[11px] text-muted-foreground break-all">
-                            {field.value}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+
           {rootError && (
             <p className="text-sm text-destructive mt-2" data-testid="error-root">
               {rootError}
@@ -682,19 +689,21 @@ export function GalleryManagement() {
               <CardContent className="p-4">
                 {item.beforeImageUrl && item.afterImageUrl ? (
                   <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="aspect-square rounded overflow-hidden bg-muted">
+                    <div className="relative aspect-square rounded overflow-hidden bg-muted">
                       <img
                         src={item.beforeImageUrl || placeholderImage}
                         alt={`${item.title} - Before`}
                         className="w-full h-full object-cover"
                       />
+                      <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">BEFORE</span>
                     </div>
-                    <div className="aspect-square rounded overflow-hidden bg-muted">
+                    <div className="relative aspect-square rounded overflow-hidden bg-muted">
                       <img
                         src={item.afterImageUrl || placeholderImage}
                         alt={`${item.title} - After`}
                         className="w-full h-full object-cover"
                       />
+                      <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">AFTER</span>
                     </div>
                   </div>
                 ) : item.imageUrl ? (

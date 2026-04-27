@@ -221,10 +221,12 @@ export function Gallery() {
                     </p>
                   </div>
                 </div>
-                {/* Before/After Label */}
-                <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-xs font-semibold pointer-events-none">
-                  Before & After
-                </div>
+                {/* Before/After Label - only show on before/after pairs */}
+                {item.beforeImageUrl && item.afterImageUrl && (
+                  <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-xs font-semibold pointer-events-none">
+                    Before &amp; After
+                  </div>
+                )}
               </div>
             ))}
           </div>

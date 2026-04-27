@@ -13,3 +13,8 @@ prn
 aux
 com[1-9]
 lpt[1-9]
+.vercel
+.env*.local
+dev-uploads/
+env
+.claude/

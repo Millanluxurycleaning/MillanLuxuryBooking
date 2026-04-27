@@ -21,50 +21,55 @@ export default function Admin() {
   const { user, isLoading, isLoaded, isSignedIn, isAdmin, error } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Show sign-in screen if not signed in
-  if (!isLoading && isLoaded && !isSignedIn) {
-    return <SignInButton redirectTo="/admin" />;
-  }
+  // Local dev bypass — skip all auth checks when running on localhost
+  const isDevBypass = import.meta.env.DEV;
 
-  // Show loading spinner while checking user permissions
-  if (isLoading || !isLoaded) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" data-testid="loader-admin" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
+  if (!isDevBypass) {
+    // Show sign-in screen if not signed in
+    if (!isLoading && isLoaded && !isSignedIn) {
+      return <SignInButton redirectTo="/admin" />;
+    }
+
+    // Show loading spinner while checking user permissions
+    if (isLoading || !isLoaded) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" data-testid="loader-admin" />
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+
+    // Show error state if authentication failed
+    if (error) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <Card className="max-w-md">
+            <CardHeader>
+              <CardTitle>Authentication Error</CardTitle>
+              <CardDescription>
+                Failed to load your account. {error.message || 'Please try again.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-sm text-primary hover:underline"
+                data-testid="button-retry"
+              >
+                Retry
+              </button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
   }
 
-  // Show error state if authentication failed
-  if (error) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Authentication Error</CardTitle>
-            <CardDescription>
-              Failed to load your account. {error.message || 'Please try again.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="text-sm text-primary hover:underline"
-              data-testid="button-retry"
-            >
-              Retry
-            </button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Redirect non-admins once loaded
-  if (isLoaded && isSignedIn && !isAdmin) {
+  // Redirect non-admins once loaded (production only)
+  if (!isDevBypass && isLoaded && isSignedIn && !isAdmin) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Card className="max-w-md">
@@ -94,7 +99,7 @@ export default function Admin() {
           <div>
             <h1 className="text-2xl font-serif font-semibold">Admin Dashboard</h1>
             <p className="text-sm text-muted-foreground">
-              Welcome, {user?.firstName || user?.email || "Admin"}
+              Welcome, {user?.firstName || user?.email || "Admin"}{isDevBypass && !user ? " (dev mode)" : ""}
             </p>
           </div>
           <UserMenu />

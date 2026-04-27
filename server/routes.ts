@@ -1,4 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import fs from "fs";
+import path from "path";
+import express from "express";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { Express, Request, RequestHandler, Response } from "express";
 import { createServer, type Server } from "http";
@@ -357,6 +360,12 @@ const createRequireAuthMiddleware = (supabaseEnabled: boolean): RequestHandler =
 
 const createRequireAdminMiddleware = (prisma: PrismaClient, supabaseEnabled: boolean): RequestHandler => {
   return async (req, res, next) => {
+    // Local dev bypass — skip auth when not explicitly in production
+    if (process.env.NODE_ENV !== "production") {
+      next();
+      return;
+    }
+
     if (!supabaseEnabled) {
       res.status(401).json({ message: "Unauthorized - Authentication not configured" });
       return;
@@ -721,6 +730,19 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
 
   app.get("/api/blob/list", requireAdmin, async (req, res) => {
     if (!env.blobEnabled) {
+      // Dev fallback: return local uploads if any exist
+      if (process.env.NODE_ENV !== "production") {
+        const localDir = path.join(process.cwd(), "dev-uploads");
+        if (!fs.existsSync(localDir)) {
+          res.json({ images: [] });
+          return;
+        }
+        const files = fs.readdirSync(localDir).filter(f => /\.(jpg|jpeg|png|webp|gif|avif|svg)$/i.test(f));
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const images = files.map(f => ({ url: `${baseUrl}/dev-uploads/${f}`, pathname: `dev-uploads/${f}`, size: 0 }));
+        res.json({ images });
+        return;
+      }
       res.status(503).json({ error: "Blob storage is not configured." });
       return;
     }
@@ -744,8 +766,31 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
     }
   });
 
+  // Serve local dev uploads as static files (dev only)
+  const devUploadsDir = path.join(process.cwd(), "dev-uploads");
+  if (process.env.NODE_ENV !== "production") {
+    if (!fs.existsSync(devUploadsDir)) fs.mkdirSync(devUploadsDir, { recursive: true });
+    app.use("/dev-uploads", express.static(devUploadsDir));
+  }
+
   app.post("/api/blob/upload", requireAdmin, upload.single("file"), async (req, res) => {
     if (!env.blobEnabled) {
+      // Dev fallback: save file locally and return a full absolute URL
+      if (process.env.NODE_ENV !== "production" && req.file) {
+        const normalizedFile = normalizeUploadFile(req.file);
+        if (!isAllowedImageType(normalizedFile.mimetype)) {
+          res.status(400).json({ error: "Only image uploads are allowed" });
+          return;
+        }
+        const ext = path.extname(normalizedFile.originalname) || ".jpg";
+        const filename = `${Date.now()}-${randomBytes(6).toString("hex")}${ext}`;
+        const destPath = path.join(devUploadsDir, filename);
+        fs.writeFileSync(destPath, normalizedFile.buffer);
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const url = `${baseUrl}/dev-uploads/${filename}`;
+        res.json({ url, pathname: `dev-uploads/${filename}`, size: normalizedFile.size });
+        return;
+      }
       res.status(503).json({ error: "Blob storage is not configured." });
       return;
     }
