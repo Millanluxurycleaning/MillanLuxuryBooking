@@ -40,7 +40,17 @@
       "Bash(git cherry-pick:*)",
       "Bash(python -c:*)",
       "Bash(git rm:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(npx prisma *)",
+      "Bash(node_modules/.bin/prisma db *)",
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH\")",
+      "Bash(npm --version)",
+      "Read(//Users/ivanmillan/**)",
+      "Bash(npx tsc *)",
+      "Bash(npx tsx *)",
+      "Bash(npx vercel *)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel --version)"
     ]
   }
 }
