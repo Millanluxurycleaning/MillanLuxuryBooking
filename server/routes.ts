@@ -837,6 +837,7 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       const jsonResponse = await handleUpload({
         body: req.body as HandleUploadBody,
         request: req as any,
+        token: env.blob.token,
         onBeforeGenerateToken: async (_pathname, clientPayload) => {
           if (!clientPayload) throw new Error("Unauthorized - Please sign in");
           const { data: { user }, error } = await supabaseAdmin.auth.getUser(clientPayload);
