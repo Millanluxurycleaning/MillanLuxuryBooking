@@ -16,32 +16,10 @@ import { handleUnauthorizedError, getErrorMessage } from "@/lib/authUtils";
 import { ImageIcon, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import type { GalleryItem, InsertGalleryItem } from "@shared/types";
 import { insertGalleryItemSchema } from "@shared/types";
-import { apiRequest, parseJsonResponse, queryClient } from "@/lib/queryClient";
+import { apiRequest, parseJsonResponse, queryClient, throwIfResNotOk } from "@/lib/queryClient";
 import { normalizeArrayData } from "@/lib/arrayUtils";
 import { BlobBrowserModal, type BlobBrowserModalProps } from "./BlobBrowserModal";
 import type { BlobImage } from "@/types/blob";
-import { supabase } from "@/lib/supabase";
-
-async function clientUploadToBlob(pathname: string, file: File, accessToken: string): Promise<{ url: string; pathname: string }> {
-  const tokenRes = await fetch('/api/blob/handle-upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'blob.generate-client-token', payload: { pathname, clientPayload: accessToken, multipart: false } }),
-  });
-  if (!tokenRes.ok) {
-    const err = await tokenRes.json().catch(() => ({})) as { error?: string };
-    throw new Error(err.error || 'Failed to get upload token');
-  }
-  const { clientToken } = await tokenRes.json() as { clientToken: string };
-  const params = new URLSearchParams({ pathname });
-  const blobRes = await fetch(`https://vercel.com/api/blob/?${params.toString()}`, {
-    method: 'PUT',
-    headers: { 'Authorization': `Bearer ${clientToken}`, 'x-content-type': file.type },
-    body: file,
-  });
-  if (!blobRes.ok) throw new Error('Upload to storage failed');
-  return blobRes.json() as Promise<{ url: string; pathname: string }>;
-}
 
 type GalleryFormData = InsertGalleryItem;
 const placeholderImage = "https://placehold.co/600x600?text=Image+coming+soon";
@@ -372,20 +350,32 @@ export function GalleryManagement() {
     const handleFileUpload = async (file: File, fieldName: 'imageUrl' | 'beforeImageUrl' | 'afterImageUrl') => {
       setUploading(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const formData = new FormData();
+        formData.append('file', file);
+
         const prefix = fieldPrefixMap[fieldName];
-        const safeName = file.name.replace(/\s+/g, '-');
-        const pathname = `static/${prefix}/${Date.now()}-${safeName}`;
+        const response = await fetch(`/api/blob/upload?prefix=${prefix}`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
 
-        const blob = await clientUploadToBlob(pathname, file, session?.access_token ?? '');
+        await throwIfResNotOk(response);
+        const payload = await parseJsonResponse(response, `/api/blob/upload?prefix=${prefix}`);
 
-        form.setValue(fieldName, blob.url);
+        const data = (payload?.data ?? payload) as Partial<BlobImage> & { url?: string; pathname?: string };
+
+        if (!data?.url || !data.pathname) {
+          throw new Error('Upload failed');
+        }
+
+        form.setValue(fieldName, data.url);
 
         const mapping = metaMap[fieldName];
-        const filename = blob.pathname.split('/').pop() || file.name;
+        const filename = data.pathname.split('/').pop() || file.name;
 
         if (mapping) {
-          form.setValue(mapping.publicId as keyof GalleryFormData, blob.pathname);
+          form.setValue(mapping.publicId as keyof GalleryFormData, data.pathname);
           form.setValue(mapping.filename as keyof GalleryFormData, filename);
         }
 
