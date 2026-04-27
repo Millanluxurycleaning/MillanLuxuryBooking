@@ -16,10 +16,12 @@ import { handleUnauthorizedError, getErrorMessage } from "@/lib/authUtils";
 import { ImageIcon, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import type { GalleryItem, InsertGalleryItem } from "@shared/types";
 import { insertGalleryItemSchema } from "@shared/types";
-import { apiRequest, parseJsonResponse, queryClient, throwIfResNotOk } from "@/lib/queryClient";
+import { upload } from "@vercel/blob/client";
+import { apiRequest, parseJsonResponse, queryClient } from "@/lib/queryClient";
 import { normalizeArrayData } from "@/lib/arrayUtils";
 import { BlobBrowserModal, type BlobBrowserModalProps } from "./BlobBrowserModal";
 import type { BlobImage } from "@/types/blob";
+import { supabase } from "@/lib/supabase";
 
 type GalleryFormData = InsertGalleryItem;
 const placeholderImage = "https://placehold.co/600x600?text=Image+coming+soon";
@@ -350,32 +352,24 @@ export function GalleryManagement() {
     const handleFileUpload = async (file: File, fieldName: 'imageUrl' | 'beforeImageUrl' | 'afterImageUrl') => {
       setUploading(true);
       try {
-        const formData = new FormData();
-        formData.append('file', file);
-
+        const { data: { session } } = await supabase.auth.getSession();
         const prefix = fieldPrefixMap[fieldName];
-        const response = await fetch(`/api/blob/upload?prefix=${prefix}`, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
+        const safeName = file.name.replace(/\s+/g, '-');
+        const pathname = `static/${prefix}/${Date.now()}-${safeName}`;
+
+        const blob = await upload(pathname, file, {
+          access: 'public',
+          handleUploadUrl: '/api/blob/handle-upload',
+          clientPayload: session?.access_token ?? '',
         });
 
-        await throwIfResNotOk(response);
-        const payload = await parseJsonResponse(response, `/api/blob/upload?prefix=${prefix}`);
-
-        const data = (payload?.data ?? payload) as Partial<BlobImage> & { url?: string; pathname?: string };
-
-        if (!data?.url || !data.pathname) {
-          throw new Error('Upload failed');
-        }
-
-        form.setValue(fieldName, data.url);
+        form.setValue(fieldName, blob.url);
 
         const mapping = metaMap[fieldName];
-        const filename = data.pathname.split('/').pop() || file.name;
+        const filename = blob.pathname.split('/').pop() || file.name;
 
         if (mapping) {
-          form.setValue(mapping.publicId as keyof GalleryFormData, data.pathname);
+          form.setValue(mapping.publicId as keyof GalleryFormData, blob.pathname);
           form.setValue(mapping.filename as keyof GalleryFormData, filename);
         }
 

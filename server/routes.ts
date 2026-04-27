@@ -33,7 +33,8 @@ import multer from "multer";
 import type { Asset, SiteAsset } from "../shared/types.js";
 import type { EnvConfig } from "./env.js";
 import { list as listBlobFiles, upload as uploadBlobFile, remove as removeBlob } from "./blobService.js";
-import { getUserFromRequest, isUserAdmin } from "./supabase.js";
+import { getUserFromRequest, isUserAdmin, supabaseAdmin } from "./supabase.js";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getGoogleAuthUrl, exchangeCodeForTokens, fetchGoogleReviews } from "./google.js";
 import { saveTokens, getValidToken } from "./tokenService.js";
 import {
@@ -823,6 +824,39 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
     } catch (error) {
       console.error("Blob upload failed", error);
       res.status(500).json({ error: "Failed to upload blob" });
+    }
+  });
+
+  // Client-side direct upload to Vercel Blob (bypasses serverless body limit)
+  app.post("/api/blob/handle-upload", async (req, res) => {
+    if (!env.blobEnabled) {
+      res.status(503).json({ error: "Blob storage is not configured." });
+      return;
+    }
+    try {
+      const jsonResponse = await handleUpload({
+        body: req.body as HandleUploadBody,
+        request: req as any,
+        onBeforeGenerateToken: async (_pathname, clientPayload) => {
+          if (!clientPayload) throw new Error("Unauthorized - Please sign in");
+          const { data: { user }, error } = await supabaseAdmin.auth.getUser(clientPayload);
+          if (error || !user) throw new Error("Unauthorized - Please sign in");
+          const admin = await isUserAdmin(user.id, prisma, user.email ?? undefined);
+          if (!admin) throw new Error("Forbidden - Admin access required");
+          return {
+            allowedContentTypes: ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"],
+            maximumSizeInBytes: 15 * 1024 * 1024,
+          };
+        },
+        onUploadCompleted: async ({ blob }) => {
+          console.log("[Blob] Client upload completed:", blob.url);
+        },
+      });
+      res.json(jsonResponse);
+    } catch (error: any) {
+      const status = error.message?.includes("Unauthorized") ? 401
+        : error.message?.includes("Forbidden") ? 403 : 400;
+      res.status(status).json({ error: error.message });
     }
   });
 
