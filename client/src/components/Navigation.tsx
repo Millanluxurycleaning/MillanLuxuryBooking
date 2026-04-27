@@ -40,9 +40,8 @@ export function Navigation() {
 
   return (
     <nav
-      className={`fixed left-0 right-0 z-50 transition-all duration-300 ${
-        isBannerVisible ? "top-10" : "top-0"
-      } ${
+      style={{ transform: isBannerVisible ? "translateY(40px)" : "translateY(0)" }}
+      className={`fixed top-0 left-0 right-0 z-50 transition-[transform,background-color,box-shadow,border-color] duration-300 ${
         isScrolled
           ? "bg-card/95 backdrop-blur-md shadow-md border-b border-border"
           : "bg-transparent"

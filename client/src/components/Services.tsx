@@ -520,7 +520,7 @@ export function Services({
                             className={`w-full ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
                             data-testid={`button-book-${service.id}`}
                           >
-                            <a href={bookingLink}>{isLuxe ? "Reserve This Service" : "Book This Service"}</a>
+                            <a href={bookingLink}>{isLuxe ? `Reserve ${resolveServiceTitle(service)}` : `Book ${resolveServiceTitle(service)}`}</a>
                           </Button>
                         </CardFooter>
                       </Card>

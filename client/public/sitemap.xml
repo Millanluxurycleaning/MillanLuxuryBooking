@@ -5,19 +5,23 @@
   <!-- Home Page -->
   <url>
     <loc>https://millanluxurycleaning.com</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-04-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
       <image:loc>https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/dark-botanical-bg.png</image:loc>
       <image:title>Millan Luxury Cleaning Hero</image:title>
     </image:image>
+    <image:image>
+      <image:loc>https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/gallery/Screenshot%202025-11-14%20093949_1763138704138.png</image:loc>
+      <image:title>Professional Cleaning Results</image:title>
+    </image:image>
   </url>
 
   <!-- Services Page -->
   <url>
     <loc>https://millanluxurycleaning.com/services</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-04-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
@@ -25,7 +29,7 @@
   <!-- Book Online -->
   <url>
     <loc>https://millanluxurycleaning.com/book</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-04-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.95</priority>
   </url>
@@ -33,7 +37,7 @@
   <!-- Fragrances Shop -->
   <url>
     <loc>https://millanluxurycleaning.com/fragrances</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-04-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -41,7 +45,7 @@
   <!-- Blog -->
   <url>
     <loc>https://millanluxurycleaning.com/blog</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-04-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.80</priority>
   </url>
@@ -49,53 +53,9 @@
   <!-- Partners -->
   <url>
     <loc>https://millanluxurycleaning.com/partners</loc>
-    <lastmod>2026-04-24</lastmod>
+    <lastmod>2026-04-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
-  </url>
-
-  <!-- About Section (anchor link) -->
-  <url>
-    <loc>https://millanluxurycleaning.com/#about</loc>
-    <lastmod>2026-04-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.80</priority>
-  </url>
-
-  <!-- Gallery Section (anchor link) -->
-  <url>
-    <loc>https://millanluxurycleaning.com/#gallery</loc>
-    <lastmod>2026-04-24</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.75</priority>
-    <image:image>
-      <image:loc>https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/gallery/Screenshot%202025-11-14%20093949_1763138704138.png</image:loc>
-      <image:title>Professional Cleaning Results</image:title>
-    </image:image>
-  </url>
-
-  <!-- Testimonials Section (anchor link) -->
-  <url>
-    <loc>https://millanluxurycleaning.com/#testimonials</loc>
-    <lastmod>2026-04-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-
-  <!-- FAQ Section (anchor link) -->
-  <url>
-    <loc>https://millanluxurycleaning.com/#faq</loc>
-    <lastmod>2026-04-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.65</priority>
-  </url>
-
-  <!-- Contact Section (anchor link) -->
-  <url>
-    <loc>https://millanluxurycleaning.com/#contact</loc>
-    <lastmod>2026-04-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.85</priority>
   </url>
 
 </urlset>

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Helmet } from "react-helmet-async";
 import {
   Accordion,
   AccordionContent,
@@ -56,8 +57,26 @@ export function FAQ() {
     }
   }, [faqsPayload, isValid, isLoading, error]);
 
+  const faqSchema = selectedFaqs.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": selectedFaqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer,
+      },
+    })),
+  } : null;
+
   return (
     <section id="faq" className="py-20 md:py-32 bg-background">
+      {faqSchema && (
+        <Helmet>
+          <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
+        </Helmet>
+      )}
       <div className="container mx-auto px-6 md:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">

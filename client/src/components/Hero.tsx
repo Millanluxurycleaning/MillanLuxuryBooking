@@ -35,8 +35,11 @@ export function Hero() {
           <div className="relative inline-block crown-shimmer">
             <img
               src={crown}
-              alt="Gold Crown"
+              alt="Millan Luxury Cleaning gold crown logo"
               className="w-64 mx-auto drop-shadow-xl object-contain"
+              fetchPriority="high"
+              width={256}
+              height={256}
             />
             <span className="crown-sparkle sparkle-1" aria-hidden="true" />
             <span className="crown-sparkle sparkle-2" aria-hidden="true" />
@@ -44,13 +47,16 @@ export function Hero() {
           </div>
         </div>
         
-        {/* Brand Name */}
-        <h1 className="text-white font-serif font-semibold text-4xl md:text-6xl lg:text-7xl mb-4 tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-100">
+        {/* SEO H1 — visually hidden, keyword-rich for Google */}
+        <h1 className="sr-only">Luxury House Cleaning Services in Phoenix, AZ | Millan Luxury Cleaning</h1>
+
+        {/* Brand Name — decorative display */}
+        <div className="text-white font-serif font-semibold text-4xl md:text-6xl lg:text-7xl mb-4 tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-100" aria-hidden="true">
           MILLAN
-        </h1>
-        <h2 className="text-white font-serif font-medium text-2xl md:text-4xl lg:text-5xl mb-6 tracking-widest animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
+        </div>
+        <div className="text-white font-serif font-medium text-2xl md:text-4xl lg:text-5xl mb-6 tracking-widest animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200" aria-hidden="true">
           LUXURY CLEANING
-        </h2>
+        </div>
         
         {/* Tagline */}
         <div className="flex items-center justify-center gap-3 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
