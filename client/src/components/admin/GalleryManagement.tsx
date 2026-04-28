@@ -16,7 +16,8 @@ import { handleUnauthorizedError, getErrorMessage } from "@/lib/authUtils";
 import { ImageIcon, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import type { GalleryItem, InsertGalleryItem } from "@shared/types";
 import { insertGalleryItemSchema } from "@shared/types";
-import { apiRequest, parseJsonResponse, queryClient, throwIfResNotOk } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { supabase } from "@/lib/supabase";
 import { normalizeArrayData } from "@/lib/arrayUtils";
 import { BlobBrowserModal, type BlobBrowserModalProps } from "./BlobBrowserModal";
 import type { BlobImage } from "@/types/blob";
@@ -350,39 +351,61 @@ export function GalleryManagement() {
     const handleFileUpload = async (file: File, fieldName: 'imageUrl' | 'beforeImageUrl' | 'afterImageUrl') => {
       setUploading(true);
       try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const prefix = fieldPrefixMap[fieldName];
-        const response = await fetch(`/api/blob/upload?prefix=${prefix}`, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-        });
-
-        await throwIfResNotOk(response);
-        const payload = await parseJsonResponse(response, `/api/blob/upload?prefix=${prefix}`);
-
-        const data = (payload?.data ?? payload) as Partial<BlobImage> & { url?: string; pathname?: string };
-
-        if (!data?.url || !data.pathname) {
-          throw new Error('Upload failed');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('Not signed in. Please refresh and try again.');
         }
 
-        form.setValue(fieldName, data.url);
+        const prefix = fieldPrefixMap[fieldName];
+        const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+        const pathname = `${prefix}/${Date.now()}.${ext}`;
 
+        // Step 1: get a short-lived client upload token from our server (auth is verified here)
+        const tokenRes = await fetch('/api/blob/handle-upload', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            type: 'blob.generate-client-token',
+            payload: { pathname, clientPayload: session.access_token, multipart: false },
+          }),
+        });
+
+        if (!tokenRes.ok) {
+          const err = await tokenRes.json().catch(() => ({})) as { error?: string };
+          throw new Error(err?.error || `Token request failed (${tokenRes.status})`);
+        }
+
+        const { clientToken } = await tokenRes.json() as { clientToken: string };
+
+        // Step 2: upload directly to Vercel Blob storage (bypasses 4.5 MB serverless body limit)
+        const params = new URLSearchParams({ pathname });
+        const uploadRes = await fetch(`https://vercel.com/api/blob/?${params}`, {
+          method: 'PUT',
+          headers: {
+            authorization: `Bearer ${clientToken}`,
+            'x-content-type': file.type || 'application/octet-stream',
+            'x-add-random-suffix': '0',
+            'x-api-version': '11',
+          },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          const errBody = await uploadRes.json().catch(() => ({})) as { error?: string; message?: string };
+          throw new Error(errBody?.error || errBody?.message || `Upload failed (${uploadRes.status})`);
+        }
+
+        const result = await uploadRes.json() as { url: string; pathname: string };
+
+        form.setValue(fieldName, result.url);
         const mapping = metaMap[fieldName];
-        const filename = data.pathname.split('/').pop() || file.name;
-
+        const filename = result.pathname.split('/').pop() || file.name;
         if (mapping) {
-          form.setValue(mapping.publicId as keyof GalleryFormData, data.pathname);
+          form.setValue(mapping.publicId as keyof GalleryFormData, result.pathname);
           form.setValue(mapping.filename as keyof GalleryFormData, filename);
         }
 
-        toast({
-          title: "Success",
-          description: "Image uploaded successfully",
-        });
+        toast({ title: "Success", description: "Image uploaded successfully" });
       } catch (error) {
         toast({
           title: "Error",
