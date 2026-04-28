@@ -26,12 +26,11 @@ export default function Fragrances() {
     queryKey: ['/api/products'],
   });
 
-  // Group products by Square item id (variations of the same product)
+  // Group products by category + name so all fragrance variants share one card
   const groupedProducts = useMemo(() => {
     const groups = new Map<string, FragranceProduct[]>();
     products.forEach((product) => {
-      const fallbackKey = `${product.category}::${product.name}`;
-      const key = product.squareItemId ?? fallbackKey;
+      const key = `${product.category}::${product.name.trim().toLowerCase()}`;
       const existing = groups.get(key) ?? [];
       existing.push(product);
       groups.set(key, existing);
