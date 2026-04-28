@@ -103,7 +103,7 @@ export function Gallery() {
   const renderGalleryImage = (item: GalleryItem) => {
     if (item.beforeImageUrl && item.afterImageUrl) {
       return (
-        <div className="w-full">
+        <div className="w-full aspect-[4/3] overflow-hidden">
           <ReactCompareImage
             leftImage={item.beforeImageUrl || placeholderImage}
             rightImage={item.afterImageUrl || placeholderImage}
@@ -120,7 +120,7 @@ export function Gallery() {
       <img
         src={item.imageUrl || placeholderImage}
         alt={item.title || "Gallery image"}
-        className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+        className="w-full aspect-[4/3] object-cover transition-transform duration-300 group-hover:scale-105"
         data-testid={`img-gallery-${item.id}`}
       />
     );
@@ -129,7 +129,7 @@ export function Gallery() {
   const renderLightboxImage = (item: GalleryItem) => {
     if (item.beforeImageUrl && item.afterImageUrl) {
       return (
-        <div className="w-full">
+        <div className="w-full max-h-[70vh] overflow-hidden">
           <ReactCompareImage
             leftImage={item.beforeImageUrl || placeholderImage}
             rightImage={item.afterImageUrl || placeholderImage}
