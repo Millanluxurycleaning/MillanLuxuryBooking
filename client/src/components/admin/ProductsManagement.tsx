@@ -697,9 +697,32 @@ export function ProductsManagement() {
 
   // ── product group card (one card per unique product name) ──────────────────
 
+  const handleDedup = async (variants: FragranceProduct[]) => {
+    // Keep first occurrence of each fragrance, delete the rest
+    const seen = new Set<string>();
+    const toDelete: number[] = [];
+    variants.forEach((p) => {
+      const key = p.fragrance.trim().toLowerCase();
+      if (seen.has(key)) {
+        toDelete.push(p.id);
+      } else {
+        seen.add(key);
+      }
+    });
+    if (toDelete.length === 0) return;
+    try {
+      await Promise.all(toDelete.map((id) => apiRequest("DELETE", `/api/products/${id}`)));
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Done", description: `Removed ${toDelete.length} duplicate variant${toDelete.length > 1 ? "s" : ""}.` });
+    } catch (err) {
+      toast({ title: "Error", description: getErrorMessage(err) || "Failed to remove duplicates", variant: "destructive" });
+    }
+  };
+
   const ProductGroupCard = ({ variants }: { variants: FragranceProduct[] }) => {
     const first = variants[0];
     const allHidden = variants.every((p) => !p.isVisible);
+    const hasDuplicates = variants.length !== new Set(variants.map((p) => p.fragrance.trim().toLowerCase())).size;
     return (
       <Card className={`overflow-hidden transition-opacity ${allHidden ? "opacity-60" : ""}`}>
         {first.imageUrl ? (
@@ -731,6 +754,21 @@ export function ProductsManagement() {
               </div>
             )}
           </div>
+
+          {/* Duplicate warning */}
+          {hasDuplicates && (
+            <div className="flex items-center justify-between gap-2 rounded-md bg-destructive/10 border border-destructive/20 px-2 py-1.5">
+              <p className="text-[11px] text-destructive font-medium">
+                {variants.length - new Set(variants.map((p) => p.fragrance.trim().toLowerCase())).size} duplicate{variants.length - new Set(variants.map((p) => p.fragrance.trim().toLowerCase())).size > 1 ? "s" : ""} found
+              </p>
+              <Button
+                variant="destructive" size="sm" className="h-6 text-[11px] px-2"
+                onClick={() => handleDedup(variants)}
+              >
+                Fix
+              </Button>
+            </div>
+          )}
 
           {/* Fragrance chips */}
           <div>
