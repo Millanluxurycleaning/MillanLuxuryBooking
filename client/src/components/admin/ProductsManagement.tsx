@@ -27,6 +27,9 @@ import type { BlobImage } from "@/types/blob";
 
 type ProductFormData = z.infer<typeof insertFragranceProductSchema> & FieldValues;
 
+const groupEditSchema = insertFragranceProductSchema.omit({ fragrance: true });
+type GroupEditData = z.infer<typeof groupEditSchema> & FieldValues;
+
 const PRODUCT_CATEGORIES = [
   { value: "candle-3wick", label: "3-Wick Candle" },
   { value: "candle-mini", label: "Mini Candle" },
@@ -79,11 +82,13 @@ export function ProductsManagement() {
   const [editingItem, setEditingItem] = useState<FragranceProduct | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   const [blobBrowserOpen, setBlobBrowserOpen] = useState(false);
-  const [blobTargetForm, setBlobTargetForm] = useState<"add" | "edit">("add");
+  const [blobTargetForm, setBlobTargetForm] = useState<"add" | "edit" | "group">("add");
   const [uploading, setUploading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedFragrances, setSelectedFragrances] = useState<string[]>([]);
   const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<FragranceProduct[] | null>(null);
+  const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
 
   const { data: productsPayload, isLoading, error } = useQuery<FragranceProduct[]>({
     queryKey: ["/api/products"],
@@ -149,6 +154,14 @@ export function ProductsManagement() {
     resolver: zodResolver(insertFragranceProductSchema),
     defaultValues: {
       name: "", description: "", category: "candle-3wick", fragrance: "",
+      price: 0, displayPrice: true, isVisible: true, squareUrl: "", featured: false,
+    },
+  });
+
+  const groupEditForm = useForm<GroupEditData>({
+    resolver: zodResolver(groupEditSchema),
+    defaultValues: {
+      name: "", description: "", category: "candle-3wick",
       price: 0, displayPrice: true, isVisible: true, squareUrl: "", featured: false,
     },
   });
@@ -249,7 +262,7 @@ export function ProductsManagement() {
     setEditingItem(item);
   };
 
-  const handleFileUpload = async (file: File, form: typeof addForm | typeof editForm) => {
+  const handleFileUpload = async (file: File, form: { setValue: (name: string, value: any) => void }) => {
     setUploading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -302,7 +315,7 @@ export function ProductsManagement() {
   };
 
   const handleBlobSelect = (image: BlobImage) => {
-    const targetForm = blobTargetForm === "add" ? addForm : editForm;
+    const targetForm = blobTargetForm === "add" ? addForm : blobTargetForm === "group" ? groupEditForm : editForm;
     targetForm.setValue("imageUrl", image.url as any);
     setBlobBrowserOpen(false);
   };
@@ -335,6 +348,42 @@ export function ProductsManagement() {
   };
 
   const isInStock = (fragrance: string) => fragranceStock[fragrance] !== false;
+
+  const handleEditGroup = (variants: FragranceProduct[]) => {
+    const first = variants[0];
+    groupEditForm.reset({
+      name: first.name,
+      description: first.description,
+      category: first.category as any,
+      price: Number(first.price),
+      salePrice: first.salePrice ? Number(first.salePrice) : undefined,
+      displayPrice: first.displayPrice,
+      isVisible: first.isVisible,
+      imageUrl: first.imageUrl || undefined,
+      squareUrl: first.squareUrl,
+      sku: first.sku || undefined,
+      featured: first.featured,
+    });
+    setEditingGroup(variants);
+  };
+
+  const onGroupEditSubmit = async (data: GroupEditData) => {
+    if (!editingGroup) return;
+    setIsUpdatingGroup(true);
+    try {
+      await Promise.all(
+        editingGroup.map((p) => apiRequest("PATCH", `/api/products/${p.id}`, data))
+      );
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Success", description: `Updated ${editingGroup.length} variant${editingGroup.length > 1 ? "s" : ""}.` });
+      setEditingGroup(null);
+      groupEditForm.reset();
+    } catch (err) {
+      toast({ title: "Error", description: getErrorMessage(err) || "Failed to update", variant: "destructive" });
+    } finally {
+      setIsUpdatingGroup(false);
+    }
+  };
 
   const handleSquareSync = async () => {
     setIsSyncing(true);
@@ -811,13 +860,20 @@ export function ProductsManagement() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1 pt-1">
+          <div className="flex flex-col gap-1 pt-1">
             <Button
-              variant="outline" size="sm" className="flex-1 h-7 text-xs"
-              onClick={() => handleAddVariant(first)}
+              variant="default" size="sm" className="w-full h-8 text-xs"
+              onClick={() => handleEditGroup(variants)}
             >
-              <Plus className="h-3 w-3 mr-1" /> Add Fragrance
+              <Edit className="h-3 w-3 mr-1" /> Edit Price / Sale Price
             </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline" size="sm" className="flex-1 h-7 text-xs"
+                onClick={() => handleAddVariant(first)}
+              >
+                <Plus className="h-3 w-3 mr-1" /> Add Fragrance
+              </Button>
             <Button
               variant={allHidden ? "secondary" : "outline"}
               size="sm" className="h-7 px-2"
@@ -834,6 +890,7 @@ export function ProductsManagement() {
                 </a>
               </Button>
             )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1018,6 +1075,165 @@ export function ProductsManagement() {
           No products in this category yet.
         </div>
       )}
+
+      {/* Group edit dialog — updates price/salePrice/image/etc. for all variants at once */}
+      <Dialog open={!!editingGroup} onOpenChange={(open) => { if (!open) { setEditingGroup(null); groupEditForm.reset(); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Product — All Fragrances</DialogTitle>
+            <DialogDescription>
+              Changes apply to all {editingGroup?.length ?? 0} fragrance variant{(editingGroup?.length ?? 0) !== 1 ? "s" : ""} at once.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...groupEditForm}>
+            <form onSubmit={groupEditForm.handleSubmit(onGroupEditSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={groupEditForm.control} name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Product Name</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField control={groupEditForm.control} name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {PRODUCT_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField control={groupEditForm.control} name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl><Textarea {...field} rows={3} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={groupEditForm.control} name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price ($)</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" min="0"
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField control={groupEditForm.control} name="salePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sale Price ($ – Optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" min="0"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          placeholder="29.99" />
+                      </FormControl>
+                      <FormDescription>Leave empty to remove sale</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField control={groupEditForm.control} name="squareUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Square Product URL</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="url" placeholder="https://millanluxurycleaning.square.site/product/..." />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField control={groupEditForm.control} name="imageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Product Image</FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                          <Input type="file" accept="image/*"
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, groupEditForm); }}
+                            disabled={uploading} />
+                          <Button type="button" variant="outline" size="sm"
+                            onClick={() => { setBlobTargetForm("group"); setBlobBrowserOpen(true); }}>
+                            <ImageIcon className="mr-2 h-4 w-4" /> Browse
+                          </Button>
+                        </div>
+                        {uploading && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
+                          </div>
+                        )}
+                        {field.value && (
+                          <div className="flex items-center gap-3">
+                            <div className="h-20 w-20 rounded border overflow-hidden bg-muted flex-shrink-0">
+                              <img src={field.value} alt="Product" className="h-full w-full object-cover" />
+                            </div>
+                            <Button type="button" variant="ghost" size="sm"
+                              onClick={() => groupEditForm.setValue("imageUrl", undefined as any)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(["displayPrice", "isVisible", "featured"] as const).map((name) => (
+                  <FormField key={name} control={groupEditForm.control} name={name}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            {name === "displayPrice" ? "Show Price" : name === "isVisible" ? "Visible" : "Featured"}
+                          </FormLabel>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                ))}
+              </div>
+
+              <DialogFooter>
+                <Button type="submit" disabled={isUpdatingGroup}>
+                  {isUpdatingGroup && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isUpdatingGroup ? "Saving…" : `Save All ${editingGroup?.length ?? ""} Variants`}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit dialog */}
       <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
