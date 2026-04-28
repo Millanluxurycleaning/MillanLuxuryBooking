@@ -305,6 +305,24 @@ export function ProductsManagement() {
     setBlobBrowserOpen(false);
   };
 
+  // pre-fill add form with a group's shared details so the user only picks fragrance
+  const handleAddVariant = (template: FragranceProduct) => {
+    addForm.reset({
+      name: template.name,
+      category: template.category as any,
+      price: Number(template.price),
+      salePrice: template.salePrice ? Number(template.salePrice) : undefined,
+      description: template.description,
+      imageUrl: template.imageUrl || undefined,
+      squareUrl: template.squareUrl,
+      displayPrice: template.displayPrice,
+      isVisible: template.isVisible,
+      featured: template.featured,
+      fragrance: "",
+    });
+    setIsAddDialogOpen(true);
+  };
+
   const toggleFragranceStock = (fragrance: string) => {
     setFragranceStock((prev) => {
       const current = prev[fragrance] !== false; // default true
@@ -573,79 +591,123 @@ export function ProductsManagement() {
     </Form>
   );
 
-  // ── product card ────────────────────────────────────────────────────────────
+  // ── product group card (one card per unique product name) ──────────────────
 
-  const ProductCard = ({ product }: { product: FragranceProduct }) => (
-    <Card className={`overflow-hidden transition-opacity ${product.isVisible ? "" : "opacity-60"}`}>
-      {product.imageUrl && (
-        <div className="w-full aspect-square bg-muted overflow-hidden">
-          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-        </div>
-      )}
-      {!product.imageUrl && (
-        <div className="w-full aspect-square bg-muted flex items-center justify-center">
-          <Package className="h-10 w-10 text-muted-foreground/40" />
-        </div>
-      )}
-      <CardContent className="p-3 space-y-2">
-        <div className="flex items-start justify-between gap-1">
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm leading-tight truncate">{product.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{product.fragrance}</p>
+  const ProductGroupCard = ({ variants }: { variants: FragranceProduct[] }) => {
+    const first = variants[0];
+    const allHidden = variants.every((p) => !p.isVisible);
+    return (
+      <Card className={`overflow-hidden transition-opacity ${allHidden ? "opacity-60" : ""}`}>
+        {first.imageUrl ? (
+          <div className="w-full aspect-square bg-muted overflow-hidden">
+            <img src={first.imageUrl} alt={first.name} className="w-full h-full object-cover" />
           </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            {product.featured && <Badge className="text-[10px] px-1.5 py-0">Featured</Badge>}
+        ) : (
+          <div className="w-full aspect-square bg-muted flex items-center justify-center">
+            <Package className="h-10 w-10 text-muted-foreground/40" />
           </div>
-        </div>
+        )}
 
-        {product.displayPrice && (
-          <div className="flex items-center gap-1.5">
-            <DollarSign className="h-3 w-3 text-primary flex-shrink-0" />
-            {product.salePrice ? (
-              <>
-                <span className="line-through text-muted-foreground text-xs">${Number(product.price).toFixed(2)}</span>
-                <span className="font-bold text-sm text-primary">${Number(product.salePrice).toFixed(2)}</span>
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Sale</Badge>
-              </>
-            ) : (
-              <span className="font-bold text-sm text-primary">${Number(product.price).toFixed(2)}</span>
+        <CardContent className="p-3 space-y-2">
+          {/* Name + price */}
+          <div>
+            <p className="font-semibold text-sm leading-tight">{first.name}</p>
+            {first.displayPrice && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <DollarSign className="h-3 w-3 text-primary flex-shrink-0" />
+                {first.salePrice ? (
+                  <>
+                    <span className="line-through text-muted-foreground text-xs">${Number(first.price).toFixed(2)}</span>
+                    <span className="font-bold text-sm text-primary">${Number(first.salePrice).toFixed(2)}</span>
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Sale</Badge>
+                  </>
+                ) : (
+                  <span className="font-bold text-sm text-primary">${Number(first.price).toFixed(2)}</span>
+                )}
+              </div>
             )}
           </div>
-        )}
 
-        {product.sku && (
-          <p className="text-[10px] text-muted-foreground font-mono">SKU: {product.sku}</p>
-        )}
+          {/* Fragrance chips */}
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1.5">
+              Fragrances ({variants.length})
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {variants.map((p) => {
+                const inStock = isInStock(p.fragrance);
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-1 rounded-full border text-[11px] font-medium pl-2 pr-1 py-0.5 ${
+                      p.isVisible
+                        ? "bg-background border-border"
+                        : "bg-muted border-muted text-muted-foreground"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-400"}`} />
+                    <button
+                      type="button"
+                      className="hover:underline max-w-[90px] truncate"
+                      title={`Edit ${p.fragrance}`}
+                      onClick={() => handleEdit(p)}
+                    >
+                      {p.fragrance}
+                    </button>
+                    <button
+                      type="button"
+                      className="ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Delete this variant"
+                      onClick={() => setDeletingItemId(p.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-        <div className="flex items-center gap-1 pt-1">
-          <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => handleEdit(product)}>
-            <Edit className="h-3 w-3 mr-1" /> Edit
-          </Button>
-          <Button
-            variant={product.isVisible ? "outline" : "secondary"}
-            size="sm"
-            className="h-7 px-2"
-            title={product.isVisible ? "Hide from site" : "Show on site"}
-            onClick={() => toggleVisibility(product)}
-            disabled={updateMutation.isPending}
-          >
-            {product.isVisible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-          </Button>
-          {product.squareUrl && (
-            <Button variant="outline" size="sm" className="h-7 px-2" asChild>
-              <a href={product.squareUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3" />
-              </a>
+          {/* Actions */}
+          <div className="flex items-center gap-1 pt-1">
+            <Button
+              variant="outline" size="sm" className="flex-1 h-7 text-xs"
+              onClick={() => handleAddVariant(first)}
+            >
+              <Plus className="h-3 w-3 mr-1" /> Add Fragrance
             </Button>
-          )}
-          <Button variant="outline" size="sm" className="h-7 px-2"
-            onClick={() => setDeletingItemId(product.id)} disabled={deleteMutation.isPending}>
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+            <Button
+              variant={allHidden ? "secondary" : "outline"}
+              size="sm" className="h-7 px-2"
+              title={allHidden ? "Show all on site" : "Hide all from site"}
+              onClick={() => variants.forEach((p) => toggleVisibility(p))}
+              disabled={updateMutation.isPending}
+            >
+              {allHidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+            </Button>
+            {first.squareUrl && (
+              <Button variant="outline" size="sm" className="h-7 px-2" asChild>
+                <a href={first.squareUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // group a flat list of products by name → one card per unique name
+  const groupByName = (list: FragranceProduct[]) => {
+    const map = new Map<string, FragranceProduct[]>();
+    list.forEach((p) => {
+      const key = p.name.trim().toLowerCase();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(p);
+    });
+    return Array.from(map.values());
+  };
 
   // ── loading ─────────────────────────────────────────────────────────────────
 
@@ -782,24 +844,30 @@ export function ProductsManagement() {
         </Card>
       )}
 
-      {/* Grouped view (All tab) */}
+      {/* Grouped view (All tab) — category sections, each with name-grouped cards */}
       {groupedProducts && groupedProducts.map(({ category, label, items }) => (
         <div key={category} className="space-y-3">
           <div className="flex items-center gap-3">
             <h3 className="font-semibold text-sm text-foreground">{label}</h3>
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{items.length}</span>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {groupByName(items).length} product{groupByName(items).length !== 1 ? "s" : ""}
+            </span>
             <div className="flex-1 h-px bg-border" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {items.map((product) => <ProductCard key={product.id} product={product} />)}
+            {groupByName(items).map((variants) => (
+              <ProductGroupCard key={variants[0].id} variants={variants} />
+            ))}
           </div>
         </div>
       ))}
 
-      {/* Filtered single-category view */}
+      {/* Filtered single-category view — also name-grouped */}
       {!groupedProducts && filteredProducts.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}
+          {groupByName(filteredProducts).map((variants) => (
+            <ProductGroupCard key={variants[0].id} variants={variants} />
+          ))}
         </div>
       )}
 
