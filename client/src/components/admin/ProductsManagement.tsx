@@ -391,7 +391,22 @@ export function ProductsManagement() {
   }) => (
 
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form
+        onSubmit={(e) => {
+          // In add mode the fragrance field is handled via the pill grid,
+          // not the form field. Set a value so Zod validation passes.
+          if (!isEditing) {
+            if (selectedFragrances.length === 0) {
+              e.preventDefault();
+              form.setError("root", { message: "Please select at least one fragrance." });
+              return;
+            }
+            form.setValue("fragrance", selectedFragrances[0]);
+          }
+          form.handleSubmit(onSubmit)(e);
+        }}
+        className="space-y-4"
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
