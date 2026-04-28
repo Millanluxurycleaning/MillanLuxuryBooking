@@ -82,6 +82,8 @@ export function ProductsManagement() {
   const [blobTargetForm, setBlobTargetForm] = useState<"add" | "edit">("add");
   const [uploading, setUploading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedFragrances, setSelectedFragrances] = useState<string[]>([]);
+  const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
 
   const { data: productsPayload, isLoading, error } = useQuery<FragranceProduct[]>({
     queryKey: ["/api/products"],
@@ -353,6 +355,33 @@ export function ProductsManagement() {
     }
   };
 
+  const onAddSubmit = async (data: ProductFormData) => {
+    if (selectedFragrances.length === 0) {
+      addForm.setError("root", { message: "Please select at least one fragrance." });
+      return;
+    }
+    setIsCreatingMultiple(true);
+    try {
+      await Promise.all(
+        selectedFragrances.map((frag) =>
+          apiRequest("POST", "/api/products", { ...data, fragrance: frag }).then((r) => r.json())
+        )
+      );
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: "Success",
+        description: `Created ${selectedFragrances.length} variant${selectedFragrances.length > 1 ? "s" : ""}.`,
+      });
+      setIsAddDialogOpen(false);
+      addForm.reset();
+      setSelectedFragrances([]);
+    } catch (err) {
+      toast({ title: "Error", description: getErrorMessage(err) || "Failed to create products", variant: "destructive" });
+    } finally {
+      setIsCreatingMultiple(false);
+    }
+  };
+
   // ── product form ────────────────────────────────────────────────────────────
 
   const ProductForm = ({ form, onSubmit, isEditing }: {
@@ -399,35 +428,91 @@ export function ProductsManagement() {
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="fragrance"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Fragrance</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Select fragrance" /></SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {FRAGRANCES.map((frag) => {
-                    const inStock = isInStock(frag);
-                    return (
-                      <SelectItem key={frag} value={frag} className={inStock ? "" : "text-muted-foreground"}>
-                        <span className="flex items-center gap-2">
-                          <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-500"}`} />
-                          {frag}
-                          {!inStock && <span className="text-xs text-red-500 font-medium">– Out of stock</span>}
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Multi-select when adding, single-select when editing */}
+        {!isEditing ? (
+          <FormItem>
+            <div className="flex items-center justify-between mb-2">
+              <FormLabel>Fragrances</FormLabel>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => setSelectedFragrances([...FRAGRANCES])}
+                >
+                  Select All
+                </button>
+                <span className="text-muted-foreground text-xs">·</span>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:underline"
+                  onClick={() => setSelectedFragrances([])}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30">
+              {FRAGRANCES.map((frag) => {
+                const selected = selectedFragrances.includes(frag);
+                const inStock = isInStock(frag);
+                return (
+                  <button
+                    key={frag}
+                    type="button"
+                    onClick={() =>
+                      setSelectedFragrances((prev) =>
+                        prev.includes(frag) ? prev.filter((f) => f !== frag) : [...prev, frag]
+                      )
+                    }
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-all ${
+                      selected
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${inStock ? "bg-green-400" : "bg-red-400"} ${selected ? "opacity-100" : "opacity-60"}`} />
+                    {frag}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedFragrances.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {selectedFragrances.length} fragrance{selectedFragrances.length > 1 ? "s" : ""} selected — will create {selectedFragrances.length} variant{selectedFragrances.length > 1 ? "s" : ""}.
+              </p>
+            )}
+          </FormItem>
+        ) : (
+          <FormField
+            control={form.control}
+            name="fragrance"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fragrance</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="Select fragrance" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {FRAGRANCES.map((frag) => {
+                      const inStock = isInStock(frag);
+                      return (
+                        <SelectItem key={frag} value={frag} className={inStock ? "" : "text-muted-foreground"}>
+                          <span className="flex items-center gap-2">
+                            <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-500"}`} />
+                            {frag}
+                            {!inStock && <span className="text-xs text-red-500 font-medium">– Out of stock</span>}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
@@ -578,13 +663,17 @@ export function ProductsManagement() {
         )}
 
         <DialogFooter>
-          <Button type="submit" disabled={isEditing ? updateMutation.isPending : addMutation.isPending}>
-            {(isEditing ? updateMutation.isPending : addMutation.isPending) && (
+          <Button type="submit" disabled={isEditing ? updateMutation.isPending : isCreatingMultiple}>
+            {(isEditing ? updateMutation.isPending : isCreatingMultiple) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
             {isEditing
               ? (updateMutation.isPending ? "Updating…" : "Update")
-              : (addMutation.isPending ? "Creating…" : "Create")}
+              : isCreatingMultiple
+                ? `Creating ${selectedFragrances.length}…`
+                : selectedFragrances.length > 1
+                  ? `Create ${selectedFragrances.length} Variants`
+                  : "Create"}
           </Button>
         </DialogFooter>
       </form>
@@ -737,7 +826,7 @@ export function ProductsManagement() {
           {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           {isSyncing ? "Syncing…" : "Sync Square"}
         </Button>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={(o) => { setIsAddDialogOpen(o); if (!o) { addForm.reset(); setSelectedFragrances([]); } }}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="mr-2 h-4 w-4" /> Add Product
@@ -748,7 +837,7 @@ export function ProductsManagement() {
               <DialogTitle>Add Product</DialogTitle>
               <DialogDescription>Create a new fragrance product.</DialogDescription>
             </DialogHeader>
-            <ProductForm form={addForm} onSubmit={(d) => addMutation.mutate(d)} isEditing={false} />
+            <ProductForm form={addForm} onSubmit={onAddSubmit} isEditing={false} />
           </DialogContent>
         </Dialog>
       </div>
