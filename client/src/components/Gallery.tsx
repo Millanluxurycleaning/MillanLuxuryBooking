@@ -103,16 +103,23 @@ export function Gallery() {
   const renderGalleryImage = (item: GalleryItem) => {
     if (item.beforeImageUrl && item.afterImageUrl) {
       return (
-        <div className="w-full aspect-video overflow-hidden">
-          <ReactCompareImage
-            leftImage={item.beforeImageUrl || placeholderImage}
-            rightImage={item.afterImageUrl || placeholderImage}
-            sliderLineColor="hsl(var(--primary))"
-            sliderLineWidth={3}
-            handleSize={40}
-            leftImageLabel="Before"
-            rightImageLabel="After"
-          />
+        <div className="w-full aspect-video grid grid-cols-2 bg-black overflow-hidden">
+          <div className="relative overflow-hidden">
+            <img
+              src={item.beforeImageUrl || placeholderImage}
+              alt={`${item.title} - Before`}
+              className="w-full h-full object-contain"
+            />
+            <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold">BEFORE</span>
+          </div>
+          <div className="relative overflow-hidden border-l border-white/10">
+            <img
+              src={item.afterImageUrl || placeholderImage}
+              alt={`${item.title} - After`}
+              className="w-full h-full object-contain"
+            />
+            <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold">AFTER</span>
+          </div>
         </div>
       );
     }
@@ -129,7 +136,7 @@ export function Gallery() {
   const renderLightboxImage = (item: GalleryItem) => {
     if (item.beforeImageUrl && item.afterImageUrl) {
       return (
-        <div className="w-full max-h-[70vh] overflow-hidden">
+        <div className="w-full">
           <ReactCompareImage
             leftImage={item.beforeImageUrl || placeholderImage}
             rightImage={item.afterImageUrl || placeholderImage}
