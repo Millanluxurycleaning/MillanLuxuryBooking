@@ -103,7 +103,7 @@ export function Gallery() {
   const renderGalleryImage = (item: GalleryItem) => {
     if (item.beforeImageUrl && item.afterImageUrl) {
       return (
-        <div className="w-full h-64">
+        <div className="w-full">
           <ReactCompareImage
             leftImage={item.beforeImageUrl || placeholderImage}
             rightImage={item.afterImageUrl || placeholderImage}
@@ -120,7 +120,7 @@ export function Gallery() {
       <img
         src={item.imageUrl || placeholderImage}
         alt={item.title || "Gallery image"}
-        className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
+        className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
         data-testid={`img-gallery-${item.id}`}
       />
     );
@@ -129,7 +129,7 @@ export function Gallery() {
   const renderLightboxImage = (item: GalleryItem) => {
     if (item.beforeImageUrl && item.afterImageUrl) {
       return (
-        <div className="w-full max-h-[80vh]">
+        <div className="w-full">
           <ReactCompareImage
             leftImage={item.beforeImageUrl || placeholderImage}
             rightImage={item.afterImageUrl || placeholderImage}
@@ -146,7 +146,7 @@ export function Gallery() {
       <img
         src={item.imageUrl || placeholderImage}
         alt={item.title || "Gallery image"}
-        className="w-full h-auto max-h-[80vh] object-contain"
+        className="w-full h-auto max-h-[85vh] object-contain"
         data-testid="img-lightbox-current"
       />
     );
