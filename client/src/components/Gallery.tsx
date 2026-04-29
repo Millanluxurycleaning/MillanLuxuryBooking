@@ -20,14 +20,11 @@ const normalizeCategoryKey = (value: string) =>
 const formatCategoryLabel = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return "Uncategorized";
-  if (/[-_]/.test(trimmed)) {
-    return trimmed
-      .split(/[-_]+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ");
-  }
-  return trimmed;
+  return trimmed
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 };
 
 export function Gallery() {
