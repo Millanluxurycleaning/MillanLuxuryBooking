@@ -384,7 +384,6 @@ export function GalleryManagement() {
           headers: {
             authorization: `Bearer ${clientToken}`,
             'x-content-type': file.type || 'application/octet-stream',
-            'x-add-random-suffix': '0',
             'x-api-version': '11',
           },
           body: file,
