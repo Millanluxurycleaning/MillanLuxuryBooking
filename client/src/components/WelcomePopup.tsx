@@ -118,6 +118,8 @@ export function WelcomePopup() {
   };
 
   const goToBooking = () => {
+    // Suppress popup on the booking page and all future visits
+    localStorage.setItem("mlc_popup_count", "99");
     dismiss();
     const params = new URLSearchParams({
       plan: selectedPlan ?? "",
