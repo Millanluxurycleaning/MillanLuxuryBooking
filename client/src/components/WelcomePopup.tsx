@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 const CLAIMED_KEY = "mlc_discount_claimed";
 
 const PLANS = [
-  { key: "weekly",   label: "Weekly",   pct: "15% off" },
-  { key: "biweekly", label: "Biweekly", pct: "15% off" },
-  { key: "monthly",  label: "Monthly",  pct: "10% off" },
+  { key: "weekly",   label: "Weekly",   pct: "20%", badge: "Millan Royalty", benefit: "Free 3-Wick Candle + Quarterly VIP Clean" },
+  { key: "biweekly", label: "Biweekly", pct: "15%", badge: "Crown Club",     benefit: "Free Mini Candle + Monthly add-on" },
+  { key: "monthly",  label: "Monthly",  pct: "10%", badge: "Millan Member",  benefit: "Priority scheduling + Quarterly add-on" },
 ] as const;
 
 type PlanKey = typeof PLANS[number]["key"];
@@ -64,6 +64,7 @@ export function WelcomePopup() {
 
   const dismiss = () => setVisible(false);
   const plan = PLANS.find((p) => p.key === selectedPlan);
+  const planPct = plan?.pct ?? "";
 
   // ── Book-now submit: register lead + code, then go to scheduling ──
   const handleBookSubmit = async (e: React.FormEvent) => {
@@ -175,17 +176,19 @@ export function WelcomePopup() {
                 Choose your recurring plan and start saving today.
               </p>
 
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {PLANS.map(({ key, label, pct }) => {
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {PLANS.map(({ key, label, pct, benefit }) => {
                   const sel = selectedPlan === key;
                   return (
-                    <button key={key} type="button" onClick={() => setSelectedPlan(key)} className="rounded-2xl px-3 py-4 text-center transition-all duration-200" style={sel ? glass.selected : glass.base}>
-                      <p className={`text-xl font-bold mb-1 ${sel ? "text-amber-200" : "text-amber-300"}`}>{pct}</p>
-                      <p className="text-[9px] uppercase tracking-widest font-medium" style={{ color: sel ? "rgba(255,220,120,0.85)" : "rgba(255,255,255,0.5)" }}>{label}</p>
+                    <button key={key} type="button" onClick={() => setSelectedPlan(key)} className="rounded-2xl px-2 py-3 text-center transition-all duration-200 flex flex-col items-center gap-1" style={sel ? glass.selected : glass.base}>
+                      <p className={`text-2xl font-bold leading-none ${sel ? "text-amber-200" : "text-amber-300"}`}>{pct}<span className="text-base align-super">*</span></p>
+                      <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: sel ? "rgba(255,220,120,0.9)" : "rgba(255,255,255,0.55)" }}>{label}</p>
+                      <p className="text-[8px] leading-tight mt-0.5 px-1" style={{ color: sel ? "rgba(255,220,120,0.65)" : "rgba(255,255,255,0.32)" }}>{benefit}</p>
                     </button>
                   );
                 })}
               </div>
+              <p className="text-[10px] mb-1" style={{ color: "rgba(255,255,255,0.28)" }}>* Off your first cleaning when signing up for a recurring plan</p>
 
               <p className="text-[11px] mb-5 transition-opacity" style={{ color: selectedPlan ? "rgba(255,255,255,0.3)" : "rgba(255,200,80,0.65)" }}>
                 {selectedPlan ? "Great choice! How do you want to claim it?" : "↑ Select a plan to continue"}
@@ -206,7 +209,7 @@ export function WelcomePopup() {
           {step === "choice" && (
             <>
               <h2 className="text-2xl font-serif font-semibold text-white mb-1">
-                {plan?.pct} on your first {plan?.label.toLowerCase()} cleaning
+                {planPct} on your first {plan?.label.toLowerCase()} cleaning
               </h2>
               <p className="text-sm mb-6 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
                 How would you like to claim your discount?
@@ -251,7 +254,7 @@ export function WelcomePopup() {
             <>
               <h2 className="text-xl font-serif font-semibold text-white mb-1">Tell us about your home</h2>
               <p className="text-xs mb-5" style={{ color: "rgba(255,255,255,0.5)" }}>
-                We'll lock in your <span className="text-amber-300 font-semibold">{plan?.pct}</span> {plan?.label.toLowerCase()} discount and get you scheduled.
+                We'll lock in your <span className="text-amber-300 font-semibold">{planPct}</span> {plan?.label.toLowerCase()} discount and get you scheduled.
               </p>
 
               <form onSubmit={handleBookSubmit} className="space-y-2.5 text-left">
@@ -296,7 +299,7 @@ export function WelcomePopup() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif font-semibold text-white">You're locked in!</h2>
               <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
-                Your <span className="text-amber-300 font-semibold">{plan?.pct}</span> discount is saved. Now let's schedule your first <span className="text-white font-medium">{plan?.label.toLowerCase()}</span> cleaning.
+                Your <span className="text-amber-300 font-semibold">{planPct}</span> discount is saved. Now let's schedule your first <span className="text-white font-medium">{plan?.label.toLowerCase()}</span> cleaning.
               </p>
               <div className="rounded-2xl px-4 py-3 text-left" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <p className="text-xs font-medium text-white/50 uppercase tracking-widest mb-1">Your info</p>
@@ -318,7 +321,7 @@ export function WelcomePopup() {
             <>
               <h2 className="text-xl font-serif font-semibold text-white mb-1">Save your discount</h2>
               <p className="text-sm mb-2 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
-                We'll send your <span className="text-amber-300 font-semibold">{plan?.pct}</span> {plan?.label.toLowerCase()} discount code to your inbox.
+                We'll send your <span className="text-amber-300 font-semibold">{planPct}</span> {plan?.label.toLowerCase()} discount code to your inbox.
               </p>
 
               <form onSubmit={handleEmailSubmit} className="space-y-3 mt-5">
@@ -354,7 +357,7 @@ export function WelcomePopup() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif font-semibold text-white">Your code is on its way! 👑</h2>
               <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
-                We emailed your <span className="text-amber-300 font-semibold">{plan?.pct}</span> {plan?.label.toLowerCase()} discount. You can also copy it below.
+                We emailed your <span className="text-amber-300 font-semibold">{planPct}</span> {plan?.label.toLowerCase()} discount. You can also copy it below.
               </p>
               {code && (
                 <div className="rounded-2xl px-5 py-4 flex items-center justify-between gap-3" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}>
