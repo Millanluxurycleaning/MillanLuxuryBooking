@@ -5,8 +5,17 @@ import { Input } from "@/components/ui/input";
 
 const CLAIMED_KEY = "mlc_discount_claimed";
 
+const PLANS = [
+  { key: "weekly",   label: "Weekly",   pct: "15% off" },
+  { key: "biweekly", label: "Biweekly", pct: "15% off" },
+  { key: "monthly",  label: "Monthly",  pct: "10% off" },
+] as const;
+
+type PlanKey = typeof PLANS[number]["key"];
+
 export function WelcomePopup() {
   const [visible, setVisible] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +36,7 @@ export function WelcomePopup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedPlan) return;
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
     setLoading(true);
     setError(null);
@@ -34,7 +44,7 @@ export function WelcomePopup() {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, plan: selectedPlan }),
       });
       const data = await res.json();
       if (data.alreadyUsed) {
@@ -60,7 +70,23 @@ export function WelcomePopup() {
     });
   };
 
+  const selectedPlanData = PLANS.find((p) => p.key === selectedPlan);
+
   if (!visible) return null;
+
+  const glassCard = {
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(212,175,55,0.25)",
+    boxShadow: "0 1px 0 rgba(255,255,255,0.1) inset, 0 4px 16px rgba(0,0,0,0.15)",
+    backdropFilter: "blur(8px)",
+  };
+
+  const glassCardSelected = {
+    background: "rgba(212,175,55,0.18)",
+    border: "1px solid rgba(212,175,55,0.75)",
+    boxShadow: "0 1px 0 rgba(255,220,100,0.2) inset, 0 4px 20px rgba(212,175,55,0.2)",
+    backdropFilter: "blur(8px)",
+  };
 
   return (
     <div
@@ -69,25 +95,25 @@ export function WelcomePopup() {
       aria-modal="true"
       aria-label="Welcome offer"
     >
-      {/* Backdrop — stronger blur for liquid glass feel */}
+      {/* Backdrop */}
       <div
         className="absolute inset-0"
         onClick={dismiss}
         style={{
           backdropFilter: "blur(12px) saturate(120%)",
           WebkitBackdropFilter: "blur(12px) saturate(120%)",
-          background: "rgba(0, 0, 0, 0.45)",
+          background: "rgba(0,0,0,0.45)",
         }}
       />
 
-      {/* Modal — liquid glass */}
+      {/* Modal */}
       <div
         className="relative z-10 w-full max-w-md rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-300"
         style={{
-          background: "rgba(18, 48, 32, 0.42)",
+          background: "rgba(18,48,32,0.42)",
           backdropFilter: "blur(40px) saturate(180%) brightness(1.08)",
           WebkitBackdropFilter: "blur(40px) saturate(180%) brightness(1.08)",
-          border: "1px solid rgba(255, 255, 255, 0.14)",
+          border: "1px solid rgba(255,255,255,0.14)",
           boxShadow: `
             0 0 0 0.5px rgba(255,255,255,0.08) inset,
             0 2px 0 rgba(255,255,255,0.13) inset,
@@ -97,16 +123,10 @@ export function WelcomePopup() {
           `,
         }}
       >
-        {/* Top specular highlight — simulates glass reflection */}
-        <div
-          className="absolute top-0 left-0 right-0 h-px"
-          style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)" }}
-        />
-        {/* Subtle inner green tint layer */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: "linear-gradient(145deg, rgba(45,100,65,0.18) 0%, rgba(20,55,35,0.08) 60%, rgba(45,90,60,0.14) 100%)" }}
-        />
+        {/* Top specular highlight */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)" }} />
+        {/* Inner green tint */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(145deg, rgba(45,100,65,0.18) 0%, rgba(20,55,35,0.08) 60%, rgba(45,90,60,0.14) 100%)" }} />
 
         <div className="relative p-8 text-center">
 
@@ -114,50 +134,38 @@ export function WelcomePopup() {
           <button
             onClick={dismiss}
             className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all"
-            style={{
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              backdropFilter: "blur(8px)",
-            }}
+            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
             aria-label="Close"
           >
             <X className="w-4 h-4 text-white/70" />
           </button>
 
-          {/* Crown icon */}
+          {/* Crown */}
           <div
             className="mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center"
-            style={{
-              background: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.13)",
-              boxShadow: "0 2px 0 rgba(255,255,255,0.1) inset, 0 4px 16px rgba(0,0,0,0.2)",
-            }}
+            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.13)", boxShadow: "0 2px 0 rgba(255,255,255,0.1) inset" }}
           >
             <Crown className="w-8 h-8 text-amber-300" />
           </div>
 
           {code ? (
-            /* ── Code revealed state ── */
+            /* ── Code revealed ── */
             <div className="space-y-4">
               <h2 className="text-2xl font-serif font-semibold text-white">
                 Your discount is ready! 👑
               </h2>
               <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
-                Use this code at checkout to claim your recurring service discount. Valid for one use only.
+                {selectedPlanData ? (
+                  <>You're locked in for <strong className="text-amber-300">{selectedPlanData.pct}</strong> on your first <strong className="text-white">{selectedPlanData.label}</strong> cleaning.</>
+                ) : (
+                  <>Use this code at checkout. Valid for one use only.</>
+                )}
               </p>
-
-              {/* Code display */}
               <div
                 className="rounded-2xl px-5 py-4 flex items-center justify-between gap-3"
-                style={{
-                  background: "rgba(255,255,255,0.07)",
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  boxShadow: "0 1px 0 rgba(255,255,255,0.1) inset",
-                }}
+                style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)", boxShadow: "0 1px 0 rgba(255,255,255,0.1) inset" }}
               >
-                <span className="text-xl font-mono font-bold tracking-widest text-amber-300">
-                  {code}
-                </span>
+                <span className="text-xl font-mono font-bold tracking-widest text-amber-300">{code}</span>
                 <button
                   onClick={handleCopy}
                   className="flex items-center gap-1.5 text-xs font-medium transition-colors"
@@ -167,7 +175,6 @@ export function WelcomePopup() {
                   {copied ? "Copied!" : "Copy"}
                 </button>
               </div>
-
               <Button
                 onClick={dismiss}
                 className="w-full h-12 rounded-xl font-semibold text-[#1a3a2a] border-0"
@@ -177,42 +184,41 @@ export function WelcomePopup() {
               </Button>
             </div>
           ) : (
-            /* ── Email capture state ── */
+            /* ── Plan selection + email ── */
             <>
               <h2 className="text-3xl font-serif font-semibold text-white mb-2">
                 Welcome to Millan Luxury Cleaning
               </h2>
               <p className="text-sm mb-5 leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
-                Sign up for recurring service and save on your first cleaning.
+                Choose your recurring plan and unlock your first-cleaning discount.
               </p>
 
-              {/* Tiered offer tiles — liquid glass cards */}
-              <div className="grid grid-cols-3 gap-2 mb-5">
-                {[
-                  { pct: "15% off", label: "Weekly" },
-                  { pct: "15% off", label: "Biweekly" },
-                  { pct: "10% off", label: "Monthly" },
-                ].map(({ pct, label }) => (
-                  <div
-                    key={label}
-                    className="rounded-2xl px-3 py-4"
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(212,175,55,0.3)",
-                      boxShadow: "0 1px 0 rgba(255,255,255,0.1) inset, 0 4px 16px rgba(0,0,0,0.15)",
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    <p className="text-xl font-bold text-amber-300 mb-1">{pct}</p>
-                    <p className="text-[9px] uppercase tracking-widest font-medium leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>
-                      {label}
-                    </p>
-                  </div>
-                ))}
+              {/* Plan selector tiles */}
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {PLANS.map(({ key, label, pct }) => {
+                  const isSelected = selectedPlan === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSelectedPlan(key)}
+                      className="rounded-2xl px-3 py-4 text-center transition-all duration-200 cursor-pointer"
+                      style={isSelected ? glassCardSelected : glassCard}
+                    >
+                      <p className={`text-xl font-bold mb-1 transition-colors ${isSelected ? "text-amber-200" : "text-amber-300"}`}>{pct}</p>
+                      <p className="text-[9px] uppercase tracking-widest font-medium leading-tight" style={{ color: isSelected ? "rgba(255,220,120,0.85)" : "rgba(255,255,255,0.5)" }}>
+                        {label}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
 
-              <p className="text-[11px] mb-4" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Applied to your first cleaning when you set up a recurring plan.
+              {/* Prompt if nothing selected */}
+              <p className="text-[11px] mb-4 transition-opacity duration-200" style={{ color: selectedPlan ? "rgba(255,255,255,0.3)" : "rgba(255,200,80,0.6)" }}>
+                {selectedPlan
+                  ? "Applied to your first cleaning when you set up a recurring plan."
+                  : "↑ Select a plan to unlock your discount"}
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-3">
@@ -223,17 +229,14 @@ export function WelcomePopup() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="flex-1 h-12 rounded-xl text-white text-sm placeholder:text-white/35 focus-visible:ring-amber-400 border-0"
-                    style={{
-                      background: "rgba(255,255,255,0.07)",
-                      border: "1px solid rgba(255,255,255,0.13)",
-                      boxShadow: "0 1px 0 rgba(255,255,255,0.08) inset",
-                    }}
+                    disabled={!selectedPlan}
+                    className="flex-1 h-12 rounded-xl text-white text-sm placeholder:text-white/35 focus-visible:ring-amber-400 border-0 disabled:opacity-40"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.13)" }}
                   />
                   <Button
                     type="submit"
-                    disabled={loading}
-                    className="h-12 px-6 rounded-xl font-semibold tracking-wide text-sm border-0 shadow-none text-[#1a3a2a]"
+                    disabled={loading || !selectedPlan}
+                    className="h-12 px-6 rounded-xl font-semibold tracking-wide text-sm border-0 shadow-none text-[#1a3a2a] disabled:opacity-40"
                     style={{ background: "linear-gradient(90deg, #d4af37, #f0d060)" }}
                   >
                     {loading ? "..." : "UNLOCK"}
