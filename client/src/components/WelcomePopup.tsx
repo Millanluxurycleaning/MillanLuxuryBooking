@@ -19,7 +19,7 @@ export function WelcomePopup() {
     const timer = setTimeout(() => {
       localStorage.setItem("mlc_popup_count", String(count + 1));
       setVisible(true);
-    }, 5000);
+    }, 400);
     return () => clearTimeout(timer);
   }, []);
 
