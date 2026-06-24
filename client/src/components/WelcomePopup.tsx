@@ -158,10 +158,12 @@ export function WelcomePopup() {
             <X className="w-4 h-4 text-white/70" />
           </button>
 
-          {/* Crown */}
-          <div className="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.13)" }}>
-            <Crown className="w-7 h-7 text-amber-300" />
-          </div>
+          {/* Crown — first step only */}
+          {step === "plan" && (
+            <div className="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.13)" }}>
+              <Crown className="w-7 h-7 text-amber-300" />
+            </div>
+          )}
 
           {/* ── STEP 1: Plan selection ── */}
           {step === "plan" && (
@@ -290,9 +292,6 @@ export function WelcomePopup() {
           {/* ── STEP 4a: Book-now — confirm + go to scheduling ── */}
           {step === "book-confirm" && (
             <div className="space-y-4">
-              <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-2" style={{ background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.4)" }}>
-                <CalendarCheck className="w-7 h-7 text-amber-300" />
-              </div>
               <h2 className="text-2xl font-serif font-semibold text-white">You're locked in!</h2>
               <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
                 Your <span className="text-amber-300 font-semibold">{plan?.pct}</span> discount is saved. Now let's schedule your first <span className="text-white font-medium">{plan?.label.toLowerCase()}</span> cleaning.
@@ -309,7 +308,6 @@ export function WelcomePopup() {
               >
                 Schedule My First Cleaning →
               </Button>
-              <button onClick={dismiss} className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>I'll do this later</button>
             </div>
           )}
 
