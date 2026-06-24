@@ -97,7 +97,7 @@ export function WelcomePopup() {
                 Your discount is ready! 👑
               </h2>
               <p className="text-sm text-white/70 leading-relaxed">
-                Use this code at checkout for <strong className="text-white">10% off your first booking</strong>. Valid for one use only.
+                Use this code at checkout to claim your recurring service discount. Valid for one use only.
               </p>
 
               {/* Code display */}
@@ -128,17 +128,27 @@ export function WelcomePopup() {
               <h2 className="text-3xl font-serif font-semibold text-white mb-2">
                 Welcome to Millan Luxury Cleaning
               </h2>
-              <p className="text-sm text-white/70 mb-6 leading-relaxed">
-                Join our list and unlock an exclusive offer when you book.
+              <p className="text-sm text-white/70 mb-5 leading-relaxed">
+                Sign up for recurring service and save on your first cleaning.
               </p>
 
-              {/* Discount tile */}
-              <div className="rounded-2xl bg-white/10 border border-white/20 px-6 py-5 mb-6">
-                <p className="text-5xl font-bold text-amber-300 mb-1">10%</p>
-                <p className="text-[11px] uppercase tracking-widest text-white/60 font-medium">
-                  Off your first booking
-                </p>
+              {/* Tiered offer tiles */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="rounded-2xl bg-white/10 border border-amber-300/40 px-4 py-4">
+                  <p className="text-3xl font-bold text-amber-300 mb-1">$15 off</p>
+                  <p className="text-[10px] uppercase tracking-widest text-white/60 font-medium leading-tight">
+                    Weekly or<br />Biweekly service
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/10 border border-white/20 px-4 py-4">
+                  <p className="text-3xl font-bold text-amber-300 mb-1">10% off</p>
+                  <p className="text-[10px] uppercase tracking-widest text-white/60 font-medium leading-tight">
+                    Monthly<br />service
+                  </p>
+                </div>
               </div>
+
+              <p className="text-[11px] text-white/40 mb-4">Applied to your first cleaning when you set up a recurring plan.</p>
 
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="flex gap-2">
