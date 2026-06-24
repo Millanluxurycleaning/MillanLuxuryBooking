@@ -141,7 +141,7 @@ export function WelcomePopup() {
                   </p>
                 </div>
                 <div className="rounded-2xl bg-white/10 border border-white/20 px-4 py-4">
-                  <p className="text-3xl font-bold text-amber-300 mb-1">10% off</p>
+                  <p className="text-3xl font-bold text-amber-300 mb-1">15% off</p>
                   <p className="text-[10px] uppercase tracking-widest text-white/60 font-medium leading-tight">
                     Monthly<br />service
                   </p>
