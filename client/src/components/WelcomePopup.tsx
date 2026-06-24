@@ -133,17 +133,23 @@ export function WelcomePopup() {
               </p>
 
               {/* Tiered offer tiles */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="rounded-2xl bg-white/10 border border-amber-300/40 px-4 py-4">
-                  <p className="text-3xl font-bold text-amber-300 mb-1">$15 off</p>
-                  <p className="text-[10px] uppercase tracking-widest text-white/60 font-medium leading-tight">
-                    Weekly or<br />Biweekly service
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                <div className="rounded-2xl bg-white/10 border border-amber-300/40 px-3 py-4">
+                  <p className="text-2xl font-bold text-amber-300 mb-1">15% off</p>
+                  <p className="text-[9px] uppercase tracking-widest text-white/60 font-medium leading-tight">
+                    Weekly
                   </p>
                 </div>
-                <div className="rounded-2xl bg-white/10 border border-white/20 px-4 py-4">
-                  <p className="text-3xl font-bold text-amber-300 mb-1">15% off</p>
-                  <p className="text-[10px] uppercase tracking-widest text-white/60 font-medium leading-tight">
-                    Monthly<br />service
+                <div className="rounded-2xl bg-white/10 border border-amber-300/40 px-3 py-4">
+                  <p className="text-2xl font-bold text-amber-300 mb-1">15% off</p>
+                  <p className="text-[9px] uppercase tracking-widest text-white/60 font-medium leading-tight">
+                    Biweekly
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/10 border border-white/20 px-3 py-4">
+                  <p className="text-2xl font-bold text-amber-300 mb-1">10% off</p>
+                  <p className="text-[9px] uppercase tracking-widest text-white/60 font-medium leading-tight">
+                    Monthly
                   </p>
                 </div>
               </div>
