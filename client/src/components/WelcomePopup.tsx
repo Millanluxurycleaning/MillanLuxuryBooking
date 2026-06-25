@@ -53,12 +53,7 @@ export function WelcomePopup() {
   const [copied, setCopied]   = useState(false);
 
   useEffect(() => {
-    const count = parseInt(localStorage.getItem("mlc_popup_count") ?? "0", 10);
-    if (count >= 2) return;
-    const timer = setTimeout(() => {
-      localStorage.setItem("mlc_popup_count", String(count + 1));
-      setVisible(true);
-    }, 400);
+    const timer = setTimeout(() => setVisible(true), 400);
     return () => clearTimeout(timer);
   }, []);
 
@@ -119,8 +114,6 @@ export function WelcomePopup() {
   };
 
   const goToBooking = () => {
-    // Suppress popup on the booking page and all future visits
-    localStorage.setItem("mlc_popup_count", "99");
     dismiss();
     const params = new URLSearchParams({
       plan: selectedPlan ?? "",
