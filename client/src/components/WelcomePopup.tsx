@@ -54,7 +54,11 @@ export function WelcomePopup() {
 
   useEffect(() => {
     if (localStorage.getItem(CLAIMED_KEY)) return;
-    const timer = setTimeout(() => setVisible(true), 400);
+    if (localStorage.getItem("mlc_popup_seen")) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem("mlc_popup_seen", "1");
+      setVisible(true);
+    }, 3000);
     return () => clearTimeout(timer);
   }, []);
 
