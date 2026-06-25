@@ -130,7 +130,7 @@ export default function BookingPage() {
   const initialServiceId = Number(queryParams.get("serviceId"));
 
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
-    Number.isFinite(initialServiceId) ? initialServiceId : null,
+    Number.isFinite(initialServiceId) && initialServiceId > 0 ? initialServiceId : null,
   );
   const [selectedPricingTier, setSelectedPricingTier] = useState<string | null>(null);
   const [squareFootage, setSquareFootage] = useState("");
@@ -282,12 +282,6 @@ export default function BookingPage() {
   // Square Web Payments SDK for card-on-file
   const applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID as string | undefined;
   const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID as string | undefined;
-
-  useEffect(() => {
-    if (!selectedServiceId && squareServices.length > 0) {
-      setSelectedServiceId(squareServices[0].id);
-    }
-  }, [selectedServiceId, squareServices]);
 
   // Reset pricing tier, square footage, and laundry selections when service changes
   useEffect(() => {
