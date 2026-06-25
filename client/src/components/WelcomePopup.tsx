@@ -53,6 +53,7 @@ export function WelcomePopup() {
   const [copied, setCopied]   = useState(false);
 
   useEffect(() => {
+    if (localStorage.getItem(CLAIMED_KEY)) return;
     const timer = setTimeout(() => setVisible(true), 400);
     return () => clearTimeout(timer);
   }, []);
@@ -170,13 +171,12 @@ export function WelcomePopup() {
               </p>
 
               <div className="grid grid-cols-3 gap-2 mb-3">
-                {PLANS.map(({ key, label, pct, benefit }) => {
+                {PLANS.map(({ key, label, pct }) => {
                   const sel = selectedPlan === key;
                   return (
                     <button key={key} type="button" onClick={() => setSelectedPlan(key)} className="rounded-2xl px-2 py-3 text-center transition-all duration-200 flex flex-col items-center gap-1" style={sel ? glass.selected : glass.base}>
                       <p className={`text-2xl font-bold leading-none ${sel ? "text-amber-200" : "text-amber-300"}`}>{pct}<span className="text-base align-super">*</span></p>
                       <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: sel ? "rgba(255,220,120,0.9)" : "rgba(255,255,255,0.55)" }}>{label}</p>
-                      <p className="text-[8px] leading-tight mt-0.5 px-1" style={{ color: sel ? "rgba(255,220,120,0.65)" : "rgba(255,255,255,0.32)" }}>{benefit}</p>
                     </button>
                   );
                 })}
