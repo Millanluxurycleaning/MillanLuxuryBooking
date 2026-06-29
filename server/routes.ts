@@ -2946,9 +2946,14 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
 
       const slotsWithTime = leadTimeFiltered.filter((s) => s.startAt);
       if (slotsWithTime.length > 0) {
+        // Look back 6 hours from the first slot so bookings that started earlier
+        // but are still running (e.g. a 4-hour job at 7 AM overlapping a 3 PM slot)
+        // are included in the conflict check.
+        const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+        const firstSlotMs = new Date(slotsWithTime[0].startAt!).getTime();
         const bookingsListResponse = await client.bookings.list({
           locationId,
-          startAtMin: slotsWithTime[0].startAt!,
+          startAtMin: new Date(firstSlotMs - SIX_HOURS_MS).toISOString(),
           startAtMax: slotsWithTime[slotsWithTime.length - 1].startAt!,
           limit: 100,
         });

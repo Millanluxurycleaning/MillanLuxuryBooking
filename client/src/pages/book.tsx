@@ -297,7 +297,7 @@ export default function BookingPage() {
   // Calendar month navigation
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const today = startOfDay(new Date());
-  const maxMonth = startOfMonth(addMonths(today, 3));
+  const maxMonth = startOfMonth(addMonths(today, 12));
 
   const prevMonth = () => setViewMonth((m) => {
     const prev = addMonths(m, -1);
@@ -350,9 +350,9 @@ export default function BookingPage() {
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {
-      // Use right now as startAt so Square applies its booking policy (minimum advance
-      // notice) relative to the current moment — the same way its own widget does.
-      const startAt = new Date().toISOString();
+      // Use the start of the selected day so the query covers only that one day.
+      // The server's 12-hour lead-time filter handles removing same-day morning slots.
+      const startAt = startOfDay(selectedDate).toISOString();
       const endAt = endOfDay(selectedDate).toISOString();
       const variationParam = selectedTierVariationId
         ? `&variationId=${encodeURIComponent(selectedTierVariationId)}`
