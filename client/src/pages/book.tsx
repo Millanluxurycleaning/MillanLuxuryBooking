@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, isSameDay, addDays, startOfDay, startOfMonth, endOfMonth, addMonths, isBefore } from "date-fns";
+import { format, isSameDay, addDays, startOfDay, endOfDay, startOfMonth, endOfMonth, addMonths, isBefore } from "date-fns";
 import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
 import { Navigation } from "@/components/Navigation";
 import { PageSEO } from "@/components/PageSEO";
@@ -323,13 +323,35 @@ export default function BookingPage() {
     return tier?.squareVariationId ?? null;
   }, [selectedPricingTier, pricingTiers]);
 
-  const availabilityQuery = useQuery<AvailabilityResponse>({
+  // Month-level query — used only for calendar dot indicators (which dates have slots)
+  const calendarQuery = useQuery<AvailabilityResponse>({
     queryKey: ["/api/bookings/availability", selectedServiceId, format(viewMonth, "yyyy-MM"), selectedTierVariationId],
     enabled: Boolean(selectedServiceId),
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const monthStart = startOfMonth(viewMonth);
       const startAt = isBefore(monthStart, today) ? today.toISOString() : monthStart.toISOString();
       const endAt = endOfMonth(viewMonth).toISOString();
+      const variationParam = selectedTierVariationId
+        ? `&variationId=${encodeURIComponent(selectedTierVariationId)}`
+        : "";
+      const response = await fetch(
+        `/api/bookings/availability?serviceId=${selectedServiceId}&startAt=${encodeURIComponent(startAt)}&endAt=${encodeURIComponent(endAt)}${variationParam}`,
+      );
+      if (!response.ok) throw new Error("Failed to load availability");
+      return response.json();
+    },
+  });
+
+  // Per-date query — real-time fetch when a date is selected, no caching so it matches Square exactly
+  const dateQuery = useQuery<AvailabilityResponse>({
+    queryKey: ["/api/bookings/availability/date", selectedServiceId, format(selectedDate, "yyyy-MM-dd"), selectedTierVariationId],
+    enabled: Boolean(selectedServiceId),
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: async () => {
+      const startAt = startOfDay(selectedDate).toISOString();
+      const endAt = endOfDay(selectedDate).toISOString();
       const variationParam = selectedTierVariationId
         ? `&variationId=${encodeURIComponent(selectedTierVariationId)}`
         : "";
@@ -352,9 +374,9 @@ export default function BookingPage() {
     ? formatDescriptionLines(selectedService.description)
     : [];
 
-  // Group availabilities by date
+  // Group month-level slots by date — used only for calendar dot indicators
   const availabilitiesByDate = useMemo(() => {
-    const slots = availabilityQuery.data?.availabilities || [];
+    const slots = calendarQuery.data?.availabilities || [];
     const grouped = new Map<string, AvailabilitySlot[]>();
 
     slots.forEach((slot) => {
@@ -367,18 +389,15 @@ export default function BookingPage() {
     });
 
     return grouped;
-  }, [availabilityQuery.data]);
+  }, [calendarQuery.data]);
 
   // Get available dates for the calendar
   const availableDates = useMemo(() => {
     return Array.from(availabilitiesByDate.keys()).map((d) => new Date(d));
   }, [availabilitiesByDate]);
 
-  // Get times for selected date
-  const timesForSelectedDate = useMemo(() => {
-    const dateKey = format(selectedDate, "yyyy-MM-dd");
-    return availabilitiesByDate.get(dateKey) || [];
-  }, [selectedDate, availabilitiesByDate]);
+  // Real-time slots for the selected date from the per-date query
+  const timesForSelectedDate = dateQuery.data?.availabilities ?? [];
 
   // Generate all days in the viewed month
   const calendarDays = useMemo(() => {
@@ -415,7 +434,7 @@ export default function BookingPage() {
     }
     return true;
   })();
-  const isStep3Complete = isStep2Complete && timesForSelectedDate.length > 0;
+  const isStep3Complete = isStep2Complete && (dateQuery.isLoading || timesForSelectedDate.length > 0);
   const isStep4Complete = isStep3Complete && Boolean(selectedSlot);
   const isStep5Reachable = isStep4Complete;
 
@@ -1053,7 +1072,7 @@ export default function BookingPage() {
                 </button>
                 {activeStep === STEP_DATE && isStep2Complete && (
                   <CardContent className="pt-0">
-                    {availabilityQuery.isLoading ? (
+                    {calendarQuery.isLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
                       </div>
@@ -1125,7 +1144,7 @@ export default function BookingPage() {
                             );
                           })}
                         </div>
-                        {availableDates.length === 0 && !availabilityQuery.isLoading && (
+                        {availableDates.length === 0 && !calendarQuery.isLoading && (
                           <p className="text-center text-muted-foreground py-4">
                             No availability in {format(viewMonth, "MMMM")}. Try the next month.
                           </p>
@@ -1210,7 +1229,7 @@ export default function BookingPage() {
 
                     {timesForSelectedDate.length === 0 ? (
                       <p className="text-center text-muted-foreground py-6">
-                        {availabilityQuery.isLoading ? "Loading times..." : "No times available for this date. Please select another date."}
+                        {dateQuery.isLoading ? "Loading times..." : "No times available for this date. Please select another date."}
                       </p>
                     ) : (
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
