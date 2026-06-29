@@ -2938,41 +2938,47 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         a.startAt ? new Date(a.startAt) >= earliestBookable : false
       );
 
-      // Fetch existing accepted bookings for the date range.
-      // Both team members always work together on every job, so any accepted booking
-      // blocks the entire team — remove any available slot that overlaps with one.
-      const bookingsListResponse = await client.bookings.list({
-        locationId,
-        startAtMin: startAt,
-        startAtMax: endAt,
-        limit: 100,
-      });
-      const acceptedBookings = (bookingsListResponse.data ?? []).filter(
-        (b: any) => b.status === "ACCEPTED"
-      );
+      // Fetch existing accepted bookings to block overlapping slots.
+      // Both team members always work together, so any accepted booking blocks the whole team.
+      // Query only within the range of the actual returned slots to stay within
+      // Square's 31-day bookings API limit (the query window can be much wider).
+      let filteredAvailabilities = leadTimeFiltered;
 
-      const filteredAvailabilities = leadTimeFiltered.filter((slot) => {
-        if (!slot.startAt) return false;
-        const slotStart = new Date(slot.startAt).getTime();
-        const slotDurMs =
-          Number(slot.appointmentSegments?.[0]?.durationMinutes ?? service.duration) *
-          60 * 1000;
-        const slotEnd = slotStart + slotDurMs;
-
-        return !acceptedBookings.some((booking: any) => {
-          if (!booking.startAt) return false;
-          const bookingStart = new Date(booking.startAt).getTime();
-          const bookingDurMs = (booking.appointmentSegments ?? []).reduce(
-            (sum: number, seg: any) =>
-              sum + Number(seg.durationMinutes ?? 0) * 60 * 1000,
-            0
-          );
-          const bookingEnd =
-            bookingStart +
-            (bookingDurMs > 0 ? bookingDurMs : service.duration * 60 * 1000);
-          return slotStart < bookingEnd && slotEnd > bookingStart;
+      const slotsWithTime = leadTimeFiltered.filter((s) => s.startAt);
+      if (slotsWithTime.length > 0) {
+        const bookingsListResponse = await client.bookings.list({
+          locationId,
+          startAtMin: slotsWithTime[0].startAt!,
+          startAtMax: slotsWithTime[slotsWithTime.length - 1].startAt!,
+          limit: 100,
         });
-      });
+        const acceptedBookings = (bookingsListResponse.data ?? []).filter(
+          (b: any) => b.status === "ACCEPTED"
+        );
+
+        filteredAvailabilities = leadTimeFiltered.filter((slot) => {
+          if (!slot.startAt) return false;
+          const slotStart = new Date(slot.startAt).getTime();
+          const slotDurMs =
+            Number(slot.appointmentSegments?.[0]?.durationMinutes ?? service.duration) *
+            60 * 1000;
+          const slotEnd = slotStart + slotDurMs;
+
+          return !acceptedBookings.some((booking: any) => {
+            if (!booking.startAt) return false;
+            const bookingStart = new Date(booking.startAt).getTime();
+            const bookingDurMs = (booking.appointmentSegments ?? []).reduce(
+              (sum: number, seg: any) =>
+                sum + Number(seg.durationMinutes ?? 0) * 60 * 1000,
+              0
+            );
+            const bookingEnd =
+              bookingStart +
+              (bookingDurMs > 0 ? bookingDurMs : service.duration * 60 * 1000);
+            return slotStart < bookingEnd && slotEnd > bookingStart;
+          });
+        });
+      }
 
       const sanitized = filteredAvailabilities.map((availability: Availability) => ({
         startAt: availability.startAt ?? null,
