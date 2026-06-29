@@ -359,7 +359,7 @@ export default function BookingPage() {
 
     slots.forEach((slot) => {
       if (slot.startAt) {
-        const dateKey = format(new Date(slot.startAt), "yyyy-MM-dd");
+        const dateKey = new Date(slot.startAt).toLocaleDateString("en-CA", { timeZone: "America/Phoenix" });
         const existing = grouped.get(dateKey) || [];
         existing.push(slot);
         grouped.set(dateKey, existing);
@@ -521,8 +521,8 @@ export default function BookingPage() {
       setConfirmedBooking({
         bookingId: data.bookingId,
         serviceName: selectedService?.title ?? "your service",
-        date: selectedSlot?.startAt ? format(new Date(selectedSlot.startAt), "EEEE, MMMM d") : "",
-        time: selectedSlot?.startAt ? format(new Date(selectedSlot.startAt), "h:mm a") : "",
+        date: selectedSlot?.startAt ? new Date(selectedSlot.startAt).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Phoenix" }) : "",
+        time: selectedSlot?.startAt ? new Date(selectedSlot.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix", hour12: true }) : "",
       });
     } catch (error) {
       setBookingStatus({
@@ -1168,7 +1168,7 @@ export default function BookingPage() {
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       {isStep4Complete && activeStep !== STEP_TIME && selectedSlot?.startAt && (
-                        <span className="text-sm text-purple-600 font-medium">{format(new Date(selectedSlot.startAt), "h:mm a")}</span>
+                        <span className="text-sm text-purple-600 font-medium">{new Date(selectedSlot.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix", hour12: true })}</span>
                       )}
                       <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${activeStep === STEP_TIME ? "rotate-180" : ""}`} />
                     </div>
@@ -1216,7 +1216,9 @@ export default function BookingPage() {
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                         {timesForSelectedDate.map((slot) => {
                           const startAt = slot.startAt ? new Date(slot.startAt) : null;
-                          const timeLabel = startAt ? format(startAt, "h:mm a") : "";
+                          const timeLabel = startAt
+                            ? startAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix", hour12: true })
+                            : "";
                           const isSelected = selectedSlot?.startAt === slot.startAt;
                           const duration = slot.appointmentSegments[0]?.durationMinutes;
 
@@ -1329,11 +1331,11 @@ export default function BookingPage() {
                     <>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Date</span>
-                        <span className="font-medium">{format(new Date(selectedSlot.startAt), "EEEE, MMM d")}</span>
+                        <span className="font-medium">{new Date(selectedSlot.startAt).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "America/Phoenix" })}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Time</span>
-                        <span className="font-medium">{format(new Date(selectedSlot.startAt), "h:mm a")}</span>
+                        <span className="font-medium">{new Date(selectedSlot.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix", hour12: true })}</span>
                       </div>
                     </>
                   )}
@@ -1428,11 +1430,11 @@ export default function BookingPage() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Date</span>
-                            <span className="font-semibold">{format(new Date(selectedSlot.startAt!), "EEEE, MMMM d, yyyy")}</span>
+                            <span className="font-semibold">{new Date(selectedSlot.startAt!).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/Phoenix" })}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Time</span>
-                            <span className="font-semibold">{format(new Date(selectedSlot.startAt!), "h:mm a")}</span>
+                            <span className="font-semibold">{new Date(selectedSlot.startAt!).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix", hour12: true })}</span>
                           </div>
                           {selectedPrice && !requiresEstimate && (
                             <>
