@@ -2931,13 +2931,51 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
 
       const availabilities = availabilityResponse.availabilities ?? [];
 
-      // Square's booking widget enforces min_booking_lead_time_seconds (43200 = 12 hours)
-      // but the searchAvailability API does not apply it automatically, so we filter here.
+      // Apply 12-hour minimum booking lead time (Square's widget enforces this; the API does not)
       const minLeadTimeMs = 43200 * 1000;
       const earliestBookable = new Date(Date.now() + minLeadTimeMs);
-      const filteredAvailabilities = availabilities.filter((a: Availability) =>
+      const leadTimeFiltered = availabilities.filter((a: Availability) =>
         a.startAt ? new Date(a.startAt) >= earliestBookable : false
       );
+
+      // Fetch existing accepted bookings for the date range.
+      // Both team members always work together on every job, so any accepted booking
+      // blocks the entire team — remove any available slot that overlaps with one.
+      const bookingSearchStart = new Date(
+        new Date(startAt).getTime() - 4 * 60 * 60 * 1000
+      ).toISOString();
+      const bookingsListResponse = await client.bookings.list({
+        locationId,
+        startAtMin: bookingSearchStart,
+        startAtMax: endAt,
+        limit: 100,
+      });
+      const acceptedBookings = (bookingsListResponse.data ?? []).filter(
+        (b: any) => b.status === "ACCEPTED"
+      );
+
+      const filteredAvailabilities = leadTimeFiltered.filter((slot) => {
+        if (!slot.startAt) return false;
+        const slotStart = new Date(slot.startAt).getTime();
+        const slotDurMs =
+          Number(slot.appointmentSegments?.[0]?.durationMinutes ?? service.duration) *
+          60 * 1000;
+        const slotEnd = slotStart + slotDurMs;
+
+        return !acceptedBookings.some((booking: any) => {
+          if (!booking.startAt) return false;
+          const bookingStart = new Date(booking.startAt).getTime();
+          const bookingDurMs = (booking.appointmentSegments ?? []).reduce(
+            (sum: number, seg: any) =>
+              sum + Number(seg.durationMinutes ?? 0) * 60 * 1000,
+            0
+          );
+          const bookingEnd =
+            bookingStart +
+            (bookingDurMs > 0 ? bookingDurMs : service.duration * 60 * 1000);
+          return slotStart < bookingEnd && slotEnd > bookingStart;
+        });
+      });
 
       const sanitized = filteredAvailabilities.map((availability: Availability) => ({
         startAt: availability.startAt ?? null,
