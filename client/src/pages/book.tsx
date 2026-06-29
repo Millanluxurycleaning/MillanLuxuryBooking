@@ -398,8 +398,15 @@ export default function BookingPage() {
     return Array.from(availabilitiesByDate.keys()).map((d) => new Date(d));
   }, [availabilitiesByDate]);
 
-  // Real-time slots for the selected date from the per-date query
-  const timesForSelectedDate = dateQuery.data?.availabilities ?? [];
+  // Real-time slots filtered to exactly the selected date (in AZ timezone)
+  const timesForSelectedDate = useMemo(() => {
+    const slots = dateQuery.data?.availabilities ?? [];
+    const selectedKey = selectedDate.toLocaleDateString("en-CA", { timeZone: "America/Phoenix" });
+    return slots.filter((slot) => {
+      if (!slot.startAt) return false;
+      return new Date(slot.startAt).toLocaleDateString("en-CA", { timeZone: "America/Phoenix" }) === selectedKey;
+    });
+  }, [dateQuery.data, selectedDate]);
 
   // Generate all days in the viewed month
   const calendarDays = useMemo(() => {
