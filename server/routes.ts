@@ -2941,12 +2941,9 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       // Fetch existing accepted bookings for the date range.
       // Both team members always work together on every job, so any accepted booking
       // blocks the entire team — remove any available slot that overlaps with one.
-      const bookingSearchStart = new Date(
-        new Date(startAt).getTime() - 4 * 60 * 60 * 1000
-      ).toISOString();
       const bookingsListResponse = await client.bookings.list({
         locationId,
-        startAtMin: bookingSearchStart,
+        startAtMin: startAt,
         startAtMax: endAt,
         limit: 100,
       });
