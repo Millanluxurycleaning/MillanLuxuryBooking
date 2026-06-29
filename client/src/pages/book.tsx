@@ -350,7 +350,9 @@ export default function BookingPage() {
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {
-      const startAt = startOfDay(selectedDate).toISOString();
+      // Use right now as startAt so Square applies its booking policy (minimum advance
+      // notice) relative to the current moment — the same way its own widget does.
+      const startAt = new Date().toISOString();
       const endAt = endOfDay(selectedDate).toISOString();
       const variationParam = selectedTierVariationId
         ? `&variationId=${encodeURIComponent(selectedTierVariationId)}`
