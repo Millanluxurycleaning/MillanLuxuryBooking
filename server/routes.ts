@@ -2930,7 +2930,16 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
       });
 
       const availabilities = availabilityResponse.availabilities ?? [];
-      const sanitized = availabilities.map((availability: Availability) => ({
+
+      // Square's booking widget enforces min_booking_lead_time_seconds (43200 = 12 hours)
+      // but the searchAvailability API does not apply it automatically, so we filter here.
+      const minLeadTimeMs = 43200 * 1000;
+      const earliestBookable = new Date(Date.now() + minLeadTimeMs);
+      const filteredAvailabilities = availabilities.filter((a: Availability) =>
+        a.startAt ? new Date(a.startAt) >= earliestBookable : false
+      );
+
+      const sanitized = filteredAvailabilities.map((availability: Availability) => ({
         startAt: availability.startAt ?? null,
         locationId: availability.locationId ?? locationId,
         appointmentSegments:
