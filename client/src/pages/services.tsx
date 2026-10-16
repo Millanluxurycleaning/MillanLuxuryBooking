@@ -2,15 +2,12 @@ import { Navigation } from "@/components/Navigation";
 import { Services } from "@/components/Services";
 import { Footer } from "@/components/Footer";
 import { PageSEO } from "@/components/PageSEO";
+import { seoPages } from "@shared/seoPages";
 
 export default function ServicesPage() {
   return (
     <div className="min-h-screen">
-      <PageSEO
-        title="Cleaning Services — Deep Clean, Move-In/Out, Recurring & More"
-        description="Browse all Millan Luxury Cleaning services: deep cleaning, move-in/move-out, recurring weekly and bi-weekly cleaning, and specialty packages. Serving Phoenix metro and surrounding areas."
-        path="/services"
-      />
+      <PageSEO title={seoPages.services.title} description={seoPages.services.description} path={seoPages.services.path} />
       <Navigation />
       <main>
         <div className="container mx-auto px-6 md:px-8 pt-28 pb-2 text-center">

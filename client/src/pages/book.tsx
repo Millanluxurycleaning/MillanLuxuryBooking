@@ -4,6 +4,7 @@ import { format, isSameDay, addDays, startOfDay, endOfDay, startOfMonth, endOfMo
 import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
 import { Navigation } from "@/components/Navigation";
 import { PageSEO } from "@/components/PageSEO";
+import { seoPages } from "@shared/seoPages";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -564,11 +565,7 @@ export default function BookingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageSEO
-        title="Book a Cleaning — Schedule Online in Minutes"
-        description="Book your luxury cleaning service online. Choose your service, pick a date and time, and pay a small deposit to secure your spot. Serving Phoenix, Surprise, Scottsdale, and more."
-        path="/book"
-      />
+      <PageSEO title={seoPages.book.title} description={seoPages.book.description} path={seoPages.book.path} />
       <Navigation />
 
       <section className="pt-28 pb-16 px-6">

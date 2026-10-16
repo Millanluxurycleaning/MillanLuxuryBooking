@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles } from 'lucide-react';
 import type { FragranceProduct } from '@shared/types';
 import { PageSEO } from '@/components/PageSEO';
+import { seoPages } from "@shared/seoPages";
 
 const CATEGORIES = [
   { id: 'all', label: 'All Products' },
@@ -48,11 +49,7 @@ export default function Fragrances() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageSEO
-        title="Luxury Fragrances — Handmade Soy Candles, Room Sprays & Car Diffusers"
-        description="Shop Millan Luxury handmade bespoke fragrances: 100% organic soy candles, room sprays, car diffusers, and all-purpose cleaners. Crafted with natural luxury scents."
-        path="/fragrances"
-      />
+      <PageSEO title={seoPages.fragrances.title} description={seoPages.fragrances.description} path={seoPages.fragrances.path} />
       <Navigation />
 
       {/* Hero Section */}

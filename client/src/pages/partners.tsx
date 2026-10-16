@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { PageSEO } from "@/components/PageSEO";
+import { seoPages } from "@shared/seoPages";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,11 +127,7 @@ export default function PartnersPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageSEO
-        title="Partner With Us — Brand Affiliates & Cleaning Partners"
-        description="Join the Millan Luxury Cleaning partner network. Apply as a brand affiliate or cleaning partner and grow your business alongside a premium Arizona cleaning brand."
-        path="/partners"
-      />
+      <PageSEO title={seoPages.partners.title} description={seoPages.partners.description} path={seoPages.partners.path} />
       <Navigation />
 
       {/* Hero Section */}
