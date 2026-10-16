@@ -1,4 +1,4 @@
-import { serviceAreas } from "@shared/locations";
+import { serviceAreas, additionalServiceAreas } from "@shared/locations";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
 
@@ -37,7 +37,7 @@ export function ServiceAreas() {
 
         <div className="mt-12 text-center">
           <p className="text-muted-foreground">
-            Serving: {serviceAreas.map(a => a.city).join(", ")}, and surrounding areas
+            Also serving: {additionalServiceAreas.join(", ")}, and surrounding communities
           </p>
         </div>
       </div>

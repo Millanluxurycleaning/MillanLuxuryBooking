@@ -1,8 +1,5 @@
 import { Helmet } from "react-helmet-async";
-
-const SITE_NAME = "Millan Luxury Cleaning";
-const BASE_URL = "https://millanluxurycleaning.com";
-const DEFAULT_IMAGE = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/dark-botanical-bg.png";
+import { BASE_URL, DEFAULT_OG_IMAGE, SITE_NAME } from "@shared/seoPages";
 
 interface PageSEOProps {
   title: string;
@@ -13,26 +10,30 @@ interface PageSEOProps {
   publishedAt?: string;
   modifiedAt?: string;
   schema?: object;
+  /** Set for pages that should not appear in Google (404, account pages, etc.) */
+  noindex?: boolean;
 }
 
 export function PageSEO({
   title,
   description,
   path = "",
-  image = DEFAULT_IMAGE,
+  image = DEFAULT_OG_IMAGE,
   type = "website",
   publishedAt,
   modifiedAt,
   schema,
+  noindex = false,
 }: PageSEOProps) {
   const fullTitle = `${title} | ${SITE_NAME}`;
-  const canonicalUrl = `${BASE_URL}${path}`;
+  const canonicalUrl = `${BASE_URL}${path || "/"}`;
 
   return (
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
-      <link rel="canonical" href={canonicalUrl} />
+      <meta name="robots" content={noindex ? "noindex, follow" : "index, follow"} />
+      {!noindex && <link rel="canonical" href={canonicalUrl} />}
 
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />

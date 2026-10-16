@@ -48,7 +48,7 @@ export function Hero() {
         </div>
         
         {/* SEO H1 — visually hidden, keyword-rich for Google */}
-        <h1 className="sr-only">Luxury House Cleaning Services in Phoenix, AZ | Millan Luxury Cleaning</h1>
+        <h1 className="sr-only">Luxury House Cleaning Services in Phoenix, AZ</h1>
 
         {/* Brand Name — decorative display */}
         <div className="text-white font-serif font-semibold text-4xl md:text-6xl lg:text-7xl mb-4 tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-100" aria-hidden="true">
