@@ -14,9 +14,86 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/with/:slug", "destination": "/api" },
-    { "source": "/p/:slug", "destination": "/api" },
-    { "source": "/((?!api|with|p/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/with/:slug",
+      "destination": "/api"
+    },
+    {
+      "source": "/p/:slug",
+      "destination": "/api"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api"
+    },
+    {
+      "source": "/services",
+      "destination": "/services/index.html"
+    },
+    {
+      "source": "/book",
+      "destination": "/book/index.html"
+    },
+    {
+      "source": "/blog",
+      "destination": "/blog/index.html"
+    },
+    {
+      "source": "/partners",
+      "destination": "/partners/index.html"
+    },
+    {
+      "source": "/fragrances",
+      "destination": "/fragrances/index.html"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/cart",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/checkout",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/checkout/success",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/partner/login",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/partner/dashboard",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/app.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.millanluxurycleaning.com"
+        }
+      ],
+      "destination": "https://millanluxurycleaning.com/:path*",
+      "permanent": true
+    }
   ]
 }
