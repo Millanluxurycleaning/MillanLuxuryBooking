@@ -31,6 +31,7 @@ import {
 import { z, ZodError } from "zod";
 import multer from "multer";
 import type { Asset, SiteAsset } from "../shared/types.js";
+import { BASE_URL, indexablePages } from "../shared/seoPages.js";
 import type { EnvConfig } from "./env.js";
 import { list as listBlobFiles, upload as uploadBlobFile, remove as removeBlob } from "./blobService.js";
 import { getUserFromRequest, isUserAdmin, supabaseAdmin } from "./supabase.js";
@@ -3436,6 +3437,35 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         message: "Failed to delete service"
       });
     }
+  });
+
+  // XML sitemap: static pages + every published blog post (always up to date)
+  app.get("/sitemap.xml", async (_req, res) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const urls: string[] = indexablePages
+      .filter((p) => !p.hidden)
+      .map(
+        (p) =>
+          `  <url><loc>${BASE_URL}${p.path}</loc><lastmod>${today}</lastmod><changefreq>${p.changefreq ?? "monthly"}</changefreq><priority>${(p.priority ?? 0.5).toFixed(1)}</priority></url>`,
+      );
+    try {
+      const posts = await prisma.post.findMany({
+        where: { published: true },
+        select: { slug: true, updatedAt: true },
+        orderBy: { createdAt: "desc" },
+      });
+      for (const post of posts) {
+        urls.push(
+          `  <url><loc>${BASE_URL}/blog/${encodeURIComponent(post.slug)}</loc><lastmod>${post.updatedAt.toISOString().slice(0, 10)}</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>`,
+        );
+      }
+    } catch (error) {
+      console.error("[sitemap] Failed to load posts; serving static pages only", error);
+    }
+    res
+      .type("application/xml")
+      .set("Cache-Control", "public, max-age=0, s-maxage=3600")
+      .send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`);
   });
 
   // Blog posts endpoints
