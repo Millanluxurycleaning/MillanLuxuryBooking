@@ -71,6 +71,19 @@ const signatureCopyMap: Record<string, string> = {
   "standard service offerings": signatureServices[3].description,
 };
 
+// Home page "Home Cleaning" card: groups the recurring residential options in one card
+const homeCleaningCard = {
+  title: "🏡 Home Cleaning",
+  description:
+    "Reliable, detailed cleaning that keeps your home polished and welcoming — on the schedule that works for you.",
+  options: ["One-Time Cleaning", "Weekly Cleaning", "Bi-Weekly Cleaning", "Monthly Cleaning"],
+};
+
+const isHomeCleaningService = (name: string) => {
+  const lower = normalizeServiceName(name).toLowerCase();
+  return lower.includes("weekly") || lower.includes("basic");
+};
+
 const getCuratedServiceCopy = (name: string) => {
   const normalized = normalizeServiceName(name).toLowerCase();
   return signatureCopyMap[normalized] ?? null;
@@ -393,16 +406,20 @@ export function Services({
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
                   {group.items.map((service) => {
-                    const serviceTitle = resolveServiceTitle(service);
+                    const isHomeCleaningCard =
+                      isLuxe && typeof limit === "number" && isHomeCleaningService(resolveServiceTitle(service));
+                    const serviceTitle = isHomeCleaningCard ? homeCleaningCard.title : resolveServiceTitle(service);
                     const normalizedTitle = normalizeServiceName(serviceTitle);
                     const serviceType = getServiceType(normalizedTitle);
                     const Icon = iconMap[normalizedTitle] || Sparkles;
                     const isFeatured = normalizedTitle === "Deep Cleaning";
                     const isGlassAddOn = !isLuxe || normalizedTitle.toLowerCase().includes("add-on");
-                    const bookingLink = `/book?serviceId=${service.id}`;
+                    const bookingLink = isHomeCleaningCard ? "/home-cleaning" : `/book?serviceId=${service.id}`;
                     const price = formatPrice(service.price);
                     const curatedCopy = getCuratedServiceCopy(serviceTitle);
-                    const summary = curatedCopy ?? summarizeDescription(service.description, isLuxe ? 90 : 120);
+                    const summary = isHomeCleaningCard
+                      ? homeCleaningCard.description
+                      : curatedCopy ?? summarizeDescription(service.description, isLuxe ? 90 : 120);
 
                     return (
                       <Card
@@ -513,6 +530,19 @@ export function Services({
                           </CardContent>
                         )}
 
+                        {isHomeCleaningCard && (
+                          <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                              {homeCleaningCard.options.map((option) => (
+                                <li key={option} className="flex items-center gap-2 text-sm text-white">
+                                  <span className="text-primary">✦</span>
+                                  <span>{option}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </CardContent>
+                        )}
+
                         <CardFooter className={isLuxe ? "pt-2" : ""}>
                           <Button
                             asChild
@@ -520,7 +550,7 @@ export function Services({
                             className={`w-full ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
                             data-testid={`button-book-${service.id}`}
                           >
-                            <a href={bookingLink}>{isLuxe ? `Reserve ${resolveServiceTitle(service)}` : `Book ${resolveServiceTitle(service)}`}</a>
+                            <a href={bookingLink}>{isLuxe ? `Reserve ${serviceTitle}` : `Book ${serviceTitle}`}</a>
                           </Button>
                         </CardFooter>
                       </Card>
