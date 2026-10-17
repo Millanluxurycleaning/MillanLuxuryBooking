@@ -224,10 +224,10 @@ export function Contact() {
                     <MapPin className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-1">Address</h3>
+                    <h3 className="font-semibold text-foreground mb-1">Service Area</h3>
                     <p className="text-muted-foreground">
-                      811 N 3rd St<br />
-                      Phoenix, AZ 85004
+                      Phoenix, Scottsdale, Chandler, Mesa, Gilbert, Tempe<br />
+                      and surrounding Valley cities
                     </p>
                   </div>
                 </div>

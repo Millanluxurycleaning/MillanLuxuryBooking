@@ -9,15 +9,12 @@ import { FAQ } from "@/components/FAQ";
 import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
 import { PageSEO } from "@/components/PageSEO";
+import { seoPages } from "@shared/seoPages";
 
 export default function Home() {
   return (
     <div className="min-h-screen">
-      <PageSEO
-        title="Premium Cleaning Services in Phoenix, Surprise, Scottsdale & the East Valley"
-        description="Millan Luxury Cleaning offers high-end residential cleaning in Phoenix, Surprise, Chandler, Glendale, Mesa, Scottsdale, and Tempe AZ. Deep cleaning, move-in/move-out, and recurring service."
-        path="/"
-      />
+      <PageSEO title={seoPages.home.title} description={seoPages.home.description} path={seoPages.home.path} />
       <Navigation />
       <main>
         <Hero />

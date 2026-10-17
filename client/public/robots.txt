@@ -1,19 +1,9 @@
 User-agent: *
 Allow: /
-
-# Specific rules for search engine crawlers
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-# Disallow admin paths if they exist
 Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /partner/
+Disallow: /api/
 
-# Sitemap location
 Sitemap: https://millanluxurycleaning.com/sitemap.xml
-Sitemap: https://www.millanluxurycleaning.com/sitemap.xml
-
-# Crawl delay (optional - allows 1 request per 1 second)
-Crawl-delay: 1

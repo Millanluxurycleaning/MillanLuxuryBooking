@@ -60,6 +60,14 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
           schema={articleSchema}
         />
       )}
+      {notFound && (
+        <PageSEO
+          title="Post Not Found"
+          description="This blog post could not be found."
+          path={`/blog/${params.slug}`}
+          noindex
+        />
+      )}
       <Navigation />
       <div className="container mx-auto px-6 py-12 max-w-3xl pt-32">
         <div className="mb-6 text-sm">
