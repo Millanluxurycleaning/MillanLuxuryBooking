@@ -3,6 +3,9 @@ import { PageSEO } from "@/components/PageSEO";
 import { useAnnouncement } from "@/contexts/AnnouncementContext";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ArrowLeft, Check } from "lucide-react";
+import { useAssets } from "@/hooks/useAssets";
+
+const fallbackBg = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/dark-botanical-bg.png";
 
 export type ServiceGroupOption = {
   label: string;
@@ -42,6 +45,9 @@ export function ServiceGroupPage({
 }: ServiceGroupPageProps) {
   const [, navigate] = useLocation();
   const { isVisible: isBannerVisible } = useAnnouncement();
+  const { data: assets = {} } = useAssets();
+  // Same botanical background as the "Our Services" section on the homepage
+  const background = assets?.servicesBackground?.url ?? assets?.heroBackground?.url ?? fallbackBg;
 
   const goBack = () => {
     if (window.history.length > 1) window.history.back();
@@ -49,11 +55,22 @@ export function ServiceGroupPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#11231d] text-white" style={{ paddingTop: isBannerVisible ? 40 : 0 }}>
+    <div
+      className="relative min-h-screen text-white"
+      style={{
+        paddingTop: isBannerVisible ? 40 : 0,
+        backgroundImage: `url(${background})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      <div className="absolute inset-0 bg-black/70 pointer-events-none" />
+      <div className="relative z-10">
       <PageSEO title={seo.title} description={seo.description} path={seo.path} />
 
       {/* Top bar */}
-      <header className="bg-[#11231d] border-b border-white/5">
+      <header className="bg-black/30 backdrop-blur-xl border-b border-white/10">
         <div className="relative flex items-center justify-center h-14 px-4">
           <button
             type="button"
@@ -69,12 +86,18 @@ export function ServiceGroupPage({
 
       <main>
         {/* Banner photo */}
-        <img src={bannerImage} alt={bannerAlt} className="w-full h-48 md:h-72 object-cover" />
+        <div className="max-w-4xl mx-auto px-4 md:px-6 pt-6">
+          <img
+            src={bannerImage}
+            alt={bannerAlt}
+            className="w-full h-48 md:h-72 object-cover rounded-2xl border border-white/20 shadow-[0_24px_70px_rgba(0,0,0,0.45)]"
+          />
+        </div>
 
-        <div className="px-4 md:px-6 py-6 space-y-6">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
           <div className="space-y-1">
-            <p className="text-base md:text-lg">{intro}</p>
-            {subIntro && <p className="text-white/60">{subIntro}</p>}
+            <p className="text-base md:text-lg text-white/90">{intro}</p>
+            {subIntro && <p className="text-white/70">{subIntro}</p>}
           </div>
 
           <Accordion type="single" collapsible className="space-y-3">
@@ -82,7 +105,7 @@ export function ServiceGroupPage({
               <AccordionItem
                 key={section.title}
                 value={section.title}
-                className="rounded-xl bg-white/[0.04] px-5 border-none"
+                className="rounded-xl bg-black/25 backdrop-blur-2xl border border-white/20 ring-1 ring-white/10 px-5"
               >
                 <AccordionTrigger className="font-sans font-semibold hover:no-underline">
                   {section.title}
@@ -103,20 +126,21 @@ export function ServiceGroupPage({
           </Accordion>
 
           <div className="space-y-3">
-            <h2 className="font-serif text-lg font-semibold">{optionsHeading}</h2>
+            <h2 className="font-serif text-xl md:text-2xl font-semibold">{optionsHeading}</h2>
             {options.map((option) => (
               <a
                 key={option.label}
                 href={option.href}
-                className="block rounded-xl border-2 border-white/10 px-6 py-4 transition-colors hover:border-primary focus-visible:border-primary outline-none"
+                className="block rounded-xl bg-black/25 backdrop-blur-2xl border border-white/20 ring-1 ring-white/10 shadow-[0_24px_70px_rgba(0,0,0,0.35)] px-6 py-4 transition-colors hover:border-primary focus-visible:border-primary outline-none"
               >
-                <p className="font-semibold">{option.label}</p>
-                <p className="text-sm text-white/60 mt-1 pl-8">{option.description}</p>
+                <p className="font-serif text-lg font-semibold">{option.label}</p>
+                <p className="text-sm text-white/70 mt-1 pl-8">{option.description}</p>
               </a>
             ))}
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 }
