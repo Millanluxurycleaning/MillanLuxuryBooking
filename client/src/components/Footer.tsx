@@ -3,7 +3,7 @@ import { SiFacebook, SiGoogle, SiInstagram, SiYelp } from "react-icons/si";
 export function Footer() {
   const currentYear = new Date().getFullYear();
   const googleBusinessUrl = "https://www.google.com/maps/search/?api=1&query=Millan%20Luxury%20Cleaning%20Phoenix%20AZ";
-  const facebookUrl = "https://www.facebook.com/search/top/?q=Millan%20Luxury%20Cleaning";
+  const facebookUrl = "https://www.facebook.com/people/Millan-Luxury-Cleaning/61586829342720/";
 
   return (
     <footer className="bg-card border-t border-border py-12">
@@ -106,7 +106,7 @@ export function Footer() {
                 </a>
               </p>
               <p className="text-muted-foreground text-sm">
-                Phoenix, AZ 85004
+                Serving Phoenix &amp; the Valley, AZ
               </p>
             </div>
 
