@@ -79,6 +79,20 @@ const homeCleaningCard = {
   options: ["One-Time Cleaning", "Weekly Cleaning", "Bi-Weekly Cleaning", "Monthly Cleaning"],
 };
 
+// Home page "One / First Time Cleaning" card: groups Deep Cleaning and Move-In / Move-Out
+const firstTimeCleaningCard = {
+  title: "✨ One / First Time Cleaning",
+  description:
+    "A detailed, top-to-bottom clean for a first visit, a one-time reset, or a move.",
+  options: ["Deep Cleaning", "Move-In / Move-Out"],
+  link: "/first-time-cleaning",
+};
+
+const isFirstTimeCleaningService = (name: string) => {
+  const lower = normalizeServiceName(name).toLowerCase();
+  return lower.includes("deep") || lower.includes("move-in") || lower.includes("move-out") || lower.includes("move out");
+};
+
 const isHomeCleaningService = (name: string) => {
   const lower = normalizeServiceName(name).toLowerCase();
   return lower.includes("weekly") || lower.includes("basic");
@@ -236,6 +250,16 @@ export function Services({
         ? coreServices.slice(0, limit)
         : squareServices.slice(0, limit)
       : squareServices;
+  // Home page: Deep Cleaning and Move-In / Move-Out share one "One / First Time Cleaning" card
+  const isGroupedHome = isLuxe && typeof limit === "number";
+  if (isGroupedHome) {
+    const firstIdx = limitedServices.findIndex((s) => isFirstTimeCleaningService(resolveServiceTitle(s)));
+    for (let i = limitedServices.length - 1; i > firstIdx; i--) {
+      if (firstIdx !== -1 && isFirstTimeCleaningService(resolveServiceTitle(limitedServices[i]))) {
+        limitedServices.splice(i, 1);
+      }
+    }
+  }
   const hasShapeError = !isLoading && !error && !isValid;
   const background = assets?.servicesBackground?.url ?? assets?.heroBackground?.url ?? fallbackBg;
   const titleText = heading ?? "Our Services";
@@ -406,19 +430,25 @@ export function Services({
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
                   {group.items.map((service) => {
-                    const isHomeCleaningCard =
-                      isLuxe && typeof limit === "number" && isHomeCleaningService(resolveServiceTitle(service));
-                    const serviceTitle = isHomeCleaningCard ? homeCleaningCard.title : resolveServiceTitle(service);
+                    const rawTitle = resolveServiceTitle(service);
+                    const groupCard = !isGroupedHome
+                      ? null
+                      : isFirstTimeCleaningService(rawTitle)
+                        ? firstTimeCleaningCard
+                        : isHomeCleaningService(rawTitle)
+                          ? { ...homeCleaningCard, link: "/home-cleaning" }
+                          : null;
+                    const serviceTitle = groupCard ? groupCard.title : rawTitle;
                     const normalizedTitle = normalizeServiceName(serviceTitle);
                     const serviceType = getServiceType(normalizedTitle);
                     const Icon = iconMap[normalizedTitle] || Sparkles;
                     const isFeatured = normalizedTitle === "Deep Cleaning";
                     const isGlassAddOn = !isLuxe || normalizedTitle.toLowerCase().includes("add-on");
-                    const bookingLink = isHomeCleaningCard ? "/home-cleaning" : `/book?serviceId=${service.id}`;
+                    const bookingLink = groupCard ? groupCard.link : `/book?serviceId=${service.id}`;
                     const price = formatPrice(service.price);
                     const curatedCopy = getCuratedServiceCopy(serviceTitle);
-                    const summary = isHomeCleaningCard
-                      ? homeCleaningCard.description
+                    const summary = groupCard
+                      ? groupCard.description
                       : curatedCopy ?? summarizeDescription(service.description, isLuxe ? 90 : 120);
 
                     return (
@@ -530,10 +560,10 @@ export function Services({
                           </CardContent>
                         )}
 
-                        {isHomeCleaningCard && (
+                        {groupCard && (
                           <CardContent className="pt-0">
                             <ul className="space-y-2">
-                              {homeCleaningCard.options.map((option) => (
+                              {groupCard.options.map((option) => (
                                 <li key={option} className="flex items-center gap-2 text-sm text-white">
                                   <span className="text-primary">✦</span>
                                   <span>{option}</span>
