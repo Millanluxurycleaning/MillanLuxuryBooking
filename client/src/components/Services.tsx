@@ -1,12 +1,20 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, Home, Truck, Shirt } from "lucide-react";
+import { Sparkles, Home, Truck, Shirt, ChevronDown } from "lucide-react";
 import type { ServiceItem } from "@shared/types";
 import { normalizeArrayData } from "@/lib/arrayUtils";
 import { useAssets } from "@/hooks/useAssets";
+import {
+  HOME_CLEANING_DESCRIPTION,
+  HOME_CLEANING_OPTIONS,
+  HOME_CLEANING_TITLE,
+  findHomeCleaningService,
+  isHomeCleaningService,
+} from "@/lib/homeCleaning";
 
 const fallbackBg = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/dark-botanical-bg.png";
 
@@ -15,6 +23,7 @@ const iconMap: Record<string, any> = {
   "Deep Cleaning": Sparkles,
   "Move-In/Move-Out": Truck,
   "Basic Cleaning": Home,
+  "Home Cleaning": Home,
   "Laundry Services": Shirt,
   "Airbnb (Only)": Home,
   "Airbnb Turnovers": Home,
@@ -105,8 +114,8 @@ const coreServiceMatchers = [
     match: (name: string) => name.includes("deep"),
   },
   {
-    key: "basic",
-    match: (name: string) => name.includes("basic") || name.includes("weekly"),
+    key: "home",
+    match: (name: string) => name.includes("weekly") || name.includes("one time"),
   },
   {
     key: "move",
@@ -208,6 +217,7 @@ export function Services({
     queryKey: ["/api/services"],
   });
   const { data: assets = {} } = useAssets();
+  const [homeOptionsOpen, setHomeOptionsOpen] = useState(false);
   const isLuxe = variant === "luxe";
 
   const { items: serviceList, isValid } = normalizeArrayData<ServiceItem>(services);
@@ -216,13 +226,18 @@ export function Services({
     const serviceTitle = normalizeServiceName(resolveServiceTitle(service));
     return !isLaundryAddonServiceName(serviceTitle);
   });
-  const coreServices = pickCoreServices(squareServices);
+  // Home Cleaning services are shown as a single card
+  const homeCleaningCard = squareServices.find(isHomeCleaningService);
+  const visibleServices = squareServices.filter(
+    (service) => !isHomeCleaningService(service) || service === homeCleaningCard,
+  );
+  const coreServices = pickCoreServices(visibleServices);
   const limitedServices =
     typeof limit === "number"
       ? coreServices.length > 0
         ? coreServices.slice(0, limit)
-        : squareServices.slice(0, limit)
-      : squareServices;
+        : visibleServices.slice(0, limit)
+      : visibleServices;
   const hasShapeError = !isLoading && !error && !isValid;
   const background = assets?.servicesBackground?.url ?? assets?.heroBackground?.url ?? fallbackBg;
   const titleText = heading ?? "Our Services";
@@ -284,6 +299,7 @@ export function Services({
           label: "🏡 Residential Services",
           emoji: "🏡",
           items: limitedServices.filter((service) => {
+            if (isHomeCleaningService(service)) return true;
             const name = normalizeServiceName(resolveServiceTitle(service));
             return !isAirbnbTurnover(name) && isResidential(name);
           }),
@@ -292,6 +308,7 @@ export function Services({
           label: "🏠 Airbnb Turnovers",
           emoji: "🏠",
           items: limitedServices.filter((service) => {
+            if (isHomeCleaningService(service)) return false;
             const name = normalizeServiceName(resolveServiceTitle(service));
             return isAirbnbTurnover(name);
           }),
@@ -300,6 +317,7 @@ export function Services({
           label: "Other Services",
           emoji: "✨",
           items: limitedServices.filter((service) => {
+            if (isHomeCleaningService(service)) return false;
             const name = normalizeServiceName(resolveServiceTitle(service));
             return !isAirbnbTurnover(name) && !isResidential(name);
           }),
@@ -393,7 +411,8 @@ export function Services({
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
                   {group.items.map((service) => {
-                    const serviceTitle = resolveServiceTitle(service);
+                    const isHomeCleaning = isHomeCleaningService(service);
+                    const serviceTitle = isHomeCleaning ? HOME_CLEANING_TITLE : resolveServiceTitle(service);
                     const normalizedTitle = normalizeServiceName(serviceTitle);
                     const serviceType = getServiceType(normalizedTitle);
                     const Icon = iconMap[normalizedTitle] || Sparkles;
@@ -401,7 +420,7 @@ export function Services({
                     const isGlassAddOn = !isLuxe || normalizedTitle.toLowerCase().includes("add-on");
                     const bookingLink = `/book?serviceId=${service.id}`;
                     const price = formatPrice(service.price);
-                    const curatedCopy = getCuratedServiceCopy(serviceTitle);
+                    const curatedCopy = isHomeCleaning ? HOME_CLEANING_DESCRIPTION : getCuratedServiceCopy(serviceTitle);
                     const summary = curatedCopy ?? summarizeDescription(service.description, isLuxe ? 90 : 120);
 
                     return (
@@ -463,7 +482,7 @@ export function Services({
                             {!isLuxe && (
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline">{serviceType}</Badge>
-                                {price && service.displayPrice && (
+                                {price && service.displayPrice && !isHomeCleaning && (
                                   <Badge className="bg-primary text-primary-foreground">${price}</Badge>
                                 )}
                               </div>
@@ -485,7 +504,7 @@ export function Services({
 
                         {!isLuxe && (
                           <CardContent>
-                            {Array.isArray(service.features) && service.features.length > 0 ? (
+                            {!isHomeCleaning && Array.isArray(service.features) && service.features.length > 0 ? (
                               <ul className="space-y-2">
                                 {service.features.map((feature, idx) => (
                                 <li
@@ -513,6 +532,44 @@ export function Services({
                           </CardContent>
                         )}
 
+                        {isHomeCleaning ? (
+                          <CardFooter className={`flex-col gap-3 ${isLuxe ? "pt-2" : ""}`}>
+                            <Button
+                              type="button"
+                              variant="default"
+                              className={`w-full ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
+                              aria-expanded={homeOptionsOpen}
+                              onClick={() => setHomeOptionsOpen((open) => !open)}
+                              data-testid={`button-book-${service.id}`}
+                            >
+                              {isLuxe ? `Reserve ${serviceTitle}` : `Book ${serviceTitle}`}
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform ${homeOptionsOpen ? "rotate-180" : ""}`}
+                              />
+                            </Button>
+                            {homeOptionsOpen && (
+                              <div className="grid w-full grid-cols-2 gap-2">
+                                {HOME_CLEANING_OPTIONS.map((option) => {
+                                  const target = findHomeCleaningService(squareServices, option.frequency);
+                                  if (!target) return null;
+                                  return (
+                                    <Button
+                                      key={option.frequency}
+                                      asChild
+                                      variant="outline"
+                                      className="border-white/30 bg-white/5 text-white hover:bg-white/15 hover:text-white"
+                                      data-testid={`button-book-home-${option.frequency}`}
+                                    >
+                                      <a href={`/book?serviceId=${target.id}&frequency=${option.frequency}`}>
+                                        {option.label}
+                                      </a>
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </CardFooter>
+                        ) : (
                         <CardFooter className={isLuxe ? "pt-2" : ""}>
                           <Button
                             asChild
@@ -523,6 +580,7 @@ export function Services({
                             <a href={bookingLink}>{isLuxe ? `Reserve ${resolveServiceTitle(service)}` : `Book ${resolveServiceTitle(service)}`}</a>
                           </Button>
                         </CardFooter>
+                        )}
                       </Card>
                     );
                   })}

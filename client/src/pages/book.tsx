@@ -15,6 +15,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Clock, Sparkles, Home, ShieldCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Star, Copy, Check } from "lucide-react";
 import { BookingUpsellCarousel } from "@/components/BookingUpsellCarousel";
 import type { ServiceItem, ServicePricingTier } from "@shared/types";
+import {
+  HOME_CLEANING_OPTIONS,
+  HOME_CLEANING_TITLE,
+  findHomeCleaningService,
+  getHomeCleaningLabel,
+  isCleaningFrequency,
+  isHomeCleaningService,
+  type CleaningFrequency,
+} from "@/lib/homeCleaning";
 
 // Square footage pricing tiers
 const SQFT_TIERS = [
@@ -145,7 +154,10 @@ export default function BookingPage() {
   const [serviceState, setServiceState] = useState("AZ");
   const [serviceZip, setServiceZip] = useState("");
   const [notes, setNotes] = useState("");
-  const [frequency, setFrequency] = useState<"one-time" | "weekly" | "bi-weekly" | "monthly">("one-time");
+  const [frequency, setFrequency] = useState<CleaningFrequency>(() => {
+    const initialFrequency = queryParams.get("frequency");
+    return isCleaningFrequency(initialFrequency) ? initialFrequency : "one-time";
+  });
   const [bookingStatus, setBookingStatus] = useState<{ success: boolean; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<{
@@ -194,6 +206,11 @@ export default function BookingPage() {
   );
 
   const selectedService = squareServices.find((s) => s.id === selectedServiceId);
+  const isHomeCleaningSelected = Boolean(selectedService && isHomeCleaningService(selectedService));
+  const selectedServiceTitle = isHomeCleaningSelected
+    ? `${HOME_CLEANING_TITLE} · ${getHomeCleaningLabel(frequency)}`
+    : selectedService?.title;
+  const [homeCleaningOpen, setHomeCleaningOpen] = useState(false);
 
   // Check if this is a laundry service
   const isLaundryService = selectedService?.title?.toLowerCase().includes("laundry") ?? false;
@@ -549,7 +566,7 @@ export default function BookingPage() {
 
       setConfirmedBooking({
         bookingId: data.bookingId,
-        serviceName: selectedService?.title ?? "your service",
+        serviceName: selectedServiceTitle ?? "your service",
         date: selectedSlot?.startAt ? new Date(selectedSlot.startAt).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Phoenix" }) : "",
         time: selectedSlot?.startAt ? new Date(selectedSlot.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix", hour12: true }) : "",
       });
@@ -678,7 +695,7 @@ export default function BookingPage() {
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       {isStep1Complete && activeStep !== STEP_SERVICE && (
-                        <span className="text-sm text-purple-600 font-medium">{selectedService?.title}</span>
+                        <span className="text-sm text-purple-600 font-medium">{selectedServiceTitle}</span>
                       )}
                       <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${activeStep === STEP_SERVICE ? "rotate-180" : ""}`} />
                     </div>
@@ -700,9 +717,68 @@ export default function BookingPage() {
                           t.includes("move-out") || t.includes("move out") || t.includes("basic") ||
                           t.includes("vip") || t.includes("signature");
                       };
-                      const airbnbServices = squareServices.filter((s) => isAirbnbTurnover(s.title ?? s.name ?? ""));
-                      const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? ""));
-                      const otherServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
+                      // Home Cleaning services are shown as one choice with frequency options
+                      const listedServices = squareServices.filter((s) => !isHomeCleaningService(s));
+                      const hasHomeCleaning = squareServices.some(isHomeCleaningService);
+                      const airbnbServices = listedServices.filter((s) => isAirbnbTurnover(s.title ?? s.name ?? ""));
+                      const residentialServices = listedServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? ""));
+                      const otherServices = listedServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
+                      const renderHomeCleaningButton = () => (
+                        <div
+                          key="home-cleaning"
+                          className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
+                            isHomeCleaningSelected
+                              ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
+                              : "border-border hover:border-purple-300 hover:shadow-md"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            className="w-full flex items-start justify-between text-left"
+                            aria-expanded={homeCleaningOpen || isHomeCleaningSelected}
+                            onClick={() => setHomeCleaningOpen((open) => !open)}
+                          >
+                            <p className="font-semibold text-lg">{HOME_CLEANING_TITLE}</p>
+                            <ChevronDown className={`w-5 h-5 mt-1 text-muted-foreground transition-transform ${homeCleaningOpen || isHomeCleaningSelected ? "rotate-180" : ""}`} />
+                          </button>
+                          {(homeCleaningOpen || isHomeCleaningSelected) && (
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              {HOME_CLEANING_OPTIONS.map((option) => {
+                                const target = findHomeCleaningService(squareServices, option.frequency);
+                                if (!target) return null;
+                                const isSelected = selectedServiceId === target.id && frequency === option.frequency;
+                                return (
+                                  <button
+                                    key={option.frequency}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedServiceId(target.id);
+                                      setFrequency(option.frequency);
+                                      setTimeout(() => {
+                                        setActiveStep(STEP_DETAILS);
+                                        scrollToStep(STEP_DETAILS);
+                                      }, 300);
+                                    }}
+                                    className={`py-2 px-3 rounded-xl border text-sm font-medium transition-all flex flex-col items-center gap-0.5 ${
+                                      isSelected
+                                        ? "border-purple-400 bg-purple-50 text-purple-700"
+                                        : "border-border bg-background text-muted-foreground hover:border-purple-300"
+                                    }`}
+                                  >
+                                    <span>{option.label}</span>
+                                    {option.discount > 0 && (
+                                      <span className={`text-[10px] font-semibold ${isSelected ? "text-purple-500" : "text-emerald-600"}`}>
+                                        {option.discount}% off*
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                              <p className="col-span-2 text-[11px] text-muted-foreground">* Discount applies from 2nd visit onward. First visit is full price.</p>
+                            </div>
+                          )}
+                        </div>
+                      );
                       const renderServiceButton = (service: typeof squareServices[0]) => (
                         <button
                           key={service.id}
@@ -729,10 +805,11 @@ export default function BookingPage() {
                       );
                       return (
                         <>
-                          {residentialServices.length > 0 && (
+                          {(residentialServices.length > 0 || hasHomeCleaning) && (
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-widest text-purple-600 mb-3">🏡 Residential Services</p>
                               <div className="grid gap-3 md:grid-cols-2">
+                                {hasHomeCleaning && renderHomeCleaningButton()}
                                 {residentialServices.map(renderServiceButton)}
                               </div>
                             </div>
@@ -1201,7 +1278,8 @@ export default function BookingPage() {
                 </button>
                 {activeStep === STEP_TIME && isStep3Complete && (
                   <CardContent className="pt-0 space-y-4">
-                    {/* Cleaning Frequency */}
+                    {/* Cleaning Frequency (Home Cleaning picks it in step 1) */}
+                    {!isHomeCleaningSelected && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Cleaning Frequency</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1232,6 +1310,7 @@ export default function BookingPage() {
                       </div>
                       <p className="text-[11px] text-muted-foreground">* Discount applies from 2nd visit onward. First visit is full price.</p>
                     </div>
+                    )}
 
                     {timesForSelectedDate.length === 0 ? (
                       <p className="text-center text-muted-foreground py-6">
@@ -1291,7 +1370,7 @@ export default function BookingPage() {
                   {selectedService && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Service</span>
-                      <span className="font-medium">{selectedService.title}</span>
+                      <span className="font-medium">{selectedServiceTitle}</span>
                     </div>
                   )}
                   {selectedPricingTier && (
@@ -1444,7 +1523,7 @@ export default function BookingPage() {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Service</span>
-                            <span className="font-semibold text-right">{selectedService.title}</span>
+                            <span className="font-semibold text-right">{selectedServiceTitle}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Frequency</span>
