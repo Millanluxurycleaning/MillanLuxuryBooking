@@ -18,6 +18,7 @@ import BlogIndex from "@/pages/blog";
 import BlogPost from "@/pages/blog/PostDetail";
 import Fragrances from "@/pages/fragrances";
 import ServicesPage from "@/pages/services";
+import HomeCleaningPage from "@/pages/home-cleaning";
 import CartPage from "@/pages/cart";
 import CheckoutPage from "@/pages/checkout";
 import CheckoutSuccess from "@/pages/checkout-success";
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/blog" component={BlogIndex}/>
       <Route path="/blog/:slug" component={BlogPost}/>
       <Route path="/services" component={ServicesPage}/>
+      <Route path="/home-cleaning" component={HomeCleaningPage}/>
       <Route path="/fragrances" component={Fragrances}/>
       <Route path="/cart" component={CartPage}/>
       <Route path="/checkout" component={CheckoutPage}/>
