@@ -145,7 +145,10 @@ export default function BookingPage() {
   const [serviceState, setServiceState] = useState("AZ");
   const [serviceZip, setServiceZip] = useState("");
   const [notes, setNotes] = useState("");
-  const [frequency, setFrequency] = useState<"one-time" | "weekly" | "bi-weekly" | "monthly">("one-time");
+  const [frequency, setFrequency] = useState<"one-time" | "weekly" | "bi-weekly" | "monthly">(() => {
+    const f = queryParams.get("frequency");
+    return f === "weekly" || f === "bi-weekly" || f === "monthly" ? f : "one-time";
+  });
   const [bookingStatus, setBookingStatus] = useState<{ success: boolean; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<{

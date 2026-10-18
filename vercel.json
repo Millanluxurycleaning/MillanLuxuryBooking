@@ -51,6 +51,14 @@
       "destination": "/fragrances/index.html"
     },
     {
+      "source": "/home-cleaning",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/first-time-cleaning",
+      "destination": "/app.html"
+    },
+    {
       "source": "/blog/:slug",
       "destination": "/app.html"
     },
