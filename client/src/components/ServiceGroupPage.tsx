@@ -22,8 +22,6 @@ export type IncludedSection = {
 type ServiceGroupPageProps = {
   title: string;
   seo: { title: string; description: string; path: string };
-  bannerImage: string;
-  bannerAlt: string;
   intro: string;
   subIntro?: string;
   included: IncludedSection[];
@@ -35,8 +33,6 @@ type ServiceGroupPageProps = {
 export function ServiceGroupPage({
   title,
   seo,
-  bannerImage,
-  bannerAlt,
   intro,
   subIntro,
   included,
@@ -85,15 +81,6 @@ export function ServiceGroupPage({
       </header>
 
       <main>
-        {/* Banner photo */}
-        <div className="max-w-4xl mx-auto px-4 md:px-6 pt-6">
-          <img
-            src={bannerImage}
-            alt={bannerAlt}
-            className="w-full h-48 md:h-72 object-cover rounded-2xl border border-white/20 shadow-[0_24px_70px_rgba(0,0,0,0.45)]"
-          />
-        </div>
-
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
           <div className="space-y-1">
             <p className="text-base md:text-lg text-white/90">{intro}</p>
