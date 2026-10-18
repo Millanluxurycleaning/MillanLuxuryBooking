@@ -1,8 +1,5 @@
 import { ServiceGroupPage } from "@/components/ServiceGroupPage";
 
-// Banner photo (your "Kitchen Deep Clean - After" gallery photo)
-const BANNER_IMAGE = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/after/1777444804584.JPG";
-
 // Square service the Home Cleaning bookings go to (🧼 Basic Cleaning)
 const HOME_CLEANING_SERVICE_ID = 20;
 
@@ -23,8 +20,6 @@ export default function HomeCleaningPage() {
           "One-time, weekly, bi-weekly, and monthly home cleaning in the Phoenix Valley from Millan Luxury Cleaning.",
         path: "/home-cleaning",
       }}
-      bannerImage={BANNER_IMAGE}
-      bannerAlt="A kitchen cleaned by Millan Luxury Cleaning"
       intro="More than a basic clean — professional equipment, detailed care, and a higher standard of service."
       subIntro="Fixed pricing based on the approximate size of your home. No hourly charges."
       included={[

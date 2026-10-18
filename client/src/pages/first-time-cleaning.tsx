@@ -1,8 +1,5 @@
 import { ServiceGroupPage } from "@/components/ServiceGroupPage";
 
-// Banner photo (your "Bathroom Reset - After" gallery photo)
-const BANNER_IMAGE = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/after/1777442884548.jpeg";
-
 // Square services these options book
 const DEEP_CLEANING_SERVICE_ID = 9; // 🫧 Deep Cleaning
 const MOVE_IN_OUT_SERVICE_ID = 11; // 🪴 Move-In / Move-Out
@@ -20,8 +17,6 @@ export default function FirstTimeCleaningPage() {
           "First-time and one-time deep cleaning and move-in/move-out cleaning in the Phoenix Valley from Millan Luxury Cleaning.",
         path: "/first-time-cleaning",
       }}
-      bannerImage={BANNER_IMAGE}
-      bannerAlt="A bathroom cleaned by Millan Luxury Cleaning"
       intro="A detailed, top-to-bottom clean for a first visit, a one-time reset, or a move."
       subIntro="Fixed pricing based on the approximate size of your home. No hourly charges."
       included={[
