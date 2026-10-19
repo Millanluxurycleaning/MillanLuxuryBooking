@@ -120,6 +120,9 @@ type AvailabilityResponse = {
 };
 
 // Step IDs for the wizard flow
+const RECURRING_NOTE =
+  "* Your first visit is a Deep Cleaning at full price. Your recurring discount starts with your next cleaning. Final price may vary based on your home's size and condition.";
+
 const STEP_SERVICE = 1;
 const STEP_DETAILS = 2;  // Property size / sqft / laundry items
 const STEP_DATE = 3;
@@ -148,7 +151,9 @@ export default function BookingPage() {
   // "Deep Cleaning" shows as one choice; picking it asks Apartment or House
   const [showDeepChoice, setShowDeepChoice] = useState(() => queryParams.get("choose") === "deep-cleaning");
   const [frequency, setFrequency] = useState<"one-time" | "weekly" | "bi-weekly" | "monthly">(() => {
-    const f = queryParams.get("frequency");
+    // "frequency" comes from the Home Cleaning page, "plan" from the welcome popup
+    const raw = queryParams.get("frequency") ?? queryParams.get("plan");
+    const f = raw === "biweekly" ? "bi-weekly" : raw;
     return f === "weekly" || f === "bi-weekly" || f === "monthly" ? f : "one-time";
   });
   const [bookingStatus, setBookingStatus] = useState<{ success: boolean; message: string } | null>(null);
@@ -280,7 +285,12 @@ export default function BookingPage() {
     "monthly": 10,
   };
 
-  const frequencyDiscount = FREQUENCY_DISCOUNTS[frequency] ?? 0;
+  // Recurring discounts only apply to home cleaning plans: the first visit is a Deep Cleaning
+  // (full price) and the discount starts with the recurring cleanings after it.
+  const selectedTitleLower = (selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
+  const isRecurringEligible = selectedTitleLower.includes("deep") || selectedTitleLower.includes("basic cleaning");
+  const effectiveFrequency = isRecurringEligible ? frequency : "one-time";
+  const frequencyDiscount = FREQUENCY_DISCOUNTS[effectiveFrequency] ?? 0;
   const recurringPrice = selectedPrice != null && frequencyDiscount > 0
     ? selectedPrice * (1 - frequencyDiscount / 100)
     : null;
@@ -538,7 +548,7 @@ export default function BookingPage() {
           serviceVariationVersion: segment.serviceVariationVersion,
           sourceId,
           totalPrice: selectedPrice ?? undefined,
-          frequency,
+          frequency: effectiveFrequency,
         }),
       });
 
@@ -1272,7 +1282,8 @@ export default function BookingPage() {
                 </button>
                 {activeStep === STEP_TIME && isStep3Complete && (
                   <CardContent className="pt-0 space-y-4">
-                    {/* Cleaning Frequency */}
+                    {/* Cleaning Frequency (recurring plans only apply to home cleaning) */}
+                    {isRecurringEligible && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Cleaning Frequency</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1301,8 +1312,9 @@ export default function BookingPage() {
                           </button>
                         ))}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">* Discount applies from 2nd visit onward. First visit is full price.</p>
+                      <p className="text-[11px] text-muted-foreground">{RECURRING_NOTE}</p>
                     </div>
+                    )}
 
                     {timesForSelectedDate.length === 0 ? (
                       <p className="text-center text-muted-foreground py-6">
@@ -1456,8 +1468,8 @@ export default function BookingPage() {
                       </div>
                       {recurringPrice != null && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Recurring ({frequencyDiscount}% off)</span>
-                          <span className="font-semibold text-emerald-600">${recurringPrice.toFixed(2)}</span>
+                          <span className="text-muted-foreground">Recurring cleanings</span>
+                          <span className="font-semibold text-emerald-600">{frequencyDiscount}% off*</span>
                         </div>
                       )}
                     </>
@@ -1520,7 +1532,7 @@ export default function BookingPage() {
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Frequency</span>
                             <span className="font-semibold">
-                              {frequency === "one-time" ? "One-Time" : frequency === "bi-weekly" ? "Bi-Weekly" : frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                              {effectiveFrequency === "one-time" ? "One-Time" : effectiveFrequency === "bi-weekly" ? "Bi-Weekly" : effectiveFrequency.charAt(0).toUpperCase() + effectiveFrequency.slice(1)}
                               {frequencyDiscount > 0 && <span className="ml-1 text-emerald-600 text-xs">({frequencyDiscount}% off*)</span>}
                             </span>
                           </div>
@@ -1540,8 +1552,8 @@ export default function BookingPage() {
                               </div>
                               {recurringPrice != null && (
                                 <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Recurring Rate</span>
-                                  <span className="font-bold text-emerald-600">${recurringPrice.toFixed(2)}</span>
+                                  <span className="text-muted-foreground">Recurring Cleanings</span>
+                                  <span className="font-bold text-emerald-600">{frequencyDiscount}% off*</span>
                                 </div>
                               )}
                             </>
@@ -1549,7 +1561,7 @@ export default function BookingPage() {
                         </div>
                         {recurringPrice != null && (
                           <p className="text-[11px] text-muted-foreground border-t border-purple-200 pt-2">
-                            * First visit is full price. Discount applies from the 2nd visit onward.
+                            {RECURRING_NOTE}
                           </p>
                         )}
                       </div>
