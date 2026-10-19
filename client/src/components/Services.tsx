@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, Home, Truck, Shirt } from "lucide-react";
+import { Sparkles, Home, Truck, Shirt, ChevronDown } from "lucide-react";
 import type { ServiceItem } from "@shared/types";
 import { normalizeArrayData } from "@/lib/arrayUtils";
 import { useAssets } from "@/hooks/useAssets";
@@ -76,7 +77,7 @@ const homeCleaningCard = {
   title: "🏡 Home Cleaning",
   description:
     "Reliable, detailed cleaning that keeps your home polished and welcoming — on the schedule that works for you.",
-  options: ["One-Time Cleaning", "Weekly Cleaning", "Bi-Weekly Cleaning", "Monthly Cleaning"],
+  options: ["Weekly Cleaning", "Bi-Weekly Cleaning", "Monthly Cleaning"],
 };
 
 // Home page "One / First Time Cleaning" card: groups Deep Cleaning and Move-In / Move-Out
@@ -91,6 +92,16 @@ const firstTimeCleaningCard = {
 const isFirstTimeCleaningService = (name: string) => {
   const lower = normalizeServiceName(name).toLowerCase();
   return lower.includes("deep") || lower.includes("move-in") || lower.includes("move-out") || lower.includes("move out");
+};
+
+const isBasicCleaningName = (name: string) => normalizeServiceName(name).toLowerCase().includes("basic cleaning");
+
+const isDeepCleaningName = (name: string) => normalizeServiceName(name).toLowerCase().includes("deep");
+
+// "🫧 Deep Cleaning- Apartment" -> "Apartment", "🫧Deep Cleaning – House" -> "House"
+const deepCleaningTypeLabel = (name: string) => {
+  const parts = normalizeServiceName(name).split(/\s*[-–—]\s*/);
+  return parts.length > 1 ? parts[parts.length - 1].trim() : normalizeServiceName(name);
 };
 
 const isHomeCleaningService = (name: string) => {
@@ -236,6 +247,7 @@ export function Services({
   });
   const { data: assets = {} } = useAssets();
   const isLuxe = variant === "luxe";
+  const [deepChoiceOpen, setDeepChoiceOpen] = useState(false);
 
   const { items: serviceList, isValid } = normalizeArrayData<ServiceItem>(services);
   const squareServices = serviceList.filter((service) => {
@@ -258,6 +270,22 @@ export function Services({
       if (firstIdx !== -1 && isFirstTimeCleaningService(resolveServiceTitle(limitedServices[i]))) {
         limitedServices.splice(i, 1);
       }
+    }
+  }
+  // Services page: Basic Cleaning is only booked through Home Cleaning (recurring), so it isn't listed on its own
+  if (!isGroupedHome) {
+    for (let i = limitedServices.length - 1; i >= 0; i--) {
+      if (isBasicCleaningName(resolveServiceTitle(limitedServices[i]))) limitedServices.splice(i, 1);
+    }
+  }
+  // Services page: Deep Cleaning (Apartment / House) shows as one card with a choice of type
+  const deepChoices = !isGroupedHome
+    ? limitedServices.filter((s) => isDeepCleaningName(resolveServiceTitle(s)))
+    : [];
+  if (deepChoices.length > 1) {
+    for (let i = limitedServices.length - 1; i >= 0; i--) {
+      const s = limitedServices[i];
+      if (s.id !== deepChoices[0].id && deepChoices.some((d) => d.id === s.id)) limitedServices.splice(i, 1);
     }
   }
   const hasShapeError = !isLoading && !error && !isValid;
@@ -438,14 +466,17 @@ export function Services({
                         : isHomeCleaningService(rawTitle)
                           ? { ...homeCleaningCard, link: "/home-cleaning" }
                           : null;
-                    const serviceTitle = groupCard ? groupCard.title : rawTitle;
+                    const isDeepCombined = deepChoices.length > 1 && deepChoices[0].id === service.id;
+                    const serviceTitle = groupCard ? groupCard.title : isDeepCombined ? "🫧 Deep Cleaning" : rawTitle;
                     const normalizedTitle = normalizeServiceName(serviceTitle);
                     const serviceType = getServiceType(normalizedTitle);
                     const Icon = iconMap[normalizedTitle] || Sparkles;
                     const isFeatured = normalizedTitle === "Deep Cleaning";
                     const isGlassAddOn = !isLuxe || normalizedTitle.toLowerCase().includes("add-on");
                     const bookingLink = groupCard ? groupCard.link : `/book?serviceId=${service.id}`;
-                    const price = formatPrice(service.price);
+                    const price = isDeepCombined
+                      ? formatPrice(Math.min(...deepChoices.map((d) => Number(d.price ?? Infinity))))
+                      : formatPrice(service.price);
                     const curatedCopy = getCuratedServiceCopy(serviceTitle);
                     const summary = groupCard
                       ? groupCard.description
@@ -511,7 +542,9 @@ export function Services({
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline">{serviceType}</Badge>
                                 {price && service.displayPrice && (
-                                  <Badge className="bg-primary text-primary-foreground">${price}</Badge>
+                                  <Badge className="bg-primary text-primary-foreground">
+                                    {isDeepCombined ? `From $${price}` : `$${price}`}
+                                  </Badge>
                                 )}
                               </div>
                             )}
@@ -573,16 +606,52 @@ export function Services({
                           </CardContent>
                         )}
 
+                        {isDeepCombined ? (
+                          <CardFooter className="flex-col items-stretch gap-3">
+                            <Button
+                              type="button"
+                              variant="default"
+                              className="w-full"
+                              aria-expanded={deepChoiceOpen}
+                              onClick={() => setDeepChoiceOpen((open) => !open)}
+                              data-testid="button-book-deep-cleaning"
+                            >
+                              Book {serviceTitle}
+                              <ChevronDown
+                                className={`ml-2 w-4 h-4 transition-transform ${deepChoiceOpen ? "rotate-180" : ""}`}
+                              />
+                            </Button>
+                            {deepChoiceOpen && (
+                              <div className="rounded-xl border border-white/20 bg-black/30 p-3 space-y-2">
+                                <p className="text-sm font-medium text-white">House or Apartment?</p>
+                                {deepChoices.map((choice) => (
+                                  <a
+                                    key={choice.id}
+                                    href={`/book?serviceId=${choice.id}`}
+                                    data-testid={`button-book-${choice.id}`}
+                                    className="flex items-center justify-between rounded-lg border border-white/20 px-4 py-3 text-white transition-colors hover:border-primary hover:bg-white/5"
+                                  >
+                                    <span className="font-medium">{deepCleaningTypeLabel(resolveServiceTitle(choice))}</span>
+                                    {choice.displayPrice && choice.price != null && (
+                                      <span className="text-sm text-primary">from ${formatPrice(choice.price)}</span>
+                                    )}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </CardFooter>
+                        ) : (
                         <CardFooter className={isLuxe ? "pt-2" : ""}>
                           <Button
                             asChild
-                            variant={isLuxe || isFeatured ? "default" : "outline"}
+                            variant="default"
                             className={`w-full ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
                             data-testid={`button-book-${service.id}`}
                           >
                             <a href={bookingLink}>{isLuxe ? `Reserve ${serviceTitle}` : `Book ${serviceTitle}`}</a>
                           </Button>
                         </CardFooter>
+                        )}
                       </Card>
                     );
                   })}

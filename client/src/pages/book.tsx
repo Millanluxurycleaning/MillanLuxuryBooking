@@ -120,6 +120,9 @@ type AvailabilityResponse = {
 };
 
 // Step IDs for the wizard flow
+const RECURRING_NOTE =
+  "* Your first visit is a Deep Cleaning at full price. Your recurring discount starts with your next cleaning. Final price may vary based on your home's size and condition.";
+
 const STEP_SERVICE = 1;
 const STEP_DETAILS = 2;  // Property size / sqft / laundry items
 const STEP_DATE = 3;
@@ -145,8 +148,12 @@ export default function BookingPage() {
   const [serviceState, setServiceState] = useState("AZ");
   const [serviceZip, setServiceZip] = useState("");
   const [notes, setNotes] = useState("");
+  // "Deep Cleaning" shows as one choice; picking it asks Apartment or House
+  const [showDeepChoice, setShowDeepChoice] = useState(() => queryParams.get("choose") === "deep-cleaning");
   const [frequency, setFrequency] = useState<"one-time" | "weekly" | "bi-weekly" | "monthly">(() => {
-    const f = queryParams.get("frequency");
+    // "frequency" comes from the Home Cleaning page, "plan" from the welcome popup
+    const raw = queryParams.get("frequency") ?? queryParams.get("plan");
+    const f = raw === "biweekly" ? "bi-weekly" : raw;
     return f === "weekly" || f === "bi-weekly" || f === "monthly" ? f : "one-time";
   });
   const [bookingStatus, setBookingStatus] = useState<{ success: boolean; message: string } | null>(null);
@@ -278,7 +285,12 @@ export default function BookingPage() {
     "monthly": 10,
   };
 
-  const frequencyDiscount = FREQUENCY_DISCOUNTS[frequency] ?? 0;
+  // Recurring discounts only apply to home cleaning plans: the first visit is a Deep Cleaning
+  // (full price) and the discount starts with the recurring cleanings after it.
+  const selectedTitleLower = (selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
+  const isRecurringEligible = selectedTitleLower.includes("deep") || selectedTitleLower.includes("basic cleaning");
+  const effectiveFrequency = isRecurringEligible ? frequency : "one-time";
+  const frequencyDiscount = FREQUENCY_DISCOUNTS[effectiveFrequency] ?? 0;
   const recurringPrice = selectedPrice != null && frequencyDiscount > 0
     ? selectedPrice * (1 - frequencyDiscount / 100)
     : null;
@@ -536,7 +548,7 @@ export default function BookingPage() {
           serviceVariationVersion: segment.serviceVariationVersion,
           sourceId,
           totalPrice: selectedPrice ?? undefined,
-          frequency,
+          frequency: effectiveFrequency,
         }),
       });
 
@@ -704,18 +716,82 @@ export default function BookingPage() {
                           t.includes("vip") || t.includes("signature");
                       };
                       const airbnbServices = squareServices.filter((s) => isAirbnbTurnover(s.title ?? s.name ?? ""));
-                      const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? ""));
+                      // Basic Cleaning is for recurring clients only (booked from the Home Cleaning page), so it's
+                      // hidden from this list unless it was already chosen there
+                      const isBasicCleaning = (s: typeof squareServices[0]) =>
+                        (s.title ?? s.name ?? "").toLowerCase().includes("basic cleaning") && s.id !== selectedServiceId;
+                      const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? "") && !isBasicCleaning(s));
                       const otherServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
+                      const chooseService = (id: number) => {
+                        setSelectedServiceId(id);
+                        setTimeout(() => {
+                          setActiveStep(STEP_DETAILS);
+                          scrollToStep(STEP_DETAILS);
+                        }, 300);
+                      };
+                      const titleOf = (s: typeof squareServices[0]) => s.title ?? s.name ?? "";
+                      const deepServices = residentialServices.filter((s) => titleOf(s).toLowerCase().includes("deep"));
+                      const deepTypeLabel = (title: string) => {
+                        const parts = title.replace(/^[^A-Za-z0-9]+/, "").trim().split(/\s*[-–—]\s*/);
+                        return parts.length > 1 ? parts[parts.length - 1].trim() : title;
+                      };
+                      const renderDeepCleaningChoice = () => {
+                        const isSelected = deepServices.some((s) => s.id === selectedServiceId);
+                        const minPrice = Math.min(...deepServices.map((s) => Number(s.price ?? Infinity)));
+                        return (
+                          <div
+                            key="deep-cleaning"
+                            className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
+                              isSelected || showDeepChoice
+                                ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
+                                : "border-border hover:border-purple-300 hover:shadow-md"
+                            }`}
+                          >
+                            <button type="button" className="w-full text-left" onClick={() => setShowDeepChoice((v) => !v)}>
+                              <p className="font-semibold text-lg">🫧 Deep Cleaning</p>
+                              {Number.isFinite(minPrice) && (
+                                <p className="text-purple-600 font-bold mt-1">Starting at ${minPrice.toFixed(2)}</p>
+                              )}
+                            </button>
+                            {(showDeepChoice || isSelected) && (
+                              <div className="mt-3 space-y-2">
+                                <p className="text-sm font-medium">Choose your home type:</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {deepServices.map((s) => (
+                                    <button
+                                      key={s.id}
+                                      type="button"
+                                      onClick={() => chooseService(s.id)}
+                                      className={`rounded-lg border-2 px-3 py-2 text-sm font-semibold transition-all ${
+                                        selectedServiceId === s.id
+                                          ? "border-purple-500 bg-white text-purple-700"
+                                          : "border-border bg-background hover:border-purple-300"
+                                      }`}
+                                    >
+                                      {deepTypeLabel(titleOf(s))}
+                                      {s.displayPrice && s.price && (
+                                        <span className="block text-xs font-normal text-muted-foreground">
+                                          from ${Number(s.price).toFixed(0)}
+                                        </span>
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      };
+                      type ResidentialItem = typeof squareServices[0] | "deep-cleaning";
+                      const residentialItems: ResidentialItem[] = deepServices.length > 1
+                        ? residentialServices.flatMap<ResidentialItem>((s) =>
+                            s.id === deepServices[0].id ? ["deep-cleaning" as const] : deepServices.some((d) => d.id === s.id) ? [] : [s],
+                          )
+                        : residentialServices;
                       const renderServiceButton = (service: typeof squareServices[0]) => (
                         <button
                           key={service.id}
-                          onClick={() => {
-                            setSelectedServiceId(service.id);
-                            setTimeout(() => {
-                              setActiveStep(STEP_DETAILS);
-                              scrollToStep(STEP_DETAILS);
-                            }, 300);
-                          }}
+                          onClick={() => chooseService(service.id)}
                           className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
                             selectedServiceId === service.id
                               ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
@@ -736,7 +812,9 @@ export default function BookingPage() {
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-widest text-purple-600 mb-3">🏡 Residential Services</p>
                               <div className="grid gap-3 md:grid-cols-2">
-                                {residentialServices.map(renderServiceButton)}
+                                {residentialItems.map((item) =>
+                                  item === "deep-cleaning" ? renderDeepCleaningChoice() : renderServiceButton(item),
+                                )}
                               </div>
                             </div>
                           )}
@@ -1204,7 +1282,8 @@ export default function BookingPage() {
                 </button>
                 {activeStep === STEP_TIME && isStep3Complete && (
                   <CardContent className="pt-0 space-y-4">
-                    {/* Cleaning Frequency */}
+                    {/* Cleaning Frequency (recurring plans only apply to home cleaning) */}
+                    {isRecurringEligible && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Cleaning Frequency</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1233,8 +1312,9 @@ export default function BookingPage() {
                           </button>
                         ))}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">* Discount applies from 2nd visit onward. First visit is full price.</p>
+                      <p className="text-[11px] text-muted-foreground">{RECURRING_NOTE}</p>
                     </div>
+                    )}
 
                     {timesForSelectedDate.length === 0 ? (
                       <p className="text-center text-muted-foreground py-6">
@@ -1388,8 +1468,8 @@ export default function BookingPage() {
                       </div>
                       {recurringPrice != null && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Recurring ({frequencyDiscount}% off)</span>
-                          <span className="font-semibold text-emerald-600">${recurringPrice.toFixed(2)}</span>
+                          <span className="text-muted-foreground">Recurring cleanings</span>
+                          <span className="font-semibold text-emerald-600">{frequencyDiscount}% off*</span>
                         </div>
                       )}
                     </>
@@ -1452,7 +1532,7 @@ export default function BookingPage() {
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Frequency</span>
                             <span className="font-semibold">
-                              {frequency === "one-time" ? "One-Time" : frequency === "bi-weekly" ? "Bi-Weekly" : frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                              {effectiveFrequency === "one-time" ? "One-Time" : effectiveFrequency === "bi-weekly" ? "Bi-Weekly" : effectiveFrequency.charAt(0).toUpperCase() + effectiveFrequency.slice(1)}
                               {frequencyDiscount > 0 && <span className="ml-1 text-emerald-600 text-xs">({frequencyDiscount}% off*)</span>}
                             </span>
                           </div>
@@ -1472,8 +1552,8 @@ export default function BookingPage() {
                               </div>
                               {recurringPrice != null && (
                                 <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Recurring Rate</span>
-                                  <span className="font-bold text-emerald-600">${recurringPrice.toFixed(2)}</span>
+                                  <span className="text-muted-foreground">Recurring Cleanings</span>
+                                  <span className="font-bold text-emerald-600">{frequencyDiscount}% off*</span>
                                 </div>
                               )}
                             </>
@@ -1481,7 +1561,7 @@ export default function BookingPage() {
                         </div>
                         {recurringPrice != null && (
                           <p className="text-[11px] text-muted-foreground border-t border-purple-200 pt-2">
-                            * First visit is full price. Discount applies from the 2nd visit onward.
+                            {RECURRING_NOTE}
                           </p>
                         )}
                       </div>
