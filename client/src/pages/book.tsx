@@ -145,6 +145,8 @@ export default function BookingPage() {
   const [serviceState, setServiceState] = useState("AZ");
   const [serviceZip, setServiceZip] = useState("");
   const [notes, setNotes] = useState("");
+  // "Deep Cleaning" shows as one choice; picking it asks Apartment or House
+  const [showDeepChoice, setShowDeepChoice] = useState(() => queryParams.get("choose") === "deep-cleaning");
   const [frequency, setFrequency] = useState<"one-time" | "weekly" | "bi-weekly" | "monthly">(() => {
     const f = queryParams.get("frequency");
     return f === "weekly" || f === "bi-weekly" || f === "monthly" ? f : "one-time";
@@ -706,16 +708,76 @@ export default function BookingPage() {
                       const airbnbServices = squareServices.filter((s) => isAirbnbTurnover(s.title ?? s.name ?? ""));
                       const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? ""));
                       const otherServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
+                      const chooseService = (id: number) => {
+                        setSelectedServiceId(id);
+                        setTimeout(() => {
+                          setActiveStep(STEP_DETAILS);
+                          scrollToStep(STEP_DETAILS);
+                        }, 300);
+                      };
+                      const titleOf = (s: typeof squareServices[0]) => s.title ?? s.name ?? "";
+                      const deepServices = residentialServices.filter((s) => titleOf(s).toLowerCase().includes("deep"));
+                      const deepTypeLabel = (title: string) => {
+                        const parts = title.replace(/^[^A-Za-z0-9]+/, "").trim().split(/\s*[-–—]\s*/);
+                        return parts.length > 1 ? parts[parts.length - 1].trim() : title;
+                      };
+                      const renderDeepCleaningChoice = () => {
+                        const isSelected = deepServices.some((s) => s.id === selectedServiceId);
+                        const minPrice = Math.min(...deepServices.map((s) => Number(s.price ?? Infinity)));
+                        return (
+                          <div
+                            key="deep-cleaning"
+                            className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
+                              isSelected || showDeepChoice
+                                ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
+                                : "border-border hover:border-purple-300 hover:shadow-md"
+                            }`}
+                          >
+                            <button type="button" className="w-full text-left" onClick={() => setShowDeepChoice((v) => !v)}>
+                              <p className="font-semibold text-lg">🫧 Deep Cleaning</p>
+                              {Number.isFinite(minPrice) && (
+                                <p className="text-purple-600 font-bold mt-1">Starting at ${minPrice.toFixed(2)}</p>
+                              )}
+                            </button>
+                            {(showDeepChoice || isSelected) && (
+                              <div className="mt-3 space-y-2">
+                                <p className="text-sm font-medium">Choose your home type:</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {deepServices.map((s) => (
+                                    <button
+                                      key={s.id}
+                                      type="button"
+                                      onClick={() => chooseService(s.id)}
+                                      className={`rounded-lg border-2 px-3 py-2 text-sm font-semibold transition-all ${
+                                        selectedServiceId === s.id
+                                          ? "border-purple-500 bg-white text-purple-700"
+                                          : "border-border bg-background hover:border-purple-300"
+                                      }`}
+                                    >
+                                      {deepTypeLabel(titleOf(s))}
+                                      {s.displayPrice && s.price && (
+                                        <span className="block text-xs font-normal text-muted-foreground">
+                                          from ${Number(s.price).toFixed(0)}
+                                        </span>
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      };
+                      type ResidentialItem = typeof squareServices[0] | "deep-cleaning";
+                      const residentialItems: ResidentialItem[] = deepServices.length > 1
+                        ? residentialServices.flatMap<ResidentialItem>((s) =>
+                            s.id === deepServices[0].id ? ["deep-cleaning" as const] : deepServices.some((d) => d.id === s.id) ? [] : [s],
+                          )
+                        : residentialServices;
                       const renderServiceButton = (service: typeof squareServices[0]) => (
                         <button
                           key={service.id}
-                          onClick={() => {
-                            setSelectedServiceId(service.id);
-                            setTimeout(() => {
-                              setActiveStep(STEP_DETAILS);
-                              scrollToStep(STEP_DETAILS);
-                            }, 300);
-                          }}
+                          onClick={() => chooseService(service.id)}
                           className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
                             selectedServiceId === service.id
                               ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
@@ -736,7 +798,9 @@ export default function BookingPage() {
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-widest text-purple-600 mb-3">🏡 Residential Services</p>
                               <div className="grid gap-3 md:grid-cols-2">
-                                {residentialServices.map(renderServiceButton)}
+                                {residentialItems.map((item) =>
+                                  item === "deep-cleaning" ? renderDeepCleaningChoice() : renderServiceButton(item),
+                                )}
                               </div>
                             </div>
                           )}

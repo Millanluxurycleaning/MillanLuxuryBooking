@@ -1,7 +1,6 @@
 import { ServiceGroupPage } from "@/components/ServiceGroupPage";
 
 // Square services these options book
-const DEEP_CLEANING_SERVICE_ID = 9; // 🫧 Deep Cleaning
 const MOVE_IN_OUT_SERVICE_ID = 11; // 🪴 Move-In / Move-Out
 
 const sqftNote =
@@ -53,7 +52,7 @@ export default function FirstTimeCleaningPage() {
         {
           label: "Deep Cleaning",
           description: "Best for a first visit or a home that hasn't been cleaned in the past month.",
-          href: `/book?serviceId=${DEEP_CLEANING_SERVICE_ID}`,
+          href: "/book?choose=deep-cleaning",
         },
         {
           label: "Move-In / Move-Out",
