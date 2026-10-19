@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, Home, Truck, Shirt } from "lucide-react";
+import { Sparkles, Home, Truck, Shirt, ChevronDown } from "lucide-react";
 import type { ServiceItem } from "@shared/types";
 import { normalizeArrayData } from "@/lib/arrayUtils";
 import { useAssets } from "@/hooks/useAssets";
@@ -244,6 +245,7 @@ export function Services({
   });
   const { data: assets = {} } = useAssets();
   const isLuxe = variant === "luxe";
+  const [deepChoiceOpen, setDeepChoiceOpen] = useState(false);
 
   const { items: serviceList, isValid } = normalizeArrayData<ServiceItem>(services);
   const squareServices = serviceList.filter((service) => {
@@ -598,20 +600,37 @@ export function Services({
 
                         {isDeepCombined ? (
                           <CardFooter className="flex-col items-stretch gap-3">
-                            <p className="text-sm font-medium text-white">Choose your home type:</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {deepChoices.map((choice) => (
-                                <Button
-                                  key={choice.id}
-                                  asChild
-                                  variant="default"
-                                  className="w-full"
-                                  data-testid={`button-book-${choice.id}`}
-                                >
-                                  <a href={`/book?serviceId=${choice.id}`}>Book {deepCleaningTypeLabel(resolveServiceTitle(choice))}</a>
-                                </Button>
-                              ))}
-                            </div>
+                            <Button
+                              type="button"
+                              variant="default"
+                              className="w-full"
+                              aria-expanded={deepChoiceOpen}
+                              onClick={() => setDeepChoiceOpen((open) => !open)}
+                              data-testid="button-book-deep-cleaning"
+                            >
+                              Book {serviceTitle}
+                              <ChevronDown
+                                className={`ml-2 w-4 h-4 transition-transform ${deepChoiceOpen ? "rotate-180" : ""}`}
+                              />
+                            </Button>
+                            {deepChoiceOpen && (
+                              <div className="rounded-xl border border-white/20 bg-black/30 p-3 space-y-2">
+                                <p className="text-sm font-medium text-white">House or Apartment?</p>
+                                {deepChoices.map((choice) => (
+                                  <a
+                                    key={choice.id}
+                                    href={`/book?serviceId=${choice.id}`}
+                                    data-testid={`button-book-${choice.id}`}
+                                    className="flex items-center justify-between rounded-lg border border-white/20 px-4 py-3 text-white transition-colors hover:border-primary hover:bg-white/5"
+                                  >
+                                    <span className="font-medium">{deepCleaningTypeLabel(resolveServiceTitle(choice))}</span>
+                                    {choice.displayPrice && choice.price != null && (
+                                      <span className="text-sm text-primary">from ${formatPrice(choice.price)}</span>
+                                    )}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                           </CardFooter>
                         ) : (
                         <CardFooter className={isLuxe ? "pt-2" : ""}>
