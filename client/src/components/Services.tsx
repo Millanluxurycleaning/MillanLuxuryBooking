@@ -576,7 +576,7 @@ export function Services({
                         <CardFooter className={isLuxe ? "pt-2" : ""}>
                           <Button
                             asChild
-                            variant={isLuxe || isFeatured ? "default" : "outline"}
+                            variant="default"
                             className={`w-full ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
                             data-testid={`button-book-${service.id}`}
                           >
