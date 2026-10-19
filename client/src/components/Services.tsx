@@ -93,6 +93,14 @@ const isFirstTimeCleaningService = (name: string) => {
   return lower.includes("deep") || lower.includes("move-in") || lower.includes("move-out") || lower.includes("move out");
 };
 
+const isDeepCleaningName = (name: string) => normalizeServiceName(name).toLowerCase().includes("deep");
+
+// "🫧 Deep Cleaning- Apartment" -> "Apartment", "🫧Deep Cleaning – House" -> "House"
+const deepCleaningTypeLabel = (name: string) => {
+  const parts = normalizeServiceName(name).split(/\s*[-–—]\s*/);
+  return parts.length > 1 ? parts[parts.length - 1].trim() : normalizeServiceName(name);
+};
+
 const isHomeCleaningService = (name: string) => {
   const lower = normalizeServiceName(name).toLowerCase();
   return lower.includes("weekly") || lower.includes("basic");
@@ -258,6 +266,16 @@ export function Services({
       if (firstIdx !== -1 && isFirstTimeCleaningService(resolveServiceTitle(limitedServices[i]))) {
         limitedServices.splice(i, 1);
       }
+    }
+  }
+  // Services page: Deep Cleaning (Apartment / House) shows as one card with a choice of type
+  const deepChoices = !isGroupedHome
+    ? limitedServices.filter((s) => isDeepCleaningName(resolveServiceTitle(s)))
+    : [];
+  if (deepChoices.length > 1) {
+    for (let i = limitedServices.length - 1; i >= 0; i--) {
+      const s = limitedServices[i];
+      if (s.id !== deepChoices[0].id && deepChoices.some((d) => d.id === s.id)) limitedServices.splice(i, 1);
     }
   }
   const hasShapeError = !isLoading && !error && !isValid;
@@ -438,14 +456,17 @@ export function Services({
                         : isHomeCleaningService(rawTitle)
                           ? { ...homeCleaningCard, link: "/home-cleaning" }
                           : null;
-                    const serviceTitle = groupCard ? groupCard.title : rawTitle;
+                    const isDeepCombined = deepChoices.length > 1 && deepChoices[0].id === service.id;
+                    const serviceTitle = groupCard ? groupCard.title : isDeepCombined ? "🫧 Deep Cleaning" : rawTitle;
                     const normalizedTitle = normalizeServiceName(serviceTitle);
                     const serviceType = getServiceType(normalizedTitle);
                     const Icon = iconMap[normalizedTitle] || Sparkles;
                     const isFeatured = normalizedTitle === "Deep Cleaning";
                     const isGlassAddOn = !isLuxe || normalizedTitle.toLowerCase().includes("add-on");
                     const bookingLink = groupCard ? groupCard.link : `/book?serviceId=${service.id}`;
-                    const price = formatPrice(service.price);
+                    const price = isDeepCombined
+                      ? formatPrice(Math.min(...deepChoices.map((d) => Number(d.price ?? Infinity))))
+                      : formatPrice(service.price);
                     const curatedCopy = getCuratedServiceCopy(serviceTitle);
                     const summary = groupCard
                       ? groupCard.description
@@ -511,7 +532,9 @@ export function Services({
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline">{serviceType}</Badge>
                                 {price && service.displayPrice && (
-                                  <Badge className="bg-primary text-primary-foreground">${price}</Badge>
+                                  <Badge className="bg-primary text-primary-foreground">
+                                    {isDeepCombined ? `From $${price}` : `$${price}`}
+                                  </Badge>
                                 )}
                               </div>
                             )}
@@ -573,6 +596,24 @@ export function Services({
                           </CardContent>
                         )}
 
+                        {isDeepCombined ? (
+                          <CardFooter className="flex-col items-stretch gap-3">
+                            <p className="text-sm font-medium text-white">Choose your home type:</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              {deepChoices.map((choice) => (
+                                <Button
+                                  key={choice.id}
+                                  asChild
+                                  variant="default"
+                                  className="w-full"
+                                  data-testid={`button-book-${choice.id}`}
+                                >
+                                  <a href={`/book?serviceId=${choice.id}`}>Book {deepCleaningTypeLabel(resolveServiceTitle(choice))}</a>
+                                </Button>
+                              ))}
+                            </div>
+                          </CardFooter>
+                        ) : (
                         <CardFooter className={isLuxe ? "pt-2" : ""}>
                           <Button
                             asChild
@@ -583,6 +624,7 @@ export function Services({
                             <a href={bookingLink}>{isLuxe ? `Reserve ${serviceTitle}` : `Book ${serviceTitle}`}</a>
                           </Button>
                         </CardFooter>
+                        )}
                       </Card>
                     );
                   })}
