@@ -315,7 +315,6 @@ export function Services({
         backgroundImage: `url(${background})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundAttachment: "fixed",
       }}
     >
       {/* Overlay */}
@@ -369,7 +368,7 @@ export function Services({
               <div key={group.label ?? `group-${groupIndex}`} className="space-y-6">
                 {group.label && (
                   <div className="text-center">
-                    <p className="text-sm uppercase tracking-[0.3em] text-white/60">{group.label}</p>
+                    <p className="text-sm uppercase tracking-[0.3em] text-white/80">{group.label}</p>
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
@@ -407,6 +406,7 @@ export function Services({
                             <img
                               src={service.imageUrl}
                               alt={serviceTitle}
+                              loading="lazy"
                               className={`w-full h-full object-cover transition-transform duration-500 ${isLuxe ? "group-hover:scale-105" : ""}`}
                             />
                             {isLuxe && <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />}
@@ -435,7 +435,7 @@ export function Services({
                                   {serviceTitle}
                                 </CardTitle>
                                 {isLuxe && (
-                                  <p className="text-[0.7rem] uppercase tracking-[0.3em] text-white/60">
+                                  <p className="text-[0.7rem] uppercase tracking-[0.3em] text-white/80">
                                     {serviceType}
                                   </p>
                                 )}

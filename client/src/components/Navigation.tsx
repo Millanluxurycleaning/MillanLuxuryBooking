@@ -109,9 +109,10 @@ export function Navigation() {
             {/* Mobile Menu */}
             <Sheet>
               <SheetTrigger asChild className="lg:hidden">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
+                  aria-label="Open menu"
                   className={isScrolled ? "text-foreground" : "text-white"}
                   data-testid="button-menu-toggle"
                 >

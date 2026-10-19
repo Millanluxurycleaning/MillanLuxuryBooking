@@ -158,7 +158,7 @@ export function Testimonials() {
           <h2 className="font-serif text-4xl md:text-6xl font-semibold mb-4">
             What Clients Say
           </h2>
-          <p className="text-xl md:text-2xl text-emerald-100/75">
+          <p className="text-xl md:text-2xl text-emerald-100/90">
             Trusted by homeowners across Phoenix, AZ
           </p>
         </div>
@@ -205,7 +205,7 @@ export function Testimonials() {
                       </div>
 
                       {/* Review Text */}
-                      <p className="text-xl italic text-white/85 mb-4 leading-relaxed">
+                      <p className="text-xl italic text-white/90 mb-4 leading-relaxed">
                         "{reviewText}"
                       </p>
 

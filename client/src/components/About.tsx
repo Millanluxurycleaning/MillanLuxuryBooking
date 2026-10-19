@@ -41,6 +41,7 @@ export function About() {
                   <img
                     src={portrait}
                     alt="Ivan Millan, Founder of Millan Luxury Cleaning"
+                    loading="lazy"
                     className="w-full h-auto object-cover"
                     data-testid="img-owner-photo"
                   />

@@ -40,7 +40,24 @@
       "Bash(git cherry-pick:*)",
       "Bash(python -c:*)",
       "Bash(git rm:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(xargs:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx esbuild server/index.ts server/routes.ts server/routes/affiliate.ts server/services/email.ts --platform=node --packages=external --format=esm --outdir=/tmp/test-build --out-extension:.js=.js)",
+      "Bash(node _check_square.mjs)",
+      "Bash(npx vercel logs --output json)",
+      "Bash(node _test_smtp.mjs)",
+      "Bash(npx esbuild server/index.ts --bundle --platform=node --format=esm --outdir=/tmp/test-build --external:@prisma/client --external:square --external:nodemailer --external:resend --external:cookie-parser --external:express --external:cors --external:dotenv --external:zod --external:crypto)",
+      "Bash(npx vite build)",
+      "Bash(node _test_booking.mjs)",
+      "Bash(node _check_services.mjs)",
+      "Bash(node --env-file=.env _check_availability.mjs)",
+      "Bash(node --env-file=.env -e \":*)",
+      "WebFetch(domain:developer.squareup.com)",
+      "Bash(node --env-file=.env _test_card.mjs)",
+      "Bash(find node_modules/square/dist -name \"*.d.ts\" -exec grep -l \"catalog\" {} ;)",
+      "Bash(git status -u)",
+      "Bash(npm uninstall resend)"
     ]
   }
 }

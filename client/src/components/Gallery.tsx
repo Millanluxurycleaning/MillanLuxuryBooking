@@ -120,6 +120,7 @@ export function Gallery() {
       <img
         src={item.imageUrl || placeholderImage}
         alt={item.title || "Gallery image"}
+        loading="lazy"
         className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
         data-testid={`img-gallery-${item.id}`}
       />
@@ -201,7 +202,11 @@ export function Gallery() {
             {filteredImages.map((item) => (
               <div
                 key={item.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${item.title || "gallery image"}`}
                 onClick={() => openLightbox(item.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(item.id); } }}
                 className="group relative overflow-hidden rounded-md cursor-pointer hover-elevate transition-all duration-300"
                 data-testid={`gallery-item-${item.id}`}
               >
@@ -278,6 +283,7 @@ export function Gallery() {
                   variant="ghost"
                   size="icon"
                   onClick={goToPrevious}
+                  aria-label="Previous image"
                   className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white hover:bg-white/20"
                   data-testid="button-prev-image"
                 >
@@ -287,6 +293,7 @@ export function Gallery() {
                   variant="ghost"
                   size="icon"
                   onClick={goToNext}
+                  aria-label="Next image"
                   className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white hover:bg-white/20"
                   data-testid="button-next-image"
                 >
