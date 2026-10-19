@@ -706,7 +706,11 @@ export default function BookingPage() {
                           t.includes("vip") || t.includes("signature");
                       };
                       const airbnbServices = squareServices.filter((s) => isAirbnbTurnover(s.title ?? s.name ?? ""));
-                      const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? ""));
+                      // Basic Cleaning is for recurring clients only (booked from the Home Cleaning page), so it's
+                      // hidden from this list unless it was already chosen there
+                      const isBasicCleaning = (s: typeof squareServices[0]) =>
+                        (s.title ?? s.name ?? "").toLowerCase().includes("basic cleaning") && s.id !== selectedServiceId;
+                      const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? "") && !isBasicCleaning(s));
                       const otherServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
                       const chooseService = (id: number) => {
                         setSelectedServiceId(id);
