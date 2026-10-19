@@ -77,7 +77,7 @@ const homeCleaningCard = {
   title: "🏡 Home Cleaning",
   description:
     "Reliable, detailed cleaning that keeps your home polished and welcoming — on the schedule that works for you.",
-  options: ["One-Time Cleaning", "Weekly Cleaning", "Bi-Weekly Cleaning", "Monthly Cleaning"],
+  options: ["Weekly Cleaning", "Bi-Weekly Cleaning", "Monthly Cleaning"],
 };
 
 // Home page "One / First Time Cleaning" card: groups Deep Cleaning and Move-In / Move-Out

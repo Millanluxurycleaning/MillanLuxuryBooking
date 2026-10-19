@@ -120,7 +120,9 @@ export function WelcomePopup() {
 
   const goToBooking = () => {
     dismiss();
+    // First visit is a Deep Cleaning; the plan's discount applies to the cleanings after it
     const params = new URLSearchParams({
+      choose: "deep-cleaning",
       plan: selectedPlan ?? "",
       name, phone, email: bookEmail, address,
     });
@@ -185,7 +187,7 @@ export function WelcomePopup() {
                   );
                 })}
               </div>
-              <p className="text-[10px] mb-1" style={{ color: "rgba(255,255,255,0.28)" }}>* Off your first cleaning when signing up for a recurring plan</p>
+              <p className="text-[10px] mb-1" style={{ color: "rgba(255,255,255,0.28)" }}>* Applies to your recurring cleanings after your first Deep Cleaning</p>
 
               <p className="text-[11px] mb-5 transition-opacity" style={{ color: selectedPlan ? "rgba(255,255,255,0.3)" : "rgba(255,200,80,0.65)" }}>
                 {selectedPlan ? "Great choice! How do you want to claim it?" : "↑ Select a plan to continue"}
@@ -206,7 +208,7 @@ export function WelcomePopup() {
           {step === "choice" && (
             <>
               <h2 className="text-2xl font-serif font-semibold text-white mb-1">
-                {planPct} on your first {plan?.label.toLowerCase()} cleaning
+                {planPct} off your {plan?.label.toLowerCase()} cleanings after your first Deep Cleaning
               </h2>
               <p className="text-sm mb-6 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
                 How would you like to claim your discount?
