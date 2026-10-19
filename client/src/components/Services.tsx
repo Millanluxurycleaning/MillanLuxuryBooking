@@ -94,6 +94,8 @@ const isFirstTimeCleaningService = (name: string) => {
   return lower.includes("deep") || lower.includes("move-in") || lower.includes("move-out") || lower.includes("move out");
 };
 
+const isBasicCleaningName = (name: string) => normalizeServiceName(name).toLowerCase().includes("basic cleaning");
+
 const isDeepCleaningName = (name: string) => normalizeServiceName(name).toLowerCase().includes("deep");
 
 // "🫧 Deep Cleaning- Apartment" -> "Apartment", "🫧Deep Cleaning – House" -> "House"
@@ -268,6 +270,12 @@ export function Services({
       if (firstIdx !== -1 && isFirstTimeCleaningService(resolveServiceTitle(limitedServices[i]))) {
         limitedServices.splice(i, 1);
       }
+    }
+  }
+  // Services page: Basic Cleaning is only booked through Home Cleaning (recurring), so it isn't listed on its own
+  if (!isGroupedHome) {
+    for (let i = limitedServices.length - 1; i >= 0; i--) {
+      if (isBasicCleaningName(resolveServiceTitle(limitedServices[i]))) limitedServices.splice(i, 1);
     }
   }
   // Services page: Deep Cleaning (Apartment / House) shows as one card with a choice of type
