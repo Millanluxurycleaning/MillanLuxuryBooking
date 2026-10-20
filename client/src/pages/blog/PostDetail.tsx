@@ -21,7 +21,13 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
   // Full article text lives in blogContent; fall back to what's saved in the admin
   const full = blogContent[params.slug];
   const post = savedPost
-    ? { ...savedPost, excerpt: full?.excerpt ?? savedPost.excerpt, body: full?.body ?? savedPost.body }
+    ? {
+        ...savedPost,
+        createdAt: full?.date ?? savedPost.createdAt,
+        updatedAt: full?.date ?? savedPost.updatedAt,
+        excerpt: full?.excerpt ?? savedPost.excerpt,
+        body: full?.body ?? savedPost.body,
+      }
     : savedPost;
 
   const notFound = error instanceof ApiError && error.status === 404;

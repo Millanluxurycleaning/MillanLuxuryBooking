@@ -19,8 +19,12 @@ export default function BlogIndex() {
     retry: false,
   });
 
+  // Publish dates for the full articles come from blogContent
   const sortedPosts = useMemo(
-    () => [...posts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    () =>
+      posts
+        .map((p) => ({ ...p, createdAt: blogContent[p.slug]?.date ?? p.createdAt }))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [posts]
   );
 
