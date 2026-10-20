@@ -2,10 +2,11 @@
 // When a slug is listed here, the blog shows this text instead of the short text saved in the admin.
 // Formatting: "## " heading, "### " subheading, "- " bullet, **bold**, *italic*, [link](/path).
 
-export type BlogContent = { excerpt?: string; body: string };
+export type BlogContent = { date?: string; excerpt?: string; body: string };
 
 export const blogContent: Record<string, BlogContent> = {
   "scottsdale-white-glove-deep-cleaning": {
+    date: "2026-10-07T12:00:00Z",
     excerpt: "How luxury residences in Scottsdale stay guest-ready with a meticulous deep cleaning routine.",
     body: `A beautiful home in Scottsdale is made of details: veined marble, hand-finished cabinetry, glass that catches the desert light, and floors that set the tone the moment the door opens. Everyday tidying keeps a home presentable. A white-glove deep cleaning restores it to the way it felt on the day you fell in love with it.
 
@@ -70,6 +71,7 @@ Ready to start with a white-glove deep cleaning in Scottsdale or anywhere in the
   },
 
   "paradise-valley-post-renovation-dust-control": {
+    date: "2026-08-19T12:00:00Z",
     excerpt: "How to clear construction dust from a newly renovated home without risking custom finishes.",
     body: `A renovation in Paradise Valley is an investment in the way you live: a reimagined kitchen, a primary suite with a view of Camelback Mountain, a new wing for family and guests. When the contractors pack up, though, they leave behind something no one designs for: a fine layer of construction dust that seems to reach every corner of the home.
 
@@ -117,6 +119,7 @@ Serving Paradise Valley, Scottsdale, Phoenix, and the surrounding Valley. [Book 
   },
 
   "phoenix-airbnb-turnover-excellence": {
+    date: "2026-09-16T12:00:00Z",
     excerpt: "How Phoenix hosts keep five-star turnover standards without slowing down between guests.",
     body: `In the short-term rental world, the cleaning is the guest experience. A traveler may never meet you, but they will notice the crisp bed, the spotless shower, and the kitchen that looks like no one has ever cooked in it. In a market as competitive as Phoenix, Scottsdale, and Tempe, those details show up directly in your reviews.
 
@@ -164,6 +167,7 @@ Hosting in the Phoenix Valley? [View our Airbnb services](/services) or call (60
   },
 
   "protect-custom-marble-during-cleaning": {
+    date: "2026-09-09T12:00:00Z",
     excerpt: "Natural stone needs gentle products and the right technique. Here is how to keep marble beautiful.",
     body: `Few materials say luxury quite like marble. Its veining makes every slab one of a kind, and it brings a quiet elegance to kitchens, bathrooms, and entryways. It is also one of the most sensitive surfaces in a home. The wrong cleaner, used even once, can leave a dull mark that is far harder to fix than it was to prevent.
 
@@ -212,6 +216,7 @@ If your home features natural stone, our [deep cleaning](/book?choose=deep-clean
   },
 
   "seasonal-cleaning-checklist-scottsdale": {
+    date: "2026-10-14T12:00:00Z",
     excerpt: "A practical checklist for preparing your Scottsdale home before you arrive and after you leave for the season.",
     body: `For many Scottsdale homeowners, the year has two seasons: the months you spend in the desert and the months you spend somewhere cooler. A seasonal home deserves the same care as a primary residence, but it faces its own challenges. Dust builds up while the house sits closed. Air systems sit idle. And no one wants to spend the first day of a long-awaited arrival cleaning.
 
@@ -266,6 +271,7 @@ Serving Scottsdale, Paradise Valley, Fountain Hills, and the greater Phoenix Val
   },
 
   "discreet-luxury-cleaning-protocols": {
+    date: "2026-08-12T12:00:00Z",
     excerpt: "Privacy, respect, and quiet professionalism: what discreet service looks like in a luxury home.",
     body: `Inviting someone into your home is an act of trust. For many of our clients, privacy matters just as much as a spotless kitchen. The best cleaning service is one you barely notice while it is happening, and immediately notice once it is done.
 
@@ -309,6 +315,7 @@ If privacy and professionalism matter to you, we would be honored to care for yo
   },
 
   "move-in-perfection-new-construction": {
+    date: "2026-08-26T12:00:00Z",
     excerpt: "A white-glove, inside-every-cabinet approach to cleaning a new home before move-in day.",
     body: `Moving into a new home should feel like opening a gift. Whether it is a newly built home in North Scottsdale or a beautiful resale in Arcadia, you want the first day to feel fresh and untouched. In reality, new homes often arrive with construction dust in the cabinets, stickers on the windows, and fingerprints on every surface from the final walkthrough.
 
@@ -364,6 +371,7 @@ Serving Scottsdale, Paradise Valley, Phoenix, and the surrounding Valley. [Book 
   },
 
   "eco-luxe-cleaning-sensitive-homes": {
+    date: "2026-09-23T12:00:00Z",
     excerpt: "Plant-forward, low-fragrance cleaning that still feels luxurious, for homes with allergies, pets, and little ones.",
     body: `A clean home should feel good to breathe in. For households with allergies, young children, pets, or a sensitivity to strong scents, the products used in the home matter just as much as the result. Luxury, after all, is about comfort, and few things are less comfortable than a home that smells like harsh chemicals.
 
@@ -403,6 +411,7 @@ Interested in a gentler clean? Add the Green Luxury Upgrade when you [book your 
   },
 
   "staging-ready-cleaning-before-listing": {
+    date: "2026-09-02T12:00:00Z",
     excerpt: "How a detailed pre-listing clean helps your home photograph beautifully and impress buyers in person.",
     body: `When you list a home, the first showing happens online. Buyers scroll through listing photos long before they ever walk through the door, and the homes that stand out are the ones that look bright, open, and immaculate. A detailed pre-listing clean is one of the simplest ways to make sure your home looks its very best in those first photos.
 
@@ -457,6 +466,7 @@ Preparing to list in Scottsdale, Paradise Valley, Phoenix, or nearby? [Book your
   },
 
   "anatomy-of-luxury-bathroom-reset": {
+    date: "2026-09-30T12:00:00Z",
     excerpt: "Inside the step-by-step checklist we use to bring bathrooms back to a spa-like finish.",
     body: `A beautiful bathroom should feel like a private spa: clear glass, gleaming fixtures, crisp towels, and a sense of calm the moment you step inside. In the Phoenix Valley, hard water, desert dust, and daily use make that standard harder to maintain. A full bathroom reset brings it back.
 
