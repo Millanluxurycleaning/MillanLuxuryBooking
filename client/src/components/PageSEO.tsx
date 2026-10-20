@@ -12,6 +12,7 @@ interface PageSEOProps {
   schema?: object;
   /** Set for pages that should not appear in Google (404, account pages, etc.) */
   noindex?: boolean;
+  keywords?: string[];
 }
 
 export function PageSEO({
@@ -24,6 +25,7 @@ export function PageSEO({
   modifiedAt,
   schema,
   noindex = false,
+  keywords,
 }: PageSEOProps) {
   const fullTitle = `${title} | ${SITE_NAME}`;
   const canonicalUrl = `${BASE_URL}${path || "/"}`;
@@ -33,6 +35,7 @@ export function PageSEO({
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <meta name="robots" content={noindex ? "noindex, follow" : "index, follow"} />
+      {keywords && keywords.length > 0 && <meta name="keywords" content={keywords.join(", ")} />}
       {!noindex && <link rel="canonical" href={canonicalUrl} />}
 
       <meta property="og:title" content={fullTitle} />
