@@ -6,6 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { PageSEO } from "@/components/PageSEO";
 import { BlogBody } from "@/components/BlogBody";
 import { blogContent } from "@/data/blogContent";
+import { codeBlogPosts } from "@shared/blogPosts";
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return "";
@@ -20,7 +21,8 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
   });
   // Full article text lives in blogContent; fall back to what's saved in the admin
   const full = blogContent[params.slug];
-  const post = savedPost
+  const codePost = codeBlogPosts.find((c) => c.slug === params.slug);
+  const post: Post | undefined = savedPost
     ? {
         ...savedPost,
         createdAt: full?.date ?? savedPost.createdAt,
@@ -28,9 +30,21 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
         excerpt: full?.excerpt ?? savedPost.excerpt,
         body: full?.body ?? savedPost.body,
       }
-    : savedPost;
+    : codePost && full
+      ? {
+          id: 0,
+          slug: codePost.slug,
+          title: codePost.title,
+          excerpt: full.excerpt ?? "",
+          body: full.body,
+          published: true,
+          createdAt: codePost.date,
+          updatedAt: codePost.date,
+        }
+      : savedPost;
 
-  const notFound = error instanceof ApiError && error.status === 404;
+  // A post written in the code exists even if the admin doesn't have it
+  const notFound = !post && error instanceof ApiError && error.status === 404;
 
   const articleSchema = post
     ? {
@@ -104,7 +118,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
           </article>
         )}
 
-        {error && !notFound && !isLoading && (
+        {error && !notFound && !post && !isLoading && (
           <p className="text-destructive">Failed to load post.</p>
         )}
       </div>
