@@ -128,6 +128,31 @@ export const cityPages: CityPage[] = [
   },
 ];
 
+// Search phrases for each city (shown on the page as "Cleaning Services We Offer in <city>",
+// each linking to the right booking page, and added to the page's keywords tag)
+export interface CityKeyword {
+  label: string;
+  href: string;
+}
+
+export const cityKeywords = (c: CityPage): CityKeyword[] => [
+  { label: `House cleaning in ${c.city}`, href: "/book" },
+  { label: `Maid service in ${c.city}`, href: "/home-cleaning" },
+  { label: `Luxury cleaning service in ${c.city}`, href: "/services" },
+  { label: `Deep cleaning in ${c.city}`, href: "/book?choose=deep-cleaning" },
+  { label: `Apartment cleaning in ${c.city}`, href: "/book?choose=deep-cleaning" },
+  { label: `Move-out cleaning in ${c.city}`, href: "/first-time-cleaning" },
+  { label: `Move-in cleaning in ${c.city}`, href: "/first-time-cleaning" },
+  { label: `Weekly house cleaning in ${c.city}`, href: "/home-cleaning" },
+  { label: `Bi-weekly house cleaning in ${c.city}`, href: "/home-cleaning" },
+  { label: `Monthly house cleaning in ${c.city}`, href: "/home-cleaning" },
+  { label: `Airbnb cleaning in ${c.city}`, href: "/services" },
+  { label: `Vacation rental cleaning in ${c.city}`, href: "/services" },
+  { label: `Residential cleaning in ${c.city}, AZ`, href: "/book" },
+  { label: `House cleaners near me in ${c.city}`, href: "/book" },
+  { label: `House cleaning in ${c.neighborhoods[0]}`, href: "/book" },
+];
+
 export const cityPageBySlug = Object.fromEntries(cityPages.map((c) => [c.slug, c])) as Record<string, CityPage>;
 
 export const cityPagePath = (slug: string) => `/cleaning/${slug}`;
