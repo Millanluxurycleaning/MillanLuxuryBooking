@@ -5,6 +5,70 @@
 export type BlogContent = { date?: string; excerpt?: string; body: string };
 
 export const blogContent: Record<string, BlogContent> = {
+  "holiday-hosting-cleaning-checklist-phoenix": {
+    date: "2026-10-19T12:00:00Z",
+    excerpt: "A room-by-room plan to get your Phoenix home guest-ready for Thanksgiving and the holidays, without the last-minute rush.",
+    body: `The holidays in the Phoenix Valley are something special: cool evenings on the patio, family flying in from colder places, and a table full of food and conversation. They also mean more guests, more cooking, and more moments when the house needs to look its very best.
+
+The secret to calm holiday hosting is starting early. Here is a simple plan, room by room, to get your home guest-ready before Thanksgiving, so the week itself can be about the people, not the cleaning.
+
+## Four Weeks Out: Plan and Declutter
+
+- **Pick your hosting days.** Write down when guests arrive, when they leave, and which rooms they will use.
+- **Clear the counters.** Put away small appliances, mail, and anything that does not need to be out. Clear counters make every cleaning step faster.
+- **Check your guest supplies.** Fresh towels, extra pillows, spare bedding, and toiletries for the guest bath.
+- **Book your deep cleaning.** Holiday weeks fill up quickly, so it is worth reserving your spot early.
+
+## Two Weeks Out: The Deep Clean
+
+This is the visit that does the heavy lifting. A full deep cleaning reaches the places that collect dust and buildup over the year, so your home feels fresh from the entry to the guest room.
+
+### Kitchen
+
+- Stainless steel appliances polished and fingerprint-free
+- Countertops, backsplash, and sink detailed and sanitized
+- Cabinet fronts and handles wiped down
+- Optional add-ons for the inside of the oven and refrigerator, which is especially helpful before a big holiday meal
+
+### Bathrooms
+
+- Showers, tubs, sinks, and toilets scrubbed and sanitized
+- Hard-water spots removed from glass and fixtures
+- Mirrors left clear and bright
+
+### Living and dining areas
+
+- Dusting from top to bottom, including ceiling fans, vents, and baseboards
+- Light switches, door handles, and other high-touch surfaces cleaned
+- Floors deep vacuumed and mopped
+
+## One Week Out: Guest Rooms and Finishing Touches
+
+- **Make up the guest beds** with freshly washed linens.
+- **Clear a drawer and some closet space** so guests can unpack.
+- **Stock the guest bathroom** with fresh towels, soap, and a few essentials.
+- **Refresh the entry.** A swept porch and clean front door glass set the tone the moment guests arrive.
+
+## The Day Before: A Quick Reset
+
+If your home had a deep cleaning, the day before guests arrive should only take minutes:
+
+- Wipe kitchen counters and the sink
+- Freshen up the powder room
+- Fluff pillows and fold throws
+- Run the dishwasher and empty it so it is ready for the big meal
+
+## After the Holidays
+
+Once the last guest heads home, a post-holiday cleaning resets everything at once: kitchens, bathrooms, guest rooms, and floors. It is the easiest way to get back to normal without spending your own weekend on it.
+
+## Make This the Easiest Holiday Yet
+
+Many of our clients start the season with a deep cleaning, then keep their home guest-ready with a weekly or bi-weekly plan through the New Year. Recurring clients receive a discount on every cleaning after their first deep cleaning.
+
+Hosting this year in Phoenix, Scottsdale, or anywhere in the Valley? [Book your holiday deep cleaning](/book?choose=deep-cleaning) or explore our [Home Cleaning plans](/home-cleaning). Questions? Call (602) 596-7393.`,
+  },
+
   "scottsdale-white-glove-deep-cleaning": {
     date: "2026-10-07T12:00:00Z",
     excerpt: "How luxury residences in Scottsdale stay guest-ready with a meticulous deep cleaning routine.",

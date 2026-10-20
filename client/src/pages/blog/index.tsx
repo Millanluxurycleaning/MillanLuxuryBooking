@@ -6,6 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { PageSEO } from "@/components/PageSEO";
 import { seoPages } from "@shared/seoPages";
 import { blogContent } from "@/data/blogContent";
+import { codeBlogPosts } from "@shared/blogPosts";
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return "";
@@ -22,7 +23,22 @@ export default function BlogIndex() {
   // Publish dates for the full articles come from blogContent
   const sortedPosts = useMemo(
     () =>
-      posts
+      [
+        ...posts,
+        // Posts added in the code (not yet in the admin)
+        ...codeBlogPosts
+          .filter((c) => !posts.some((p) => p.slug === c.slug))
+          .map((c, i) => ({
+            id: -1 - i,
+            slug: c.slug,
+            title: c.title,
+            excerpt: blogContent[c.slug]?.excerpt ?? "",
+            body: blogContent[c.slug]?.body ?? "",
+            published: true,
+            createdAt: c.date,
+            updatedAt: c.date,
+          })),
+      ]
         .map((p) => ({ ...p, createdAt: blogContent[p.slug]?.date ?? p.createdAt }))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [posts]
