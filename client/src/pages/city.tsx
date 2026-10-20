@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -20,6 +21,10 @@ const fallbackBg = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/stat
 
 export default function CityPage({ params }: { params: { city: string } }) {
   const { data: assets = {} } = useAssets();
+  // Opening a city (from the homepage or a nearby-city link) should start at the top of the page
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [params.city]);
   const c = cityPageBySlug[params.city];
   if (!c) return <NotFound />;
 
