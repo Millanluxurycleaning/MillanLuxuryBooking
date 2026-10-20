@@ -4,6 +4,8 @@ import type { Post } from "@shared/types";
 import { ApiError } from "@/lib/queryClient";
 import { Navigation } from "@/components/Navigation";
 import { PageSEO } from "@/components/PageSEO";
+import { BlogBody } from "@/components/BlogBody";
+import { blogContent } from "@/data/blogContent";
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return "";
@@ -12,10 +14,21 @@ const formatDate = (value?: string | Date | null) => {
 };
 
 export default function BlogPost({ params }: { params: { slug: string } }) {
-  const { data: post, isLoading, error } = useQuery<Post>({
+  const { data: savedPost, isLoading, error } = useQuery<Post>({
     queryKey: [`/api/posts/${params.slug}`],
     retry: false,
   });
+  // Full article text lives in blogContent; fall back to what's saved in the admin
+  const full = blogContent[params.slug];
+  const post = savedPost
+    ? {
+        ...savedPost,
+        createdAt: full?.date ?? savedPost.createdAt,
+        updatedAt: full?.date ?? savedPost.updatedAt,
+        excerpt: full?.excerpt ?? savedPost.excerpt,
+        body: full?.body ?? savedPost.body,
+      }
+    : savedPost;
 
   const notFound = error instanceof ApiError && error.status === 404;
 
@@ -87,9 +100,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
               <h1 className="text-4xl font-serif font-semibold leading-tight">{post.title}</h1>
             </div>
             <p className="text-lg text-muted-foreground">{post.excerpt}</p>
-            <div className="prose prose-invert max-w-none whitespace-pre-wrap">
-              {post.body}
-            </div>
+            <BlogBody text={post.body ?? ""} />
           </article>
         )}
 

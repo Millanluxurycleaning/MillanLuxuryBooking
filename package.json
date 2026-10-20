@@ -7,7 +7,7 @@
     "dev": "tsx server/index.ts",
     "dev:frontend": "vite",
     "dev:backend": "tsx server/index.ts",
-    "build": "vite build && tsx scripts/prerender-head.ts && esbuild server/index.ts server/routes.ts server/routes/affiliate.ts server/storage.ts server/env.ts server/vite.ts server/blob.ts server/blobService.ts server/seed.ts server/supabase.ts server/google.ts server/tokenService.ts server/db/prismaClient.ts server/services/square.ts server/services/squareAccess.ts server/services/squareAuth.ts server/services/catalogSync.ts server/services/encryption.ts server/services/email.ts shared/types.ts shared/locations.ts shared/seoPages.ts shared/auth.ts --platform=node --packages=external --format=esm --outdir=dist/server --out-extension:.js=.js",
+    "build": "vite build && tsx scripts/prerender-head.ts && esbuild server/index.ts server/routes.ts server/routes/affiliate.ts server/storage.ts server/env.ts server/vite.ts server/blob.ts server/blobService.ts server/seed.ts server/supabase.ts server/google.ts server/tokenService.ts server/db/prismaClient.ts server/services/square.ts server/services/squareAccess.ts server/services/squareAuth.ts server/services/catalogSync.ts server/services/encryption.ts server/services/email.ts shared/types.ts shared/locations.ts shared/seoPages.ts shared/cityPages.ts shared/auth.ts --platform=node --packages=external --format=esm --outdir=dist/server --out-extension:.js=.js",
     "start": "node dist/server/index.js",
     "check": "tsc",
     "db:push": "bash db/push-schema.sh",

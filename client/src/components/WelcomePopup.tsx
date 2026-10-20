@@ -52,14 +52,27 @@ export function WelcomePopup() {
   const [code, setCode]       = useState<string | null>(null);
   const [copied, setCopied]   = useState(false);
 
+  // Show once per visitor, after they've spent about 30 seconds on the site.
+  // The 30 seconds count from their first page this visit, so moving between pages doesn't restart it.
   useEffect(() => {
-    if (localStorage.getItem(CLAIMED_KEY)) return;
-    if (localStorage.getItem("mlc_popup_seen")) return;
-    const timer = setTimeout(() => {
-      localStorage.setItem("mlc_popup_seen", "1");
-      setVisible(true);
-    }, 3000);
-    return () => clearTimeout(timer);
+    try {
+      if (localStorage.getItem(CLAIMED_KEY)) return;
+      if (localStorage.getItem("mlc_popup_seen")) return;
+      const DELAY_MS = 30_000;
+      let start = Number(sessionStorage.getItem("mlc_visit_start"));
+      if (!start) {
+        start = Date.now();
+        sessionStorage.setItem("mlc_visit_start", String(start));
+      }
+      const remaining = Math.max(0, DELAY_MS - (Date.now() - start));
+      const timer = setTimeout(() => {
+        localStorage.setItem("mlc_popup_seen", "1");
+        setVisible(true);
+      }, remaining);
+      return () => clearTimeout(timer);
+    } catch {
+      // Storage unavailable (e.g. private mode): skip the popup rather than show it on every page
+    }
   }, []);
 
   const dismiss = () => setVisible(false);

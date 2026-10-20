@@ -3,6 +3,8 @@
 // which writes these tags into static HTML at build time so crawlers and
 // social previews see the correct title/description/canonical without JS.
 
+import { cityPages, cityPagePath, cityPageTitle, cityPageDescription } from "./cityPages.js";
+
 export const SITE_NAME = "Millan Luxury Cleaning";
 export const BASE_URL = "https://millanluxurycleaning.com";
 export const DEFAULT_OG_IMAGE =
@@ -69,4 +71,13 @@ export const seoPages = {
   },
 } satisfies Record<string, SeoPage>;
 
-export const indexablePages: SeoPage[] = Object.values(seoPages);
+// One page per city (/cleaning/<city>) for local search
+export const cityLandingPages: SeoPage[] = cityPages.map((c) => ({
+  path: cityPagePath(c.slug),
+  title: cityPageTitle(c.city),
+  description: cityPageDescription(c),
+  changefreq: "monthly",
+  priority: 0.8,
+}));
+
+export const indexablePages: SeoPage[] = [...Object.values(seoPages), ...cityLandingPages];

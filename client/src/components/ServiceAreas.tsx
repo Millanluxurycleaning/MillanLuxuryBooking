@@ -1,6 +1,8 @@
 import { serviceAreas, additionalServiceAreas } from "@shared/locations";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
+import { Link } from "wouter";
+import { cityPages, cityPagePath } from "@shared/cityPages";
 
 export function ServiceAreas() {
   return (
@@ -16,8 +18,10 @@ export function ServiceAreas() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {serviceAreas.map((area) => (
-            <Card key={area.city} className="hover-elevate" data-testid={`card-location-${area.city.toLowerCase()}`}>
+          {serviceAreas.map((area) => {
+            const page = cityPages.find((c) => c.city === area.city);
+            const card = (
+            <Card key={area.city} className="hover-elevate h-full" data-testid={`card-location-${area.city.toLowerCase()}`}>
               <CardContent className="pt-6">
                 <div className="flex items-start gap-3">
                   <MapPin className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
@@ -26,13 +30,21 @@ export function ServiceAreas() {
                       {area.city}
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {area.state}
+                      {page ? `House cleaning in ${area.city} →` : area.state}
                     </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+            return page ? (
+              <Link key={area.city} href={cityPagePath(page.slug)} className="block">
+                {card}
+              </Link>
+            ) : (
+              card
+            );
+          })}
         </div>
 
         <div className="mt-12 text-center">
