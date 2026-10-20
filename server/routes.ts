@@ -32,6 +32,7 @@ import { z, ZodError } from "zod";
 import multer from "multer";
 import type { Asset, SiteAsset } from "../shared/types.js";
 import { BASE_URL, indexablePages } from "../shared/seoPages.js";
+import { codeBlogPosts } from "../shared/blogPosts.js";
 import type { EnvConfig } from "./env.js";
 import { list as listBlobFiles, upload as uploadBlobFile, remove as removeBlob } from "./blobService.js";
 import { getUserFromRequest, isUserAdmin, supabaseAdmin } from "./supabase.js";
@@ -3454,6 +3455,13 @@ export async function registerRoutes(app: Express, env: EnvConfig): Promise<Serv
         select: { slug: true, updatedAt: true },
         orderBy: { createdAt: "desc" },
       });
+      // Posts written in the code that aren't in the admin
+      for (const c of codeBlogPosts) {
+        if (posts.some((p: { slug: string }) => p.slug === c.slug)) continue;
+        urls.push(
+          `  <url><loc>${BASE_URL}/blog/${encodeURIComponent(c.slug)}</loc><lastmod>${c.date.slice(0, 10)}</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>`,
+        );
+      }
       for (const post of posts) {
         urls.push(
           `  <url><loc>${BASE_URL}/blog/${encodeURIComponent(post.slug)}</loc><lastmod>${post.updatedAt.toISOString().slice(0, 10)}</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>`,
