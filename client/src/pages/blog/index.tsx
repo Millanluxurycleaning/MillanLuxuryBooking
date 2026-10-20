@@ -5,6 +5,7 @@ import type { Post } from "@shared/types";
 import { Navigation } from "@/components/Navigation";
 import { PageSEO } from "@/components/PageSEO";
 import { seoPages } from "@shared/seoPages";
+import { blogContent } from "@/data/blogContent";
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return "";
@@ -53,7 +54,7 @@ export default function BlogIndex() {
                   <span className="uppercase tracking-wide">{post.published ? "Published" : "Draft"}</span>
                 </div>
                 <h2 className="text-2xl font-serif font-semibold group-hover:text-primary transition">{post.title}</h2>
-                <p className="mt-2 text-muted-foreground line-clamp-3">{post.excerpt}</p>
+                <p className="mt-2 text-muted-foreground line-clamp-3">{blogContent[post.slug]?.excerpt ?? post.excerpt}</p>
               </article>
             </Link>
           ))}
