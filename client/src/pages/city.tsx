@@ -13,6 +13,7 @@ import {
   cityPagePath,
   cityPageTitle,
   cityPageDescription,
+  cityKeywords,
 } from "@shared/cityPages";
 
 const fallbackBg = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/dark-botanical-bg.png";
@@ -24,6 +25,7 @@ export default function CityPage({ params }: { params: { city: string } }) {
 
   const background = assets?.servicesBackground?.url ?? assets?.heroBackground?.url ?? fallbackBg;
   const path = cityPagePath(c.slug);
+  const keywords = cityKeywords(c);
 
   const services = [
     {
@@ -113,7 +115,13 @@ export default function CityPage({ params }: { params: { city: string } }) {
 
   return (
     <div className="min-h-screen">
-      <PageSEO title={cityPageTitle(c.city)} description={cityPageDescription(c)} path={path} schema={schema} />
+      <PageSEO
+        title={cityPageTitle(c.city)}
+        description={cityPageDescription(c)}
+        path={path}
+        schema={schema}
+        keywords={keywords.map((k) => k.label)}
+      />
       <Navigation />
       <main
         className="relative text-white"
@@ -166,6 +174,21 @@ export default function CityPage({ params }: { params: { city: string } }) {
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Popular searches */}
+          <section className={`${glass} p-6 md:p-8 space-y-4`}>
+            <h2 className="font-serif text-2xl md:text-3xl font-semibold">Cleaning Services We Offer in {c.city}</h2>
+            <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+              {keywords.map((k) => (
+                <li key={k.label}>
+                  <a href={k.href} className="flex items-center gap-2 text-white/85 hover:text-primary transition-colors">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                    {k.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </section>
 
           {/* Neighborhoods */}
