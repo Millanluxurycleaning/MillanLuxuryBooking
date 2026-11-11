@@ -99,7 +99,7 @@
   - Phone: (661) 941-8765
   - Email: millanluxurycleaning@gmail.com
   - Address: 811 N 3rd St, Phoenix AZ, 85004
-  - Instagram: @millan_luxury_cleaning (icon link)
+  - Instagram: @millanluxurycleaning (icon link)
 - Simple contact form: Name, Email, Service Type (dropdown), Message
 - "Send Message" CTA button
 
