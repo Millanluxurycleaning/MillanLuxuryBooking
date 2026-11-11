@@ -25,7 +25,7 @@ export const seoPages = {
     path: "/",
     title: "Luxury House Cleaning Services in Phoenix, AZ",
     description:
-      "Premium house cleaning in Phoenix, Scottsdale, Chandler, Mesa, Gilbert and across the Valley. Deep cleaning, recurring, move-out and Airbnb cleaning. Call (602) 596-7393.",
+      "Premium house cleaning in Phoenix, Scottsdale, Chandler, Mesa, Gilbert and across the Valley. Deep cleaning, recurring, move-out and Airbnb cleaning. Call (623) 432-1660.",
     changefreq: "weekly",
     priority: 1.0,
   },
