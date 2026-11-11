@@ -83,7 +83,7 @@ function luxuryLayout(body: string): string {
               <a href="mailto:info@millanluxurycleaning.com" style="color:#d4af37;text-decoration:none;">info@millanluxurycleaning.com</a>
             </p>
             <p style="margin:0 0 8px;font-size:13px;color:#888;">
-              <a href="https://instagram.com/millan_luxury_cleaning" style="color:#d4af37;text-decoration:none;">@millan_luxury_cleaning</a>
+              <a href="https://instagram.com/millanluxurycleaning" style="color:#d4af37;text-decoration:none;">@millanluxurycleaning</a>
             </p>
             <p style="margin:16px 0 0;font-size:12px;color:#555;">
               811 N 3rd St, Phoenix, AZ 85004 &nbsp;·&nbsp;
