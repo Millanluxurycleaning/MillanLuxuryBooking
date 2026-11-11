@@ -66,7 +66,7 @@ export default function CityPage({ params }: { params: { city: string } }) {
   const faqs = [
     {
       q: `Do you offer house cleaning near me in ${c.city}?`,
-      a: `Yes. Millan Luxury Cleaning serves all of ${c.city}, AZ, including ${c.neighborhoods.slice(0, 4).join(", ")}, and nearby communities. You can book online in minutes or call (602) 596-7393.`,
+      a: `Yes. Millan Luxury Cleaning serves all of ${c.city}, AZ, including ${c.neighborhoods.slice(0, 4).join(", ")}, and nearby communities. You can book online in minutes or call (623) 432-1660.`,
     },
     {
       q: `How much does house cleaning cost in ${c.city}?`,
@@ -90,7 +90,7 @@ export default function CityPage({ params }: { params: { city: string } }) {
         "@id": `${BASE_URL}/#business`,
         name: "Millan Luxury Cleaning",
         url: BASE_URL,
-        telephone: "+1-602-596-7393",
+        telephone: "+1-623-432-1660",
         priceRange: "$$$",
         areaServed: [
           { "@type": "City", name: `${c.city}, AZ` },
@@ -146,8 +146,8 @@ export default function CityPage({ params }: { params: { city: string } }) {
                 <a href="/book">Book Your Cleaning</a>
               </Button>
               <Button asChild size="lg" variant="outline" className="border-white/40 text-white hover:text-white">
-                <a href="tel:+16025967393">
-                  <Phone className="w-4 h-4 mr-2" /> (602) 596-7393
+                <a href="tel:+16234321660">
+                  <Phone className="w-4 h-4 mr-2" /> (623) 432-1660
                 </a>
               </Button>
             </div>
