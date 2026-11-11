@@ -93,8 +93,8 @@ export function Footer() {
             <h3 className="font-serif text-xl font-semibold mb-4">Connect With Us</h3>
             <div className="space-y-3 mb-6">
               <p className="text-muted-foreground text-sm">
-                <a href="tel:6025967393" className="hover:text-primary transition-colors">
-                  (602) 596-7393
+                <a href="tel:6234321660" className="hover:text-primary transition-colors">
+                  (623) 432-1660
                 </a>
               </p>
               <p className="text-muted-foreground text-sm">

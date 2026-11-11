@@ -98,14 +98,14 @@ export function Navigation() {
             {/* CTA Buttons */}
             <div className="hidden lg:flex items-center gap-3">
               <a
-                href="tel:6025967393"
+                href="tel:6234321660"
                 className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary ${
                   isScrolled ? "text-foreground" : "text-white"
                 }`}
                 aria-label="Call us"
               >
                 <Phone className="w-4 h-4" />
-                (602) 596-7393
+                (623) 432-1660
               </a>
               <Button
                 asChild
@@ -150,11 +150,11 @@ export function Navigation() {
                     <a href="/book">Book Now</a>
                   </Button>
                   <a
-                    href="tel:6025967393"
+                    href="tel:6234321660"
                     className="flex items-center justify-center gap-2 w-full rounded-md border border-border py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                   >
                     <Phone className="w-4 h-4" />
-                    (602) 596-7393
+                    (623) 432-1660
                   </a>
                 </div>
               </SheetContent>

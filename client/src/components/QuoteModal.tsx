@@ -45,7 +45,7 @@ export function QuoteModal({ open, onClose }: QuoteModalProps) {
       if (!res.ok) throw new Error("Failed");
       setSubmitted(true);
     } catch {
-      toast({ title: "Something went wrong", description: "Please call us at (602) 596-7393", variant: "destructive" });
+      toast({ title: "Something went wrong", description: "Please call us at (623) 432-1660", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -70,8 +70,8 @@ export function QuoteModal({ open, onClose }: QuoteModalProps) {
             </p>
             <p className="text-sm text-muted-foreground">
               Need it sooner? Call or text us at{" "}
-              <a href="tel:6025967393" className="text-primary font-medium hover:underline">
-                (602) 596-7393
+              <a href="tel:6234321660" className="text-primary font-medium hover:underline">
+                (623) 432-1660
               </a>
             </p>
             <Button onClick={handleClose} className="mt-2">Close</Button>

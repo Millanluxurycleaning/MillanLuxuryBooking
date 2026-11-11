@@ -10,7 +10,7 @@ export function FloatingContact() {
         <div className="flex flex-col gap-2 animate-in slide-in-from-bottom-2 fade-in duration-200">
           {/* Call */}
           <a
-            href="tel:6025967393"
+            href="tel:6234321660"
             className="flex items-center gap-3 bg-card border border-border rounded-2xl shadow-lg px-4 py-3 text-sm font-medium text-foreground hover:border-primary/50 hover:shadow-xl transition-all group"
           >
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
@@ -18,13 +18,13 @@ export function FloatingContact() {
             </span>
             <div className="leading-none">
               <p className="text-xs text-muted-foreground mb-0.5">Call us</p>
-              <p className="font-semibold">(602) 596-7393</p>
+              <p className="font-semibold">(623) 432-1660</p>
             </div>
           </a>
 
           {/* Text / SMS */}
           <a
-            href="sms:6025967393"
+            href="sms:6234321660"
             className="flex items-center gap-3 bg-card border border-border rounded-2xl shadow-lg px-4 py-3 text-sm font-medium text-foreground hover:border-primary/50 hover:shadow-xl transition-all group"
           >
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-500/10 text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
@@ -32,7 +32,7 @@ export function FloatingContact() {
             </span>
             <div className="leading-none">
               <p className="text-xs text-muted-foreground mb-0.5">Text us</p>
-              <p className="font-semibold">(602) 596-7393</p>
+              <p className="font-semibold">(623) 432-1660</p>
             </div>
           </a>
 
