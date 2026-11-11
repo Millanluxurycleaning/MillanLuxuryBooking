@@ -595,6 +595,17 @@ export default function BookingPage() {
             <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
               Select a service, pick your preferred date and time, and we'll take care of the rest.
             </p>
+            <p className="mt-3 text-sm">
+              Not sure what's included?{" "}
+              <a
+                href="/service-checklist"
+                target="_blank"
+                rel="noopener"
+                className="font-medium text-purple-600 underline underline-offset-4 hover:text-purple-700"
+              >
+                View the Service Checklist
+              </a>
+            </p>
           </div>
 
           {confirmedBooking ? (
@@ -859,6 +870,14 @@ export default function BookingPage() {
                     ))}
                   </ul>
                 )}
+                <a
+                  href="/service-checklist"
+                  target="_blank"
+                  rel="noopener"
+                  className="mt-3 inline-block text-sm font-medium text-purple-600 underline underline-offset-4 hover:text-purple-700"
+                >
+                  See what's included and what's not →
+                </a>
               </div>
             )}
 

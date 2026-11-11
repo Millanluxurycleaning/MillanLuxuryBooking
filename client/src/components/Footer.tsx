@@ -42,6 +42,24 @@ export function Footer() {
               </li>
               <li>
                 <a
+                  href="/memberships"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                  data-testid="link-footer-memberships"
+                >
+                  Memberships
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/service-checklist"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                  data-testid="link-footer-checklist"
+                >
+                  Service Checklist
+                </a>
+              </li>
+              <li>
+                <a
                   href="/fragrances"
                   className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   data-testid="link-footer-fragrances"
@@ -93,8 +111,8 @@ export function Footer() {
             <h3 className="font-serif text-xl font-semibold mb-4">Connect With Us</h3>
             <div className="space-y-3 mb-6">
               <p className="text-muted-foreground text-sm">
-                <a href="tel:6025967393" className="hover:text-primary transition-colors">
-                  (602) 596-7393
+                <a href="tel:6234321660" className="hover:text-primary transition-colors">
+                  (623) 432-1660
                 </a>
               </p>
               <p className="text-muted-foreground text-sm">
@@ -133,7 +151,7 @@ export function Footer() {
                 <SiFacebook className="w-5 h-5" />
               </a>
               <a
-                href="https://www.instagram.com/millan_luxury_cleaning/"
+                href="https://www.instagram.com/millanluxurycleaning/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-lg bg-accent hover:bg-primary hover:text-primary-foreground transition-colors"

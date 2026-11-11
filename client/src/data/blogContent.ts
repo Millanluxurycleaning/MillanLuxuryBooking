@@ -66,7 +66,7 @@ Once the last guest heads home, a post-holiday cleaning resets everything at onc
 
 Many of our clients start the season with a deep cleaning, then keep their home guest-ready with a weekly or bi-weekly plan through the New Year. Recurring clients receive a discount on every cleaning after their first deep cleaning.
 
-Hosting this year in Phoenix, Scottsdale, or anywhere in the Valley? [Book your holiday deep cleaning](/book?choose=deep-cleaning) or explore our [Home Cleaning plans](/home-cleaning). Questions? Call (602) 596-7393.`,
+Hosting this year in Phoenix, Scottsdale, or anywhere in the Valley? [Book your holiday deep cleaning](/book?choose=deep-cleaning) or explore our [Home Cleaning plans](/home-cleaning). Questions? Call (623) 432-1660.`,
   },
 
   "scottsdale-white-glove-deep-cleaning": {
@@ -131,7 +131,7 @@ A few small habits make a real difference in the desert:
 
 A luxury home deserves a level of care that feels effortless to the people who live in it. Our goal is simple: when you walk through the door after a Millan deep cleaning, your home should feel calm, fresh, and exactly the way you want it.
 
-Ready to start with a white-glove deep cleaning in Scottsdale or anywhere in the Phoenix Valley? [Book your deep cleaning](/book?choose=deep-cleaning) or call us at (602) 596-7393.`,
+Ready to start with a white-glove deep cleaning in Scottsdale or anywhere in the Phoenix Valley? [Book your deep cleaning](/book?choose=deep-cleaning) or call us at (623) 432-1660.`,
   },
 
   "paradise-valley-post-renovation-dust-control": {
@@ -179,7 +179,7 @@ If you are moving back in right away, we can work room by room so you can settle
 
 Your renovation should feel like a reveal, not a cleanup project. For homes coming out of a remodel or new construction, our [Move-In / Move-Out cleaning](/first-time-cleaning) is designed for exactly this kind of top-to-bottom, inside-every-cabinet detail.
 
-Serving Paradise Valley, Scottsdale, Phoenix, and the surrounding Valley. [Book your cleaning](/first-time-cleaning) or call (602) 596-7393.`,
+Serving Paradise Valley, Scottsdale, Phoenix, and the surrounding Valley. [Book your cleaning](/first-time-cleaning) or call (623) 432-1660.`,
   },
 
   "phoenix-airbnb-turnover-excellence": {
@@ -227,7 +227,7 @@ Linens are often the biggest bottleneck between check-out and check-in. We offer
 
 We work with hosts on resets, recurring weekly and bi-weekly cleanings, and final move-out cleanings when a property changes hands. Each service is built to keep your listing photo-ready and your reviews strong.
 
-Hosting in the Phoenix Valley? [View our Airbnb services](/services) or call (602) 596-7393 to set up a turnover schedule that fits your calendar.`,
+Hosting in the Phoenix Valley? [View our Airbnb services](/services) or call (623) 432-1660 to set up a turnover schedule that fits your calendar.`,
   },
 
   "protect-custom-marble-during-cleaning": {
@@ -276,7 +276,7 @@ Bathrooms are especially challenging for marble because of soap, toothpaste, cos
 
 Marble rewards gentle, consistent care. With the right products and habits, it will keep its depth and shine for years.
 
-If your home features natural stone, our [deep cleaning](/book?choose=deep-cleaning) gives it the careful attention it deserves. Serving Scottsdale, Paradise Valley, Phoenix, and the surrounding Valley. Call (602) 596-7393 with any questions.`,
+If your home features natural stone, our [deep cleaning](/book?choose=deep-cleaning) gives it the careful attention it deserves. Serving Scottsdale, Paradise Valley, Phoenix, and the surrounding Valley. Call (623) 432-1660 with any questions.`,
   },
 
   "seasonal-cleaning-checklist-scottsdale": {
@@ -331,7 +331,7 @@ After months of sitting closed, a home benefits from a full reset rather than a 
 
 Your time in the desert should start with golf, sunsets, and time with family, not a cleaning list. Let us know your arrival date and we will have your home ready.
 
-Serving Scottsdale, Paradise Valley, Fountain Hills, and the greater Phoenix Valley. [Explore our Home Cleaning plans](/home-cleaning) or call (602) 596-7393.`,
+Serving Scottsdale, Paradise Valley, Fountain Hills, and the greater Phoenix Valley. [Explore our Home Cleaning plans](/home-cleaning) or call (623) 432-1660.`,
   },
 
   "discreet-luxury-cleaning-protocols": {
@@ -375,7 +375,7 @@ Every home has its own instructions. Share yours with us once, whether it is a p
 
 The true luxury of a cleaning service is not only a beautiful home. It is the confidence that your home is in respectful, careful hands.
 
-If privacy and professionalism matter to you, we would be honored to care for your home. [Explore our services](/services) or call (602) 596-7393 to talk about your preferences.`,
+If privacy and professionalism matter to you, we would be honored to care for your home. [Explore our services](/services) or call (623) 432-1660 to talk about your preferences.`,
   },
 
   "move-in-perfection-new-construction": {
@@ -431,7 +431,7 @@ Selling or leaving a rental? A move-out cleaning helps your home make a strong i
 
 Moving is stressful enough. Let the cleaning be the one thing you never have to think about. Once you are settled, a [recurring Home Cleaning plan](/home-cleaning) keeps your new home feeling as fresh as the day you moved in.
 
-Serving Scottsdale, Paradise Valley, Phoenix, and the surrounding Valley. [Book your Move-In / Move-Out cleaning](/first-time-cleaning) or call (602) 596-7393.`,
+Serving Scottsdale, Paradise Valley, Phoenix, and the surrounding Valley. [Book your Move-In / Move-Out cleaning](/first-time-cleaning) or call (623) 432-1660.`,
   },
 
   "eco-luxe-cleaning-sensitive-homes": {
@@ -471,7 +471,7 @@ Pets are family, and their comfort matters too. Pet hair removal is available as
 
 Luxury and wellness belong together. A home that is spotless, calm, and gentle on the people who live in it is the highest standard we can offer.
 
-Interested in a gentler clean? Add the Green Luxury Upgrade when you [book your cleaning](/book), or call (602) 596-7393 to talk through your preferences. Serving Phoenix, Scottsdale, and the surrounding Valley.`,
+Interested in a gentler clean? Add the Green Luxury Upgrade when you [book your cleaning](/book), or call (623) 432-1660 to talk through your preferences. Serving Phoenix, Scottsdale, and the surrounding Valley.`,
   },
 
   "staging-ready-cleaning-before-listing": {
@@ -526,7 +526,7 @@ Once your home is listed, a few quick habits help it stay ready for showings:
 
 Your home deserves to be seen at its best. A detailed clean before listing is a small investment that supports every photo, showing, and first impression.
 
-Preparing to list in Scottsdale, Paradise Valley, Phoenix, or nearby? [Book your pre-listing cleaning](/first-time-cleaning) or call (602) 596-7393.`,
+Preparing to list in Scottsdale, Paradise Valley, Phoenix, or nearby? [Book your pre-listing cleaning](/first-time-cleaning) or call (623) 432-1660.`,
   },
 
   "anatomy-of-luxury-bathroom-reset": {
@@ -585,6 +585,6 @@ The details are what make a bathroom feel luxurious: towels folded neatly, produ
 
 A bathroom reset is part of every [deep cleaning](/book?choose=deep-cleaning) we perform. With a [recurring Home Cleaning plan](/home-cleaning), your bathrooms stay at that standard week after week.
 
-Serving Scottsdale, Paradise Valley, Phoenix, and the surrounding Valley. Call (602) 596-7393 with any questions.`,
+Serving Scottsdale, Paradise Valley, Phoenix, and the surrounding Valley. Call (623) 432-1660 with any questions.`,
   },
 };

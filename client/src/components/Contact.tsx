@@ -194,11 +194,11 @@ export function Contact() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Phone</h3>
                     <a 
-                      href="tel:6025967393"
+                      href="tel:6234321660"
                       className="text-muted-foreground hover:text-primary transition-colors"
                       data-testid="link-phone"
                     >
-                      (602) 596-7393
+                      (623) 432-1660
                     </a>
                   </div>
                 </div>
@@ -239,13 +239,13 @@ export function Contact() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Instagram</h3>
                     <a 
-                      href="https://www.instagram.com/millan_luxury_cleaning/" 
+                      href="https://www.instagram.com/millanluxurycleaning/" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-muted-foreground hover:text-primary transition-colors"
                       data-testid="link-instagram"
                     >
-                      @millan_luxury_cleaning
+                      @millanluxurycleaning
                     </a>
                     <p className="text-sm text-muted-foreground mt-1">
                       Stay connected for exclusive offers, cleaning tips, and sparkle inspiration!

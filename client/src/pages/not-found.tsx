@@ -19,8 +19,8 @@ export default function NotFound() {
           <h1 className="text-4xl font-serif font-semibold">We couldn't find that page</h1>
           <p className="text-muted-foreground">
             The page may have moved. Here are some places to start, or call us at{" "}
-            <a href="tel:6025967393" className="text-primary hover:underline">
-              (602) 596-7393
+            <a href="tel:6234321660" className="text-primary hover:underline">
+              (623) 432-1660
             </a>
             .
           </p>

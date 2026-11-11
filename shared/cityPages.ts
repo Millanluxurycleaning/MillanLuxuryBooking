@@ -162,4 +162,4 @@ export const cityPageTitle = (city: string) => `House Cleaning in ${city}, AZ â€
 export const cityPageDescription = (c: CityPage) =>
   `Luxury house cleaning in ${c.city}, AZ: deep cleaning, recurring weekly and bi-weekly maid service, move-in/move-out and Airbnb cleaning. Serving ${c.neighborhoods
     .slice(0, 3)
-    .join(", ")} and more. Call (602) 596-7393.`;
+    .join(", ")} and more. Call (623) 432-1660.`;

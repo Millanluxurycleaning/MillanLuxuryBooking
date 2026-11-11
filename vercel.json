@@ -51,6 +51,14 @@
       "destination": "/fragrances/index.html"
     },
     {
+      "source": "/memberships",
+      "destination": "/memberships/index.html"
+    },
+    {
+      "source": "/service-checklist",
+      "destination": "/service-checklist/index.html"
+    },
+    {
       "source": "/cleaning/:city",
       "destination": "/cleaning/:city/index.html"
     },

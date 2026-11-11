@@ -78,12 +78,12 @@ function luxuryLayout(body: string): string {
         <tr>
           <td style="background:#111;border-radius:0 0 16px 16px;border:1px solid #2a2a2a;border-top:none;padding:28px 40px;text-align:center;">
             <p style="margin:0 0 8px;font-size:13px;color:#888;">
-              <a href="tel:6025967393" style="color:#d4af37;text-decoration:none;">(602) 596-7393</a>
+              <a href="tel:6234321660" style="color:#d4af37;text-decoration:none;">(623) 432-1660</a>
               &nbsp;·&nbsp;
               <a href="mailto:info@millanluxurycleaning.com" style="color:#d4af37;text-decoration:none;">info@millanluxurycleaning.com</a>
             </p>
             <p style="margin:0 0 8px;font-size:13px;color:#888;">
-              <a href="https://instagram.com/millan_luxury_cleaning" style="color:#d4af37;text-decoration:none;">@millan_luxury_cleaning</a>
+              <a href="https://instagram.com/millanluxurycleaning" style="color:#d4af37;text-decoration:none;">@millanluxurycleaning</a>
             </p>
             <p style="margin:16px 0 0;font-size:12px;color:#555;">
               811 N 3rd St, Phoenix, AZ 85004 &nbsp;·&nbsp;
@@ -786,7 +786,7 @@ export async function sendQuoteRequestEmail(params: {
     <div style="background:#222;border-radius:8px;padding:20px 24px;margin-bottom:32px;text-align:center;">
       <p style="margin:0 0 8px;font-size:16px;color:#fff;">We'll send your personalized quote within a few hours.</p>
       <p style="margin:0;font-size:14px;color:#888;">Need it sooner? Call or text us:</p>
-      <a href="tel:6025967393" style="display:inline-block;margin-top:12px;font-size:20px;color:#d4af37;text-decoration:none;font-weight:700;">(602) 596-7393</a>
+      <a href="tel:6234321660" style="display:inline-block;margin-top:12px;font-size:20px;color:#d4af37;text-decoration:none;font-weight:700;">(623) 432-1660</a>
     </div>
 
     <p style="font-size:13px;color:#666;text-align:center;">Ready to skip the quote and book directly?</p>

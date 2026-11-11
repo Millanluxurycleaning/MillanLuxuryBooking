@@ -58,7 +58,7 @@ export const additionalServiceAreas = ["Surprise", "Sun City", "El Mirage", "Avo
 export const googleMyBusinessInfo = {
   businessName: "Millan Luxury Cleaning",
   address: "Phoenix, AZ",
-  phone: "(602) 596-7393",
+  phone: "(623) 432-1660",
   serviceAreas: [...serviceAreas.map(area => `${area.city}, ${area.state}`), ...additionalServiceAreas.map(city => `${city}, AZ`)],
   businessType: "House Cleaning Service",
   description: "Premium luxury cleaning services serving Phoenix and surrounding areas with deep cleaning, move-in/move-out, and laundry services"
