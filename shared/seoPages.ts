@@ -53,6 +53,22 @@ export const seoPages = {
     changefreq: "weekly",
     priority: 0.7,
   },
+  memberships: {
+    path: "/memberships",
+    title: "Cleaning Memberships — Monthly House Cleaning Plans in Phoenix, AZ",
+    description:
+      "Monthly cleaning memberships from Millan Luxury Cleaning: house cleaning plans from $159/mo, pet owner add-on, Airbnb turnover plans, and snowbird home care across the Phoenix Valley.",
+    changefreq: "monthly",
+    priority: 0.8,
+  },
+  serviceChecklist: {
+    path: "/service-checklist",
+    title: "Service Checklist — What's Included in Each Cleaning",
+    description:
+      "See exactly what's included in Millan Luxury Cleaning's home cleaning, deep cleaning, and move-in/move-out services, plus available add-ons.",
+    changefreq: "monthly",
+    priority: 0.7,
+  },
   partners: {
     path: "/partners",
     title: "Partner With Us — Brand Affiliates & Cleaning Partners",
