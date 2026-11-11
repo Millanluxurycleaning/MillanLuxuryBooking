@@ -42,6 +42,24 @@ export function Footer() {
               </li>
               <li>
                 <a
+                  href="/memberships"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                  data-testid="link-footer-memberships"
+                >
+                  Memberships
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/service-checklist"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                  data-testid="link-footer-checklist"
+                >
+                  Service Checklist
+                </a>
+              </li>
+              <li>
+                <a
                   href="/fragrances"
                   className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   data-testid="link-footer-fragrances"
@@ -133,7 +151,7 @@ export function Footer() {
                 <SiFacebook className="w-5 h-5" />
               </a>
               <a
-                href="https://www.instagram.com/millan_luxury_cleaning/"
+                href="https://www.instagram.com/millanluxurycleaning/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-lg bg-accent hover:bg-primary hover:text-primary-foreground transition-colors"

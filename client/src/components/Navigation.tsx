@@ -29,6 +29,7 @@ export function Navigation() {
   const navLinks = [
     { href: "/#about", label: "About" },
     { href: "/services", label: "Services" },
+    { href: "/memberships", label: "Memberships" },
     { href: "/fragrances", label: "Fragrances" },
     { href: "/#gallery", label: "Gallery" },
     { href: "/#testimonials", label: "Reviews" },
