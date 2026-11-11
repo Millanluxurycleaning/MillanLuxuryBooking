@@ -3,6 +3,8 @@ import { Services } from "@/components/Services";
 import { Footer } from "@/components/Footer";
 import { PageSEO } from "@/components/PageSEO";
 import { seoPages } from "@shared/seoPages";
+import { Button } from "@/components/ui/button";
+import { ClipboardCheck, Crown } from "lucide-react";
 
 export default function ServicesPage() {
   return (
@@ -17,6 +19,18 @@ export default function ServicesPage() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Every service is tailored to your space, schedule, and standards.
           </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+            <Button asChild size="lg">
+              <a href="/service-checklist">
+                <ClipboardCheck className="w-4 h-4 mr-2" /> View Service Checklist
+              </a>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <a href="/memberships">
+                <Crown className="w-4 h-4 mr-2" /> See Memberships
+              </a>
+            </Button>
+          </div>
         </div>
         <Services
           groupByCategory
