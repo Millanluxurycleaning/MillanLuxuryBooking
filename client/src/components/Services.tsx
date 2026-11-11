@@ -639,9 +639,15 @@ export function Services({
                                 ))}
                               </div>
                             )}
+                            <a
+                              href="/service-checklist"
+                              className="text-center text-sm text-white/70 underline underline-offset-4 hover:text-primary"
+                            >
+                              What's included? View Service Checklist
+                            </a>
                           </CardFooter>
                         ) : (
-                        <CardFooter className={isLuxe ? "pt-2" : ""}>
+                        <CardFooter className={`flex-col items-stretch gap-3 ${isLuxe ? "pt-2" : ""}`}>
                           <Button
                             asChild
                             variant="default"
@@ -650,6 +656,12 @@ export function Services({
                           >
                             <a href={bookingLink}>{isLuxe ? `Reserve ${serviceTitle}` : `Book ${serviceTitle}`}</a>
                           </Button>
+                          <a
+                            href="/service-checklist"
+                            className="text-center text-sm text-white/70 underline underline-offset-4 hover:text-primary"
+                          >
+                            What's included? View Service Checklist
+                          </a>
                         </CardFooter>
                         )}
                       </Card>
@@ -681,9 +693,12 @@ export function Services({
         )}
 
         {showAllLink && !isLoading && !error && limitedServices.length > 0 && (
-          <div className="mt-12 text-center">
+          <div className="mt-12 flex flex-col sm:flex-row gap-3 justify-center">
             <Button asChild variant="outline" className="border-white/50 text-white hover:text-white">
               <a href="/services">View all services</a>
+            </Button>
+            <Button asChild variant="outline" className="border-white/50 text-white hover:text-white">
+              <a href="/service-checklist">View Service Checklist</a>
             </Button>
           </div>
         )}
