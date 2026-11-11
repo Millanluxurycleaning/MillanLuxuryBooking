@@ -21,6 +21,8 @@ import ServicesPage from "@/pages/services";
 import HomeCleaningPage from "@/pages/home-cleaning";
 import FirstTimeCleaningPage from "@/pages/first-time-cleaning";
 import CityPage from "@/pages/city";
+import MembershipsPage from "@/pages/memberships";
+import ServiceChecklistPage from "@/pages/service-checklist";
 import CartPage from "@/pages/cart";
 import CheckoutPage from "@/pages/checkout";
 import CheckoutSuccess from "@/pages/checkout-success";
@@ -40,6 +42,8 @@ function Router() {
       <Route path="/home-cleaning" component={HomeCleaningPage}/>
       <Route path="/first-time-cleaning" component={FirstTimeCleaningPage}/>
       <Route path="/cleaning/:city" component={CityPage}/>
+      <Route path="/memberships" component={MembershipsPage}/>
+      <Route path="/service-checklist" component={ServiceChecklistPage}/>
       <Route path="/fragrances" component={Fragrances}/>
       <Route path="/cart" component={CartPage}/>
       <Route path="/checkout" component={CheckoutPage}/>
