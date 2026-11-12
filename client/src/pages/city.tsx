@@ -14,7 +14,6 @@ import {
   cityPagePath,
   cityPageTitle,
   cityPageDescription,
-  cityKeywords,
 } from "@shared/cityPages";
 
 const fallbackBg = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/dark-botanical-bg.png";
@@ -30,40 +29,39 @@ export default function CityPage({ params }: { params: { city: string } }) {
 
   const background = assets?.servicesBackground?.url ?? assets?.heroBackground?.url ?? fallbackBg;
   const path = cityPagePath(c.slug);
-  const keywords = cityKeywords(c);
 
   const services = [
     {
       icon: Sparkles,
       title: `Deep Cleaning in ${c.city}`,
-      text: "A detailed, top-to-bottom clean for apartments and houses. Every new client starts here.",
+      text: c.serviceText?.deep ?? "A detailed, top-to-bottom clean for apartments and houses. Every new client starts here.",
       href: "/book?choose=deep-cleaning",
       cta: "Book Deep Cleaning",
     },
     {
       icon: Home,
       title: `Recurring House Cleaning in ${c.city}`,
-      text: "Weekly, bi-weekly, or monthly maid service, with a recurring discount after your first deep cleaning.",
+      text: c.serviceText?.recurring ?? "Weekly, bi-weekly, or monthly maid service, with a recurring discount after your first deep cleaning.",
       href: "/home-cleaning",
       cta: "See Home Cleaning Plans",
     },
     {
       icon: Truck,
       title: `Move-In / Move-Out Cleaning in ${c.city}`,
-      text: "Inside cabinets, drawers, and appliances, for tenants, landlords, buyers, and sellers.",
+      text: c.serviceText?.move ?? "Inside cabinets, drawers, and appliances, for tenants, landlords, buyers, and sellers.",
       href: "/first-time-cleaning",
       cta: "Book Move-In / Move-Out",
     },
     {
       icon: KeyRound,
       title: `Airbnb & Vacation Rental Cleaning in ${c.city}`,
-      text: "Consistent, guest-ready turnovers that protect your reviews, with laundry available.",
+      text: c.serviceText?.airbnb ?? "Consistent, guest-ready turnovers that protect your reviews, with laundry available.",
       href: "/services",
       cta: "See Airbnb Services",
     },
   ];
 
-  const faqs = [
+  const faqs = c.faqs ?? [
     {
       q: `Do you offer house cleaning near me in ${c.city}?`,
       a: `Yes. Millan Luxury Cleaning serves all of ${c.city}, AZ, including ${c.neighborhoods.slice(0, 4).join(", ")}, and nearby communities. You can book online in minutes or call (623) 432-1660.`,
@@ -121,11 +119,10 @@ export default function CityPage({ params }: { params: { city: string } }) {
   return (
     <div className="min-h-screen">
       <PageSEO
-        title={cityPageTitle(c.city)}
+        title={cityPageTitle(c)}
         description={cityPageDescription(c)}
         path={path}
         schema={schema}
-        keywords={keywords.map((k) => k.label)}
       />
       <Navigation />
       <main
@@ -160,6 +157,13 @@ export default function CityPage({ params }: { params: { city: string } }) {
             <p>{c.localNote}</p>
           </section>
 
+          {c.afterIntro && (
+            <section className={`${glass} p-6 md:p-8 space-y-4`}>
+              <h2 className="font-serif text-2xl md:text-3xl font-semibold">{c.afterIntro.heading}</h2>
+              <p className="text-white/85 text-base md:text-lg leading-relaxed">{c.afterIntro.body}</p>
+            </section>
+          )}
+
           {/* Services */}
           <section className="space-y-6">
             <h2 className="font-serif text-2xl md:text-3xl font-semibold text-center">Cleaning Services in {c.city}</h2>
@@ -181,20 +185,18 @@ export default function CityPage({ params }: { params: { city: string } }) {
             </div>
           </section>
 
-          {/* Popular searches */}
-          <section className={`${glass} p-6 md:p-8 space-y-4`}>
-            <h2 className="font-serif text-2xl md:text-3xl font-semibold">Cleaning Services We Offer in {c.city}</h2>
-            <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-              {keywords.map((k) => (
-                <li key={k.label}>
-                  <a href={k.href} className="flex items-center gap-2 text-white/85 hover:text-primary transition-colors">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                    {k.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
+          {/* Optional city-specific section */}
+          {c.feature && (
+            <section className={`${glass} p-6 md:p-8 space-y-4`}>
+              <h2 className="font-serif text-2xl md:text-3xl font-semibold">{c.feature.heading}</h2>
+              <p className="text-white/85 text-base md:text-lg leading-relaxed">{c.feature.body}</p>
+              {c.feature.cta && (
+                <Button asChild size="lg" className="w-full sm:w-auto">
+                  <a href={c.feature.cta.href}>{c.feature.cta.label}</a>
+                </Button>
+              )}
+            </section>
+          )}
 
           {/* Neighborhoods */}
           <section className={`${glass} p-6 md:p-8 space-y-4`}>
