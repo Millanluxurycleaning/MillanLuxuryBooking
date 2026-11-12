@@ -80,6 +80,17 @@ export function Navigation() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Tap-to-call button for phones and tablets (desktop shows the number below) */}
+            <a
+              href="tel:6234321660"
+              className="lg:hidden inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-md"
+              aria-label="Call Millan Luxury Cleaning at (623) 432-1660"
+              data-testid="link-nav-call-mobile"
+            >
+              <Phone className="w-4 h-4" />
+              <span className="sm:hidden">Call</span>
+              <span className="hidden sm:inline">(623) 432-1660</span>
+            </a>
             <a
               href="/cart"
               className={`relative inline-flex items-center justify-center rounded-full p-2 transition-colors hover:bg-white/10 ${

@@ -226,8 +226,9 @@ export function Contact() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Service Area</h3>
                     <p className="text-muted-foreground">
-                      Phoenix, Scottsdale, Chandler, Mesa, Gilbert, Tempe<br />
-                      and surrounding Valley cities
+                      Phoenix, Scottsdale, Paradise Valley, Fountain Hills, Tempe, Mesa, Chandler, Gilbert, Queen
+                      Creek, Glendale, Peoria, Surprise, Sun City, El Mirage, Avondale, Goodyear, Buckeye, Litchfield
+                      Park &amp; Tolleson
                     </p>
                   </div>
                 </div>

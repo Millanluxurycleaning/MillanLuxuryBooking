@@ -49,7 +49,23 @@ export function ServiceAreas() {
 
         <div className="mt-12 text-center">
           <p className="text-muted-foreground">
-            Also serving: {additionalServiceAreas.join(", ")}, and surrounding communities
+            Also serving:{" "}
+            {additionalServiceAreas.map((city, i) => {
+              const page = cityPages.find((c) => c.city === city);
+              return (
+                <span key={city}>
+                  {i > 0 && ", "}
+                  {page ? (
+                    <Link href={cityPagePath(page.slug)} className="text-primary underline underline-offset-4 hover:opacity-80">
+                      {city}
+                    </Link>
+                  ) : (
+                    city
+                  )}
+                </span>
+              );
+            })}
+            , and surrounding communities
           </p>
         </div>
       </div>
