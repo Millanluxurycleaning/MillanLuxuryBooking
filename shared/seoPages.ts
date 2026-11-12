@@ -90,7 +90,7 @@ export const seoPages = {
 // One page per city (/cleaning/<city>) for local search
 export const cityLandingPages: SeoPage[] = cityPages.map((c) => ({
   path: cityPagePath(c.slug),
-  title: cityPageTitle(c.city),
+  title: cityPageTitle(c),
   description: cityPageDescription(c),
   changefreq: "monthly",
   priority: 0.8,

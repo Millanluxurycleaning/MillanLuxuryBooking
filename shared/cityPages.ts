@@ -13,6 +13,17 @@ export interface CityPage {
   neighborhoods: string[];
   /** Nearby cities to link to */
   nearby: string[];
+  /** Optional extra section after the services (heading, paragraph, optional button) */
+  feature?: { heading: string; body: string; cta?: { label: string; href: string } };
+  /** Optional extra section right after the intro */
+  afterIntro?: { heading: string; body: string };
+  /** Optional custom SEO title (without the " | Millan Luxury Cleaning" suffix) and description */
+  seoTitle?: string;
+  seoDescription?: string;
+  /** Optional custom text for the 4 service cards */
+  serviceText?: { deep?: string; recurring?: string; move?: string; airbnb?: string };
+  /** Optional custom FAQ (replaces the standard one) */
+  faqs?: { q: string; a: string }[];
 }
 
 export const cityPages: CityPage[] = [
@@ -91,7 +102,7 @@ export const cityPages: CityPage[] = [
     localNote:
       "West Valley homes see plenty of dust from monsoon season. After a storm, a deep cleaning that reaches vents, window tracks, ceiling fans, and baseboards brings your home back to fresh and comfortable.",
     neighborhoods: ["Arrowhead Ranch", "Westgate", "Catlin Court", "Bellair", "Sierra Verde"],
-    nearby: ["peoria", "phoenix", "goodyear"],
+    nearby: ["surprise", "peoria", "phoenix", "goodyear"],
   },
   {
     slug: "peoria",
@@ -102,7 +113,12 @@ export const cityPages: CityPage[] = [
     localNote:
       "Many Peoria residents are retirees, snowbirds, and second-home owners. We prepare homes before seasonal arrivals, keep them fresh with recurring visits, and work quietly and respectfully around your routine.",
     neighborhoods: ["Vistancia", "Westbrook Village", "Fletcher Heights", "Lake Pleasant", "Terramar"],
-    nearby: ["glendale", "goodyear", "phoenix"],
+    nearby: ["surprise", "glendale", "goodyear", "phoenix"],
+    feature: {
+      heading: "Move-Out Cleaning in Peoria for Renters, Sellers & Landlords",
+      body: "Moving out of a home in Vistancia, Fletcher Heights or near Lake Pleasant? Our Peoria move-out cleaning is built to pass a landlord walkthrough or a buyer\u2019s final walk. We clean inside every cabinet and drawer, inside the oven, refrigerator, microwave and dishwasher, wipe baseboards, interior doors and switch plates, deep-sanitize bathrooms (tile, grout, fixtures and mirrors), and finish with floors in every room.",
+      cta: { label: "Get a move-out quote: (623) 432-1660", href: "/book?serviceId=11" },
+    },
   },
   {
     slug: "goodyear",
@@ -128,38 +144,56 @@ export const cityPages: CityPage[] = [
   },
 ];
 
-// Search phrases for each city (shown on the page as "Cleaning Services We Offer in <city>",
-// each linking to the right booking page, and added to the page's keywords tag)
-export interface CityKeyword {
-  label: string;
-  href: string;
-}
-
-export const cityKeywords = (c: CityPage): CityKeyword[] => [
-  { label: `House cleaning in ${c.city}`, href: "/book" },
-  { label: `Maid service in ${c.city}`, href: "/home-cleaning" },
-  { label: `Luxury cleaning service in ${c.city}`, href: "/services" },
-  { label: `Deep cleaning in ${c.city}`, href: "/book?choose=deep-cleaning" },
-  { label: `Apartment cleaning in ${c.city}`, href: "/book?choose=deep-cleaning" },
-  { label: `Move-out cleaning in ${c.city}`, href: "/first-time-cleaning" },
-  { label: `Move-in cleaning in ${c.city}`, href: "/first-time-cleaning" },
-  { label: `Weekly house cleaning in ${c.city}`, href: "/home-cleaning" },
-  { label: `Bi-weekly house cleaning in ${c.city}`, href: "/home-cleaning" },
-  { label: `Monthly house cleaning in ${c.city}`, href: "/home-cleaning" },
-  { label: `Airbnb cleaning in ${c.city}`, href: "/services" },
-  { label: `Vacation rental cleaning in ${c.city}`, href: "/services" },
-  { label: `Residential cleaning in ${c.city}, AZ`, href: "/book" },
-  { label: `House cleaners near me in ${c.city}`, href: "/book" },
-  { label: `House cleaning in ${c.neighborhoods[0]}`, href: "/book" },
-];
+// Surprise is added at the end so the homepage city boxes keep their order
+cityPages.push({
+  slug: "surprise",
+  city: "Surprise",
+  seoTitle: "House Cleaning in Surprise, AZ | Deep & Recurring Maid Service",
+  seoDescription:
+    "Premium house cleaning in Surprise, AZ: recurring maid service, deep cleaning, move-out & seasonal home prep for Sun City Grand, Marley Park & more. Call (623) 432-1660.",
+  tagline: "Detail-focused home cleaning for Surprise, from Sun City Grand to Marley Park.",
+  intro:
+    "Surprise has grown into one of the West Valley\u2019s most sought-after places to live, from the active-adult community of Sun City Grand to family neighborhoods like Marley Park, Surprise Farms and Asante. Millan Luxury Cleaning brings detail-focused house cleaning to Surprise homeowners: recurring weekly or biweekly service, top-to-bottom deep cleans, and move-in/move-out cleaning.",
+  localNote:
+    "Many Surprise residents are retirees, snowbirds and busy families. We keep homes consistently clean with recurring visits, prepare them before seasonal arrivals, and work quietly and respectfully around your routine.",
+  afterIntro: {
+    heading: "Seasonal Home Prep for Snowbirds",
+    body: "Many Surprise homes sit empty for the summer. Before you arrive in the fall, we clear the dust, wipe down every surface, clean inside the refrigerator, refresh bathrooms and make the house ready to live in on day one. When you leave in spring, we do a close-out clean so the home stays fresh while you\u2019re away.",
+  },
+  serviceText: {
+    deep: "A detailed, top-to-bottom clean for homes, condos and casitas. Every new client starts here.",
+    airbnb: "Consistent, guest-ready turnovers for seasonal and short-term rentals, with laundry available.",
+  },
+  neighborhoods: ["Sun City Grand", "Marley Park", "Surprise Farms", "Asante", "Sierra Monta\u00f1a", "Rancho Gabriela"],
+  nearby: ["peoria", "glendale", "goodyear"],
+  faqs: [
+    { q: "Do you clean homes in Sun City Grand?", a: "Yes. We clean throughout Sun City Grand and the rest of Surprise." },
+    {
+      q: "Can you clean before I arrive for the season?",
+      a: "Yes. Book a seasonal arrival clean and give us access instructions, and the house will be ready when you get there.",
+    },
+    {
+      q: "Do you offer recurring cleaning discounts?",
+      a: "Yes. Weekly, bi-weekly and monthly service is discounted after your first deep cleaning.",
+    },
+    {
+      q: "How do I get a price for my home?",
+      a: "Call or text (623) 432-1660 or book online. Pricing depends on your home\u2019s size and the type of cleaning.",
+    },
+  ],
+});
 
 export const cityPageBySlug = Object.fromEntries(cityPages.map((c) => [c.slug, c])) as Record<string, CityPage>;
 
 export const cityPagePath = (slug: string) => `/cleaning/${slug}`;
 
-export const cityPageTitle = (city: string) => `House Cleaning in ${city}, AZ — Deep Cleaning, Maid Service & Move-Out`;
+export const cityPageTitle = (c: CityPage) =>
+  c.seoTitle ?? cityPageTitleFor(c.city);
+
+const cityPageTitleFor = (city: string) => `House Cleaning in ${city}, AZ — Deep Cleaning, Maid Service & Move-Out`;
 
 export const cityPageDescription = (c: CityPage) =>
+  c.seoDescription ??
   `Luxury house cleaning in ${c.city}, AZ: deep cleaning, recurring weekly and bi-weekly maid service, move-in/move-out and Airbnb cleaning. Serving ${c.neighborhoods
     .slice(0, 3)
     .join(", ")} and more. Call (623) 432-1660.`;
