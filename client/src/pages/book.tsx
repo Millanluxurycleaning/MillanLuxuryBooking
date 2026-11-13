@@ -137,6 +137,8 @@ export default function BookingPage() {
     Number.isFinite(initialServiceId) && initialServiceId > 0 ? initialServiceId : null,
   );
   const [selectedPricingTier, setSelectedPricingTier] = useState<string | null>(null);
+  // Optional extras (e.g. "+ Extra Bedroom") picked on top of the property size, with quantities
+  const [extraQuantities, setExtraQuantities] = useState<Record<string, number>>({});
   const [squareFootage, setSquareFootage] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
@@ -225,6 +227,32 @@ export default function BookingPage() {
     }
   }, [selectedService]);
 
+  // Size options vs. extras: tiers named like "+ Extra Bedroom" are add-ons, not a property size
+  const isExtraTier = (tier: ServicePricingTier) => /^\s*\+/.test(tier.name) || /\bextra\b/i.test(tier.name);
+  const { sizeTiers, extraTiers } = useMemo(() => {
+    const extras = pricingTiers.filter(isExtraTier);
+    const sizes = pricingTiers.filter((t) => !isExtraTier(t));
+    // If a service only has "extra" style options, treat them as normal choices
+    return sizes.length > 0 ? { sizeTiers: sizes, extraTiers: extras } : { sizeTiers: pricingTiers, extraTiers: [] };
+  }, [pricingTiers]);
+  // Shorter labels for the size buttons: "🫧 Deep Cleaning- 2BR" shows as "2BR" under the Deep Cleaning service
+  const sizeLabel = (name: string) => {
+    const clean = (str: string) => str.replace(/^[^A-Za-z0-9]+/, "").trim();
+    const base = clean(selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
+    const label = clean(name);
+    if (base && label.toLowerCase().startsWith(base)) {
+      const rest = label.slice(base.length).replace(/^[\s\-–—:|()]+/, "").replace(/\)$/, "").trim();
+      if (rest) return rest;
+    }
+    return label;
+  };
+  const extrasTotal = useMemo(
+    () => extraTiers.reduce((sum, t) => sum + t.price * (extraQuantities[t.name] || 0), 0),
+    [extraTiers, extraQuantities],
+  );
+  const updateExtraQuantity = (name: string, qty: number) =>
+    setExtraQuantities((prev) => ({ ...prev, [name]: Math.max(0, Math.min(10, qty)) }));
+
   // Get square footage add-on price
   const sqftAddOn = useMemo(() => {
     if (!squareFootage) return 0;
@@ -275,8 +303,8 @@ export default function BookingPage() {
   const selectedPrice = useMemo(() => {
     if (isLaundryService) return laundryTotal > 0 ? laundryTotal : null;
     if (basePrice === null) return null;
-    return basePrice + sqftAddOn;
-  }, [basePrice, sqftAddOn, isLaundryService, laundryTotal]);
+    return basePrice + sqftAddOn + extrasTotal;
+  }, [basePrice, sqftAddOn, extrasTotal, isLaundryService, laundryTotal]);
 
   const FREQUENCY_DISCOUNTS: Record<string, number> = {
     "one-time": 0,
@@ -302,6 +330,7 @@ export default function BookingPage() {
   // Reset pricing tier, square footage, and laundry selections when service changes
   useEffect(() => {
     setSelectedPricingTier(null);
+    setExtraQuantities({});
     setSquareFootage("");
     setLaundryItemQuantities({});
     setRegularLaundryLbs("");
@@ -498,6 +527,14 @@ export default function BookingPage() {
     }
     if (squareFootage) {
       noteParts.push(`Square Footage: ${squareFootage}`);
+    }
+    const pickedExtras = extraTiers.filter((t) => (extraQuantities[t.name] || 0) > 0);
+    if (pickedExtras.length > 0) {
+      noteParts.push(
+        `Add-ons: ${pickedExtras
+          .map((t) => `${extraQuantities[t.name]}x ${t.name.replace(/^\s*\+\s*/, "")} ($${(t.price * extraQuantities[t.name]).toFixed(2)})`)
+          .join(", ")}`,
+      );
     }
     // Laundry details
     if (isLaundryService) {
@@ -929,19 +966,19 @@ export default function BookingPage() {
                             <>
                               <div>
                                 <Label className="text-sm font-semibold mb-3 block">Select Property Size</Label>
-                                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                  {pricingTiers.map((tier) => (
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+                                  {sizeTiers.map((tier) => (
                                     <button
                                       key={tier.name}
                                       onClick={() => setSelectedPricingTier(tier.name)}
-                                      className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
+                                      className={`rounded-xl border-2 px-3 py-3 text-left transition-all ${
                                         selectedPricingTier === tier.name
                                           ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
                                           : "border-border hover:border-purple-300 hover:shadow-md"
                                       }`}
                                     >
-                                      <p className="font-semibold">{tier.name}</p>
-                                      <p className="text-purple-600 font-bold mt-1">${tier.price.toFixed(2)}</p>
+                                      <p className="text-sm font-semibold leading-snug">{sizeLabel(tier.name)}</p>
+                                      <p className="text-sm text-purple-600 font-bold mt-1">${tier.price.toFixed(2)}</p>
                                       {tier.description && (
                                         <p className="text-xs text-muted-foreground mt-1">{tier.description}</p>
                                       )}
@@ -949,6 +986,57 @@ export default function BookingPage() {
                                   ))}
                                 </div>
                               </div>
+                              {extraTiers.length > 0 && (
+                                <div className="border-t pt-4">
+                                  <Label className="text-sm font-semibold block">Any add-ons?</Label>
+                                  <p className="text-xs text-muted-foreground mt-1 mb-3">Optional. Tap to add, and use + / − for more than one.</p>
+                                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+                                    {extraTiers.map((tier) => {
+                                      const qty = extraQuantities[tier.name] || 0;
+                                      const label = tier.name.replace(/^\s*\+\s*/, "");
+                                      return (
+                                        <div
+                                          key={tier.name}
+                                          className={`rounded-xl border-2 px-3 py-3 transition-all ${
+                                            qty > 0 ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50" : "border-border"
+                                          }`}
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() => updateExtraQuantity(tier.name, qty > 0 ? 0 : 1)}
+                                            className="w-full text-left"
+                                            data-testid={`button-extra-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                                          >
+                                            <p className="text-sm font-semibold leading-snug">{label}</p>
+                                            <p className="text-sm text-purple-600 font-bold mt-1">+${tier.price.toFixed(2)}</p>
+                                          </button>
+                                          {qty > 0 && (
+                                            <div className="mt-2 flex items-center gap-3">
+                                              <button
+                                                type="button"
+                                                aria-label={`One less ${label}`}
+                                                onClick={() => updateExtraQuantity(tier.name, qty - 1)}
+                                                className="h-7 w-7 rounded-full border border-purple-300 text-purple-700 font-bold leading-none"
+                                              >
+                                                −
+                                              </button>
+                                              <span className="text-sm font-semibold w-4 text-center">{qty}</span>
+                                              <button
+                                                type="button"
+                                                aria-label={`One more ${label}`}
+                                                onClick={() => updateExtraQuantity(tier.name, qty + 1)}
+                                                className="h-7 w-7 rounded-full border border-purple-300 text-purple-700 font-bold leading-none"
+                                              >
+                                                +
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
                               {!isAddOnOrStandardService && (
                               <div className="border-t pt-4">
                                 <Label className="text-sm font-medium">Property Square Footage</Label>
@@ -1411,6 +1499,16 @@ export default function BookingPage() {
                       </span>
                     </div>
                   )}
+                  {extraTiers
+                    .filter((t) => (extraQuantities[t.name] || 0) > 0)
+                    .map((t) => (
+                      <div key={t.name} className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          {extraQuantities[t.name]}x {t.name.replace(/^\s*\+\s*/, "")}
+                        </span>
+                        <span className="font-medium">+${(t.price * extraQuantities[t.name]).toFixed(2)}</span>
+                      </div>
+                    ))}
                   {requiresEstimate && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
                       Call for estate estimate
