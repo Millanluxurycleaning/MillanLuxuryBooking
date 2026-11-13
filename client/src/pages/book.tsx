@@ -902,7 +902,7 @@ export default function BookingPage() {
                           onClick={() => chooseService(service.id)}
                           className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
                             isVip
-                              ? `md:col-span-2 bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 shadow-lg shadow-amber-200/60 ${
+                              ? `bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 shadow-md shadow-amber-200/60 ${
                                   selectedServiceId === service.id ? "border-amber-500 ring-2 ring-amber-300" : "border-amber-400 hover:border-amber-500"
                                 }`
                               : selectedServiceId === service.id
@@ -913,7 +913,7 @@ export default function BookingPage() {
                         >
                           {isVip && (
                             <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[0.7rem] font-semibold text-white shadow">
-                              👑 Our Flagship Service
+                              👑 Our Signature Service
                             </span>
                           )}
                           {packageForService(service.title ?? service.name) === "essential" && (
@@ -926,11 +926,6 @@ export default function BookingPage() {
                           </div>
                           {service.displayPrice && service.price && (
                             <p className={`font-bold mt-1 ${isVip ? "text-amber-700" : "text-purple-600"}`}>Starting at ${Number(service.price).toFixed(2)}</p>
-                          )}
-                          {isVip && (
-                            <p className="mt-1 text-sm text-amber-900/80">
-                              Everything in Luxury Deep Reset plus inside fridge and cabinets, windows, and a free add-on every month.
-                            </p>
                           )}
                         </button>
                         );
