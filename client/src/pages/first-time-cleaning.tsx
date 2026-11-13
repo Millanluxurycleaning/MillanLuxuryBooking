@@ -1,4 +1,8 @@
 import { ServiceGroupPage } from "@/components/ServiceGroupPage";
+import { packageByKey } from "@/data/servicePackages";
+
+const deep = packageByKey("deep")!;
+const move = packageByKey("move")!;
 
 // Square services these options book
 const MOVE_IN_OUT_SERVICE_ID = 11; // 🪴 Move-In / Move-Out
@@ -20,43 +24,26 @@ export default function FirstTimeCleaningPage() {
       subIntro="Fixed pricing based on the approximate size of your home. No hourly charges."
       included={[
         {
-          title: "What's Included in Deep Cleaning?",
-          items: [
-            "Detailed sanitizing of kitchens and bathrooms",
-            "Hard scrubbing of tubs/showers, sinks, toilets, and fixtures",
-            "Dusting top to bottom (vents, corners, ledges, baseboards)",
-            "Interior windows, light switches, and door handles",
-            "Polish stainless steel and high-touch surfaces",
-            "Deep vacuuming and mopping of all floors",
-            "Trash emptied in all rooms",
-            "Beds made (linen change if provided)",
-          ],
-          note: `${sqftNote} Optional add-ons: inside fridge, oven, cabinets, or closet refresh.`,
+          title: "What's Included in Luxury Deep Reset Cleaning?",
+          items: [deep.includedIntro ?? "", ...deep.included].filter(Boolean),
+          note: `${sqftNote} Optional add-ons: inside fridge, oven, interior windows, and more. Want it all? Choose Millan VIP Signature Cleaning.`,
         },
         {
-          title: "What's Included in Move-In / Move-Out?",
-          items: [
-            "Full top-to-bottom clean of every room",
-            "Detailed dusting of baseboards, vents, and fixtures",
-            "Closets, shelves, cabinets, and drawers cleaned inside & out",
-            "Kitchen: inside & out of fridge, oven, microwave, dishwasher, and stovetop",
-            "Bathrooms: deep sanitizing of toilets, tubs/showers, vanities, tile, and grout",
-            "Wall spot-cleaning, doors, and sanitized touchpoints",
-            "Deep vacuuming and mopping of all floors",
-          ],
+          title: "What's Included in Luxury Move-In / Move-Out Reset?",
+          items: move.included,
           note: `${sqftNote} Best for empty homes.`,
         },
       ]}
       optionsHeading="What type of cleaning do you need?"
       options={[
         {
-          label: "Deep Cleaning",
+          label: "Luxury Deep Reset Cleaning",
           description: "Best for a first visit or a home that hasn't been cleaned in the past month.",
           href: "/book?choose=deep-cleaning",
         },
         {
-          label: "Move-In / Move-Out",
-          description: "A complete clean of an empty home before you move in or after you move out.",
+          label: "Luxury Move-In / Move-Out Reset",
+          description: "A complete reset of an empty home before you move in or after you move out.",
           href: `/book?serviceId=${MOVE_IN_OUT_SERVICE_ID}`,
         },
       ]}

@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, Sparkles, Home, ShieldCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Star, Copy, Check } from "lucide-react";
 import { BookingUpsellCarousel } from "@/components/BookingUpsellCarousel";
+import { packageForService, packageByKey, displayServiceName } from "@/data/servicePackages";
 import type { ServiceItem, ServicePricingTier } from "@shared/types";
 
 // Square footage pricing tiers
@@ -86,6 +87,8 @@ const signatureServiceCopyMap: Record<string, string> = {
 const normalizeServiceName = (name: string) => name.replace(/^[^A-Za-z0-9]+/, "").trim();
 
 const getCuratedServiceCopy = (name: string) => {
+  const pkg = packageByKey(packageForService(name));
+  if (pkg) return `${pkg.description} ${pkg.bestFor}`;
   const normalized = normalizeServiceName(name).toLowerCase();
   return signatureServiceCopyMap[normalized] ?? null;
 };
@@ -192,9 +195,22 @@ export default function BookingPage() {
     }, 150);
   }, []);
 
-  const { data: services = [], isLoading: servicesLoading } = useQuery<ServiceItem[]>({
+  const { data: rawServices = [], isLoading: servicesLoading } = useQuery<ServiceItem[]>({
     queryKey: ["/api/services"],
   });
+  // Show the new package names (e.g. "Basic Cleaning" -> "Essential Maintenance Cleaning"), whatever Square calls them
+  const services = useMemo(
+    () =>
+      (Array.isArray(rawServices) ? rawServices : []).map((s) => ({
+        ...s,
+        title: s.title ? displayServiceName(s.title) : s.title,
+        name: s.name ? displayServiceName(s.name) : s.name,
+        pricingTiers: Array.isArray(s.pricingTiers)
+          ? (s.pricingTiers as ServicePricingTier[]).map((t) => ({ ...t, name: displayServiceName(t.name) }))
+          : s.pricingTiers,
+      })),
+    [rawServices],
+  );
 
   const isLaundryAddonService = (service: ServiceItem) => {
     const name = (service.title ?? service.name ?? "").toLowerCase();
@@ -241,16 +257,8 @@ export default function BookingPage() {
     const sizes = pricingTiers.filter((t) => !isExtraTier(t));
     // If a service only has "extra" style options, treat them as normal choices
     if (sizes.length === 0) return { sizeTiers: pricingTiers, extraTiers: [] as ServicePricingTier[] };
-    const title = (selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
-    // Hide add-ons the Service Checklist already includes for this service (anything not included stays):
-    //  - Move-In / Move-Out: inside fridge, inside oven, inside cabinets, baseboards, wall spot-cleaning, closets
-    //  - Deep Cleaning: interior windows, baseboards
-    //  - Home / recurring cleanings: none of the add-ons are included, so all stay
-    const includedInService: RegExp[] = /move|final/.test(title)
-      ? [/inside fridge/i, /^inside oven/i, /inside cabinets/i, /baseboard/i, /wall spot/i, /closet/i]
-      : /deep/.test(title)
-        ? [/interior windows/i, /baseboard/i]
-        : [];
+    // Hide add-ons the package's checklist already includes (see data/servicePackages.ts); the rest stay
+    const includedInService = packageByKey(packageForService(selectedService?.title ?? selectedService?.name))?.hideAddOns ?? [];
     const catalog = addOnCatalog.filter(
       (t) => !includedInService.some((r) => r.test(t.name)) && !extras.some((e) => e.name === t.name),
     );
@@ -352,7 +360,8 @@ export default function BookingPage() {
   // Recurring discounts only apply to home cleaning plans: the first visit is a Deep Cleaning
   // (full price) and the discount starts with the recurring cleanings after it.
   const selectedTitleLower = (selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
-  const isRecurringEligible = selectedTitleLower.includes("deep") || selectedTitleLower.includes("basic cleaning");
+  const isRecurringEligible =
+    selectedTitleLower.includes("deep") || selectedTitleLower.includes("basic cleaning") || selectedTitleLower.includes("essential maintenance");
   const effectiveFrequency = isRecurringEligible ? frequency : "one-time";
   const frequencyDiscount = FREQUENCY_DISCOUNTS[effectiveFrequency] ?? 0;
   const recurringPrice = selectedPrice != null && frequencyDiscount > 0
@@ -788,6 +797,7 @@ export default function BookingPage() {
                     {servicesLoading && <p className="text-sm text-muted-foreground">Loading services...</p>}
                     {!servicesLoading && (() => {
                       const isAirbnbTurnover = (title: string) => {
+                        if (packageForService(title)) return false;
                         const t = title.toLowerCase();
                         return t.includes("weekly") || t.includes("bi-weekly") || t.includes("biweekly") ||
                           t.includes("reset") || t.includes("monthly") || t.includes("one time") || t.includes("one-time") ||
@@ -797,13 +807,13 @@ export default function BookingPage() {
                         const t = title.toLowerCase();
                         return t.includes("deep") || t.includes("move-in") || t.includes("move in") ||
                           t.includes("move-out") || t.includes("move out") || t.includes("basic") ||
-                          t.includes("vip") || t.includes("signature");
+                          t.includes("essential maintenance") || t.includes("vip") || t.includes("signature");
                       };
                       const airbnbServices = squareServices.filter((s) => isAirbnbTurnover(s.title ?? s.name ?? ""));
                       // Basic Cleaning is for recurring clients only (booked from the Home Cleaning page), so it's
                       // hidden from this list unless it was already chosen there
                       const isBasicCleaning = (s: typeof squareServices[0]) =>
-                        (s.title ?? s.name ?? "").toLowerCase().includes("basic cleaning") && s.id !== selectedServiceId;
+                        /basic cleaning|essential maintenance/.test((s.title ?? s.name ?? "").toLowerCase()) && s.id !== selectedServiceId;
                       const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? "") && !isBasicCleaning(s));
                       const otherServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
                       const chooseService = (id: number) => {
@@ -832,7 +842,7 @@ export default function BookingPage() {
                             }`}
                           >
                             <button type="button" className="w-full text-left" onClick={() => setShowDeepChoice((v) => !v)}>
-                              <p className="font-semibold text-lg">🫧 Deep Cleaning</p>
+                              <p className="font-semibold text-lg">🫧 Luxury Deep Reset Cleaning</p>
                               {Number.isFinite(minPrice) && (
                                 <p className="text-purple-600 font-bold mt-1">Starting at ${minPrice.toFixed(2)}</p>
                               )}
