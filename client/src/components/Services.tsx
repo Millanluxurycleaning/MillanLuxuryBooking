@@ -745,37 +745,38 @@ function PackageCards({ services }: { services: ServiceItem[] }) {
       <p className="text-center text-white/75 text-sm md:text-base max-w-2xl mx-auto">
         Essential Maintenance → Luxury Deep Reset → Millan VIP Signature → Luxury Move-In / Move-Out Reset
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-        {servicePackages.map((pkg) => {
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+        {/* VIP (the flagship) first and full width, then the other packages */}
+        {[...servicePackages].sort((a, b) => Number(!!b.featured) - Number(!!a.featured)).map((pkg) => {
           const from = packageFromPrice(pkg.key, services);
-          const preview = pkg.included.slice(0, 5);
+          const preview = pkg.included.slice(0, pkg.featured ? 8 : 5);
           return (
             <Card
               key={pkg.key}
-              className={`relative overflow-hidden text-white backdrop-blur-2xl ${
+              className={`relative overflow-hidden text-white backdrop-blur-2xl flex flex-col ${
                 pkg.featured
-                  ? "bg-gradient-to-br from-black/60 via-[rgba(20,45,30,0.55)] to-black/60 border-2 border-primary shadow-[0_30px_80px_rgba(212,175,55,0.25)]"
+                  ? "md:col-span-3 bg-gradient-to-br from-black/60 via-[rgba(20,45,30,0.6)] to-black/60 border-2 border-primary ring-4 ring-primary/20 shadow-[0_30px_90px_rgba(212,175,55,0.35)]"
                   : "bg-black/25 border border-white/20 ring-1 ring-white/10 shadow-[0_24px_70px_rgba(0,0,0,0.35)]"
               }`}
               data-testid={`card-package-${pkg.key}`}
             >
               {pkg.featured && (
                 <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-lg">
-                  <Crown className="w-3.5 h-3.5" /> Flagship
+                  <Crown className="w-3.5 h-3.5" /> Our Flagship Service
                 </span>
               )}
               <CardHeader className="space-y-3 pb-3">
                 <p className="text-3xl leading-none">{pkg.emoji}</p>
-                <CardTitle className={`text-xl md:text-2xl font-serif text-white ${pkg.featured ? "pr-24" : ""}`}>
+                <CardTitle className={`font-serif text-white ${pkg.featured ? "text-2xl md:text-4xl pr-0 md:pr-56 pt-6 md:pt-0" : "text-xl md:text-2xl"}`}>
                   {pkg.name}
                 </CardTitle>
                 {from != null && <p className="text-sm font-semibold text-primary">From ${from.toFixed(2)}</p>}
                 <p className="text-white/80 text-sm md:text-base">{pkg.description}</p>
                 <p className="text-sm text-white/65 italic">{pkg.bestFor}</p>
               </CardHeader>
-              <CardContent className="space-y-2 pb-4">
+              <CardContent className="space-y-2 pb-4 flex-1">
                 {pkg.includedIntro && <p className="text-sm font-semibold text-primary">{pkg.includedIntro}</p>}
-                <ul className="space-y-1.5">
+                <ul className={`space-y-1.5 ${pkg.featured ? "md:grid md:grid-cols-2 md:gap-x-8 md:space-y-0 md:gap-y-1.5" : ""}`}>
                   {preview.map((item) => (
                     <li key={item} className="flex items-start gap-2 text-sm text-white/85">
                       <Check className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
