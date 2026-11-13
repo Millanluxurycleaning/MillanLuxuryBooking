@@ -229,22 +229,51 @@ export default function BookingPage() {
 
   // Size options vs. extras: tiers named like "+ Extra Bedroom" are add-ons, not a property size
   const isExtraTier = (tier: ServicePricingTier) => /^\s*\+/.test(tier.name) || /\bextra\b/i.test(tier.name);
+  // The "Optional Add-ons" service in Square holds the extras (inside fridge, oven, cabinets...).
+  // Its options are offered on every cleaning booking under "Any add-ons?".
+  const addOnCatalog = useMemo((): ServicePricingTier[] => {
+    const svc = squareServices.find((s) => /optional add/i.test(s.title ?? s.name ?? ""));
+    const tiers = svc?.pricingTiers as ServicePricingTier[] | undefined;
+    return Array.isArray(tiers) ? tiers : [];
+  }, [squareServices]);
   const { sizeTiers, extraTiers } = useMemo(() => {
     const extras = pricingTiers.filter(isExtraTier);
     const sizes = pricingTiers.filter((t) => !isExtraTier(t));
     // If a service only has "extra" style options, treat them as normal choices
-    return sizes.length > 0 ? { sizeTiers: sizes, extraTiers: extras } : { sizeTiers: pricingTiers, extraTiers: [] };
-  }, [pricingTiers]);
-  // Shorter labels for the size buttons: "🫧 Deep Cleaning- 2BR" shows as "2BR" under the Deep Cleaning service
-  const sizeLabel = (name: string) => {
-    const clean = (str: string) => str.replace(/^[^A-Za-z0-9]+/, "").trim();
-    const base = clean(selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
-    const label = clean(name);
-    if (base && label.toLowerCase().startsWith(base)) {
-      const rest = label.slice(base.length).replace(/^[\s\-–—:|()]+/, "").replace(/\)$/, "").trim();
-      if (rest) return rest;
+    if (sizes.length === 0) return { sizeTiers: pricingTiers, extraTiers: [] as ServicePricingTier[] };
+    const title = (selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
+    // Move-in / move-out already includes the inside of the fridge, oven, cabinets, baseboards and walls
+    const isMoveOut = /move|final/.test(title);
+    const catalog = addOnCatalog.filter(
+      (t) => !(isMoveOut && /fridge|oven|cabinet|baseboard|wall spot/i.test(t.name)) && !extras.some((e) => e.name === t.name),
+    );
+    // Most-requested extras first so they show without tapping "See all"
+    const priority = (n: string) => {
+      const i = [/inside fridge w\/o/i, /^inside oven/i, /inside cabinets/i, /interior windows/i, /pet hair/i].findIndex((r) => r.test(n));
+      return i === -1 ? 99 : i;
+    };
+    const ordered = catalog.map((t, i) => ({ t, i })).sort((a, b) => priority(a.t.name) - priority(b.t.name) || a.i - b.i).map((x) => x.t);
+    return { sizeTiers: sizes, extraTiers: [...extras, ...ordered] };
+  }, [pricingTiers, addOnCatalog, selectedService]);
+  const [showAllAddOns, setShowAllAddOns] = useState(false);
+  // Shorter labels for the size buttons: when every option starts with the same words
+  // ("🫧 Deep Cleaning- 1BR", "🫧 Deep Cleaning- 2BR"), show just the part that differs ("1BR", "2BR")
+  const cleanLabel = (str: string) => str.replace(/^[^A-Za-z0-9]+/, "").trim();
+  const sizePrefix = useMemo(() => {
+    const names = sizeTiers.map((t) => cleanLabel(t.name));
+    if (names.length < 2) return "";
+    let prefix = names[0];
+    for (const n of names) {
+      while (prefix && !n.startsWith(prefix)) prefix = prefix.slice(0, -1);
     }
-    return label;
+    // Only cut at a separator so we never split a word
+    const cut = Math.max(prefix.lastIndexOf("- "), prefix.lastIndexOf("– "), prefix.lastIndexOf(": "));
+    return cut > 0 ? prefix.slice(0, cut + 2) : "";
+  }, [sizeTiers]);
+  const sizeLabel = (name: string) => {
+    const label = cleanLabel(name);
+    const rest = sizePrefix && label.startsWith(sizePrefix) ? label.slice(sizePrefix.length).trim() : "";
+    return rest || label;
   };
   const extrasTotal = useMemo(
     () => extraTiers.reduce((sum, t) => sum + t.price * (extraQuantities[t.name] || 0), 0),
@@ -989,15 +1018,18 @@ export default function BookingPage() {
                               {extraTiers.length > 0 && (
                                 <div className="border-t pt-4">
                                   <Label className="text-sm font-semibold block">Any add-ons?</Label>
-                                  <p className="text-xs text-muted-foreground mt-1 mb-3">Optional. Tap to add, and use + / − for more than one.</p>
+                                  <p className="text-xs text-muted-foreground mt-1 mb-3">Optional extras like inside the fridge, oven, or cabinets. Tap to add.</p>
                                   <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
-                                    {extraTiers.map((tier) => {
+                                    {(showAllAddOns
+                                      ? extraTiers
+                                      : extraTiers.filter((t, i) => i < 6 || (extraQuantities[t.name] || 0) > 0)
+                                    ).map((tier) => {
                                       const qty = extraQuantities[tier.name] || 0;
                                       const label = tier.name.replace(/^\s*\+\s*/, "");
                                       return (
                                         <div
                                           key={tier.name}
-                                          className={`rounded-xl border-2 px-3 py-3 transition-all ${
+                                          className={`rounded-xl border-2 px-3 py-2.5 transition-all ${
                                             qty > 0 ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50" : "border-border"
                                           }`}
                                         >
@@ -1008,7 +1040,7 @@ export default function BookingPage() {
                                             data-testid={`button-extra-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                                           >
                                             <p className="text-sm font-semibold leading-snug">{label}</p>
-                                            <p className="text-sm text-purple-600 font-bold mt-1">+${tier.price.toFixed(2)}</p>
+                                            <p className="text-sm text-purple-600 font-bold mt-0.5">+${tier.price.toFixed(2)}</p>
                                           </button>
                                           {qty > 0 && (
                                             <div className="mt-2 flex items-center gap-3">
@@ -1035,6 +1067,16 @@ export default function BookingPage() {
                                       );
                                     })}
                                   </div>
+                                  {extraTiers.length > 6 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowAllAddOns((v) => !v)}
+                                      className="mt-3 text-sm font-medium text-purple-600 underline underline-offset-4"
+                                      data-testid="button-toggle-addons"
+                                    >
+                                      {showAllAddOns ? "Show fewer add-ons" : `See all ${extraTiers.length} add-ons`}
+                                    </button>
+                                  )}
                                 </div>
                               )}
                               {!isAddOnOrStandardService && (
