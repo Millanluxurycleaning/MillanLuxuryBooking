@@ -391,7 +391,7 @@ export function Services({
   return (
     <section
       id="services"
-      className="relative py-20 md:py-32 overflow-hidden"
+      className="relative py-14 md:py-32 overflow-hidden"
       style={{
         backgroundImage: `url(${background})`,
         backgroundSize: "cover",
@@ -402,13 +402,13 @@ export function Services({
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/70" />
 
-      <div className="relative z-10 container mx-auto px-6 md:px-8">
+      <div className="relative z-10 container mx-auto px-4 md:px-8">
         {/* Section Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-10 md:mb-16">
           <h2 className="font-serif text-3xl md:text-5xl font-semibold text-white mb-4">
             {titleText}
           </h2>
-          <p className="text-lg md:text-xl text-white/80 max-w-3xl mx-auto">
+          <p className="text-base md:text-xl text-white/80 max-w-3xl mx-auto">
             {subtitleText}
           </p>
         </div>
@@ -516,8 +516,8 @@ export function Services({
                         )}
 
                         <CardHeader className={isLuxe ? "space-y-4 pb-5 text-white" : "space-y-3 pb-4"}>
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
+                          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
                               <div
                                 className={`p-3 rounded-lg ${
                                   isFeatured ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
@@ -539,7 +539,7 @@ export function Services({
                               </div>
                             </div>
                             {!isLuxe && (
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant="outline">{serviceType}</Badge>
                                 {price && service.displayPrice && (
                                   <Badge className="bg-primary text-primary-foreground">
@@ -611,7 +611,7 @@ export function Services({
                             <Button
                               type="button"
                               variant="default"
-                              className="w-full"
+                              className="w-full h-auto min-h-10 whitespace-normal py-2.5 leading-snug"
                               aria-expanded={deepChoiceOpen}
                               onClick={() => setDeepChoiceOpen((open) => !open)}
                               data-testid="button-book-deep-cleaning"
@@ -651,7 +651,7 @@ export function Services({
                           <Button
                             asChild
                             variant="default"
-                            className={`w-full ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
+                            className={`w-full h-auto min-h-10 whitespace-normal py-2.5 leading-snug text-center ${isLuxe ? "tracking-wide shadow-lg shadow-black/30" : ""}`}
                             data-testid={`button-book-${service.id}`}
                           >
                             <a href={bookingLink}>{isLuxe ? `Reserve ${serviceTitle}` : `Book ${serviceTitle}`}</a>
