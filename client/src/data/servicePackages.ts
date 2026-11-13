@@ -27,7 +27,7 @@ export const servicePackages: ServicePackage[] = [
     emoji: "🧼",
     description:
       "Routine upkeep that keeps your home fresh, polished, and guest-ready between deeper cleanings.",
-    bestFor: "Best for weekly, bi-weekly, or monthly upkeep of a home that's already in good shape.",
+    bestFor: "Best for recurring weekly and bi-weekly clients whose home is already in good shape.",
     included: [
       "Dust accessible surfaces",
       "Vacuum and mop floors",
@@ -70,7 +70,7 @@ export const servicePackages: ServicePackage[] = [
     emoji: "🫧",
     description:
       "A meticulous, top-to-bottom clean that resets your home. Every new client starts here.",
-    bestFor: "Best for first visits, seasonal resets, and homes that need extra attention.",
+    bestFor: "Best for first visits, monthly and one-time cleanings, and homes that need extra attention.",
     includedIntro: "Everything in Essential Maintenance, plus:",
     included: [
       "Damp wipe surfaces",
