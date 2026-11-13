@@ -60,15 +60,6 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="/fragrances"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                  data-testid="link-footer-fragrances"
-                >
-                  Fragrances
-                </a>
-              </li>
-              <li>
-                <a
                   href="#gallery"
                   className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   data-testid="link-footer-gallery"

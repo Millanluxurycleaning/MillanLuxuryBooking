@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, ShoppingCart, Phone } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -11,7 +12,17 @@ const fallbackLogo =
 
 export function Navigation() {
   const { data: assets = {} } = useAssets();
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [scrolledDown, setIsScrolled] = useState(false);
+  const [location] = useLocation();
+  // Only pages with a dark photo/background at the top get the see-through bar with white text.
+  // Light pages (Services, Book, Blog, Cart...) always get the solid bar so the menu stays readable.
+  const hasDarkTop =
+    location === "/" ||
+    location === "/partners" ||
+    location === "/memberships" ||
+    location === "/service-checklist" ||
+    location.startsWith("/cleaning/");
+  const isScrolled = scrolledDown || !hasDarkTop;
   const logo = assets?.logo?.url ?? fallbackLogo;
   const { cart } = useCart();
   const cartCount = cart?.totals?.itemCount ?? 0;
@@ -22,7 +33,8 @@ export function Navigation() {
       setIsScrolled(window.scrollY > 50);
     };
     
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -30,7 +42,6 @@ export function Navigation() {
     { href: "/#about", label: "About" },
     { href: "/services", label: "Services" },
     { href: "/memberships", label: "Memberships" },
-    { href: "/fragrances", label: "Fragrances" },
     { href: "/#gallery", label: "Gallery" },
     { href: "/#testimonials", label: "Reviews" },
     { href: "/blog", label: "Blog" },
@@ -41,10 +52,12 @@ export function Navigation() {
 
   return (
     <nav
-      style={{ transform: isBannerVisible ? "translateY(40px)" : "translateY(0)" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-[transform,background-color,box-shadow,border-color] duration-300 ${
+      // Offset with `top` (not a transform) and keep the bar on its own layer so iPhone Safari
+      // doesn't hide it when the page bounces at the very bottom
+      style={{ top: isBannerVisible ? 40 : 0, WebkitBackfaceVisibility: "hidden", transform: "translate3d(0,0,0)" }}
+      className={`fixed left-0 right-0 z-50 transition-[top,background-color,box-shadow,border-color] duration-300 ${
         isScrolled
-          ? "bg-card/95 backdrop-blur-md shadow-md border-b border-border"
+          ? "bg-card/95 shadow-md border-b border-border"
           : "bg-transparent"
       }`}
     >
