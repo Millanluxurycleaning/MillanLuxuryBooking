@@ -1017,13 +1017,35 @@ export default function BookingPage() {
                               </div>
                               {extraTiers.length > 0 && (
                                 <div className="border-t pt-4">
-                                  <Label className="text-sm font-semibold block">Any add-ons?</Label>
-                                  <p className="text-xs text-muted-foreground mt-1 mb-3">Optional extras like inside the fridge, oven, or cabinets. Tap to add.</p>
-                                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
-                                    {(showAllAddOns
-                                      ? extraTiers
-                                      : extraTiers.filter((t, i) => i < 6 || (extraQuantities[t.name] || 0) > 0)
-                                    ).map((tier) => {
+                                  {(() => {
+                                    const pickedCount = extraTiers.filter((t) => (extraQuantities[t.name] || 0) > 0).length;
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowAllAddOns((v) => !v)}
+                                        aria-expanded={showAllAddOns}
+                                        className={`w-full flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-all ${
+                                          showAllAddOns || pickedCount > 0
+                                            ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50"
+                                            : "border-purple-200 hover:border-purple-400"
+                                        }`}
+                                        data-testid="button-toggle-addons"
+                                      >
+                                        <span>
+                                          <span className="block text-sm font-semibold">
+                                            ✨ Add-ons{pickedCount > 0 ? ` (${pickedCount} added${extrasTotal > 0 ? `, +$${extrasTotal.toFixed(2)}` : ""})` : ""}
+                                          </span>
+                                          <span className="block text-xs text-muted-foreground mt-0.5">
+                                            Inside fridge, oven, cabinets, windows & more
+                                          </span>
+                                        </span>
+                                        <ChevronDown className={`w-5 h-5 text-purple-600 transition-transform ${showAllAddOns ? "rotate-180" : ""}`} />
+                                      </button>
+                                    );
+                                  })()}
+                                  {showAllAddOns && (
+                                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 mt-3">
+                                    {extraTiers.map((tier) => {
                                       const qty = extraQuantities[tier.name] || 0;
                                       const label = tier.name.replace(/^\s*\+\s*/, "");
                                       return (
@@ -1067,15 +1089,6 @@ export default function BookingPage() {
                                       );
                                     })}
                                   </div>
-                                  {extraTiers.length > 6 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowAllAddOns((v) => !v)}
-                                      className="mt-3 text-sm font-medium text-purple-600 underline underline-offset-4"
-                                      data-testid="button-toggle-addons"
-                                    >
-                                      {showAllAddOns ? "Show fewer add-ons" : `See all ${extraTiers.length} add-ons`}
-                                    </button>
                                   )}
                                 </div>
                               )}
