@@ -58,7 +58,7 @@ const comparison: { title: string; rows: { task: string; marks: [Mark, Mark, Mar
     title: "Bathrooms",
     rows: [
       { task: "Sinks, vanities, mirrors, and fixtures", marks: ["yes", "Deep-cleaned", "Premium detail", "Deep-cleaned"] },
-      { task: "Tubs and showers", marks: ["Wipe-down", "Hard scrub", "Hard scrub", "Hard scrub"] },
+      { task: "Tubs and showers", marks: ["Cleaned (no hard scrub)", "Hard scrub", "Hard scrub", "Hard scrub"] },
     ],
   },
   {
