@@ -34,8 +34,8 @@ const comparison: { title: string; rows: { task: string; marks: [Mark, Mark, Mar
       { task: "Ceiling fans", marks: ["Dusted", "Detailed", "Detailed", "no"] },
       { task: "Baseboards", marks: ["addon", "Wet-dusted", "Detailed", "Wet-dusted"] },
       { task: "Doors and door frames", marks: ["no", "Detailed", "Detailed", "Detailed"] },
-      { task: "High-touch areas and switch plates", marks: ["Spot-clean", "Detailed", "Detailed", "no"] },
-      { task: "Accessible vents and light fixtures", marks: ["no", "yes", "yes", "no"] },
+      { task: "High-touch areas and switch plates", marks: ["Spot-clean", "Detailed", "Detailed", "Detailed"] },
+      { task: "Vents and light fixtures", marks: ["no", "yes", "yes", "yes"] },
       { task: "Corners and edges detailed", marks: ["no", "yes", "yes", "yes"] },
       { task: "Couch vacuuming", marks: ["no", "no", "yes", "no"] },
       { task: "Interior windows and tracks", marks: ["addon", "addon", "Up to 4", "addon"] },
@@ -49,8 +49,8 @@ const comparison: { title: string; rows: { task: string; marks: [Mark, Mark, Mar
       { task: "Appliance exteriors", marks: ["yes", "yes", "yes", "yes"] },
       { task: "Microwave inside and outside", marks: ["yes", "yes", "yes", "yes"] },
       { task: "Cabinet fronts and backsplash", marks: ["Spot-clean", "Detailed", "Detailed", "yes"] },
-      { task: "Inside cabinets and drawers", marks: ["addon", "addon", "addon", "yes"] },
-      { task: "Inside oven", marks: ["addon", "addon", "yes", "yes"] },
+      { task: "Inside cabinets and drawers", marks: ["addon", "addon", "Up to 6", "yes"] },
+      { task: "Inside oven", marks: ["addon", "addon", "addon", "yes"] },
       { task: "Inside refrigerator", marks: ["addon", "addon", "yes", "yes"] },
     ],
   },
@@ -64,8 +64,9 @@ const comparison: { title: string; rows: { task: string; marks: [Mark, Mark, Mar
   {
     title: "The Finish",
     rows: [
-      { task: "Luxury scent finish", marks: ["no", "yes", "Signature", "no"] },
+      { task: "Luxury scent finish", marks: ["yes", "yes", "Signature", "no"] },
       { task: "Final walkthrough", marks: ["Room reset", "Quality check", "VIP check", "Vacant-home check"] },
+      { task: "Free add-on every month", marks: ["no", "no", "yes", "no"] },
     ],
   },
 ];

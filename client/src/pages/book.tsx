@@ -1060,6 +1060,11 @@ export default function BookingPage() {
                                       </button>
                                     );
                                   })()}
+                                  {packageForService(selectedService?.title ?? selectedService?.name) === "vip" && (
+                                    <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                                      👑 VIP perk: one add-on is free every month. Pick it here and note it in Special Requests, and we'll take it off your visit.
+                                    </p>
+                                  )}
                                   {showAllAddOns && (
                                   <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 mt-3">
                                     {extraTiers.map((tier) => {
