@@ -39,7 +39,7 @@ export const servicePackages: ServicePackage[] = [
       "Wipe accessible surfaces",
       "Clean mirrors",
       "Bathroom maintenance cleaning",
-      "Wipe tubs/showers (no hard scrubbing)",
+      "Clean tubs and showers (no hard scrubbing)",
       "Clean sinks and vanities",
       "Shine fixtures",
       "Clean kitchen counters, tables, and chairs",
