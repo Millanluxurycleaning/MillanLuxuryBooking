@@ -815,7 +815,8 @@ export default function BookingPage() {
                       const isBasicCleaning = (s: typeof squareServices[0]) =>
                         /basic cleaning|essential maintenance/.test((s.title ?? s.name ?? "").toLowerCase()) && s.id !== selectedServiceId;
                       // Packages in order: Essential Maintenance → Luxury Deep Reset → VIP → Move-In / Move-Out
-                      const packageOrder = ["essential", "deep", "vip", "move"];
+                      // VIP (the flagship) shows first and full width
+                      const packageOrder = ["vip", "essential", "deep", "move"];
                       const orderOf = (s: typeof squareServices[0]) => {
                         const i = packageOrder.indexOf(packageForService(s.title ?? s.name) ?? "");
                         return i === -1 ? 99 : i;
@@ -893,16 +894,28 @@ export default function BookingPage() {
                             s.id === deepServices[0].id ? ["deep-cleaning" as const] : deepServices.some((d) => d.id === s.id) ? [] : [s],
                           )
                         : residentialServices;
-                      const renderServiceButton = (service: typeof squareServices[0]) => (
+                      const renderServiceButton = (service: typeof squareServices[0]) => {
+                        const isVip = packageForService(service.title ?? service.name) === "vip";
+                        return (
                         <button
                           key={service.id}
                           onClick={() => chooseService(service.id)}
                           className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
-                            selectedServiceId === service.id
-                              ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
-                              : "border-border hover:border-purple-300 hover:shadow-md"
+                            isVip
+                              ? `md:col-span-2 bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 shadow-lg shadow-amber-200/60 ${
+                                  selectedServiceId === service.id ? "border-amber-500 ring-2 ring-amber-300" : "border-amber-400 hover:border-amber-500"
+                                }`
+                              : selectedServiceId === service.id
+                                ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
+                                : "border-border hover:border-purple-300 hover:shadow-md"
                           }`}
+                          data-testid={isVip ? "button-service-vip" : undefined}
                         >
+                          {isVip && (
+                            <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[0.7rem] font-semibold text-white shadow">
+                              👑 Our Flagship Service
+                            </span>
+                          )}
                           {packageForService(service.title ?? service.name) === "essential" && (
                             <span className="mb-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800">
                               Returning clients only
@@ -912,10 +925,16 @@ export default function BookingPage() {
                             <p className="font-semibold text-lg">{service.title}</p>
                           </div>
                           {service.displayPrice && service.price && (
-                            <p className="text-purple-600 font-bold mt-1">Starting at ${Number(service.price).toFixed(2)}</p>
+                            <p className={`font-bold mt-1 ${isVip ? "text-amber-700" : "text-purple-600"}`}>Starting at ${Number(service.price).toFixed(2)}</p>
+                          )}
+                          {isVip && (
+                            <p className="mt-1 text-sm text-amber-900/80">
+                              Everything in Luxury Deep Reset plus inside fridge and cabinets, windows, and a free add-on every month.
+                            </p>
                           )}
                         </button>
-                      );
+                        );
+                      };
                       return (
                         <>
                           {residentialServices.length > 0 && (
