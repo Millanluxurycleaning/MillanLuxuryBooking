@@ -66,7 +66,10 @@ export function ServiceGroupPage({
       <PageSEO title={seo.title} description={seo.description} path={seo.path} />
 
       {/* Top bar */}
-      <header className="bg-black/30 backdrop-blur-xl border-b border-white/10">
+      <header
+        className="sticky z-40 bg-black/60 backdrop-blur-xl border-b border-white/10"
+        style={{ top: isBannerVisible ? 40 : 0 }}
+      >
         <div className="relative flex items-center justify-center h-14 px-4">
           <button
             type="button"

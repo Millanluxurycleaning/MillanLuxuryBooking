@@ -30,7 +30,6 @@ export function Navigation() {
     { href: "/#about", label: "About" },
     { href: "/services", label: "Services" },
     { href: "/memberships", label: "Memberships" },
-    { href: "/fragrances", label: "Fragrances" },
     { href: "/#gallery", label: "Gallery" },
     { href: "/#testimonials", label: "Reviews" },
     { href: "/blog", label: "Blog" },
@@ -41,10 +40,12 @@ export function Navigation() {
 
   return (
     <nav
-      style={{ transform: isBannerVisible ? "translateY(40px)" : "translateY(0)" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-[transform,background-color,box-shadow,border-color] duration-300 ${
+      // Offset with `top` (not a transform) and keep the bar on its own layer so iPhone Safari
+      // doesn't hide it when the page bounces at the very bottom
+      style={{ top: isBannerVisible ? 40 : 0, WebkitBackfaceVisibility: "hidden", transform: "translate3d(0,0,0)" }}
+      className={`fixed left-0 right-0 z-50 transition-[top,background-color,box-shadow,border-color] duration-300 ${
         isScrolled
-          ? "bg-card/95 backdrop-blur-md shadow-md border-b border-border"
+          ? "bg-card/95 shadow-md border-b border-border"
           : "bg-transparent"
       }`}
     >
