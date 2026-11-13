@@ -242,10 +242,17 @@ export default function BookingPage() {
     // If a service only has "extra" style options, treat them as normal choices
     if (sizes.length === 0) return { sizeTiers: pricingTiers, extraTiers: [] as ServicePricingTier[] };
     const title = (selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
-    // Move-in / move-out already includes the inside of the fridge, oven, cabinets, baseboards and walls
-    const isMoveOut = /move|final/.test(title);
+    // Hide add-ons the Service Checklist already includes for this service (anything not included stays):
+    //  - Move-In / Move-Out: inside fridge, inside oven, inside cabinets, baseboards, wall spot-cleaning, closets
+    //  - Deep Cleaning: interior windows, baseboards
+    //  - Home / recurring cleanings: none of the add-ons are included, so all stay
+    const includedInService: RegExp[] = /move|final/.test(title)
+      ? [/inside fridge/i, /^inside oven/i, /inside cabinets/i, /baseboard/i, /wall spot/i, /closet/i]
+      : /deep/.test(title)
+        ? [/interior windows/i, /baseboard/i]
+        : [];
     const catalog = addOnCatalog.filter(
-      (t) => !(isMoveOut && /fridge|oven|cabinet|baseboard|wall spot/i.test(t.name)) && !extras.some((e) => e.name === t.name),
+      (t) => !includedInService.some((r) => r.test(t.name)) && !extras.some((e) => e.name === t.name),
     );
     // Most-requested extras first so they show without tapping "See all"
     const priority = (n: string) => {
