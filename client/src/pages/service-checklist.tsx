@@ -15,8 +15,8 @@ const fallbackBg = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/stat
 type Mark = "yes" | "addon" | "no" | string;
 
 const columns: { key: PackageKey; short: string }[] = [
-  { key: "essential", short: "Essential (weekly)" },
-  { key: "deep", short: "Deep Reset (monthly)" },
+  { key: "essential", short: "Essential" },
+  { key: "deep", short: "Deep Reset" },
   { key: "vip", short: "VIP" },
   { key: "move", short: "Move-In/Out" },
 ];
