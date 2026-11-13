@@ -173,6 +173,8 @@
 
   html {
     scroll-behavior: smooth;
+    /* stop the rubber-band bounce at the top/bottom that can push the fixed top bar out of view */
+    overscroll-behavior-y: none;
   }
 
   body {
