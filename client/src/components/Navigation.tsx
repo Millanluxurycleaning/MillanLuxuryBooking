@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, ShoppingCart, Phone } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -11,7 +12,17 @@ const fallbackLogo =
 
 export function Navigation() {
   const { data: assets = {} } = useAssets();
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [scrolledDown, setIsScrolled] = useState(false);
+  const [location] = useLocation();
+  // Only pages with a dark photo/background at the top get the see-through bar with white text.
+  // Light pages (Services, Book, Blog, Cart...) always get the solid bar so the menu stays readable.
+  const hasDarkTop =
+    location === "/" ||
+    location === "/partners" ||
+    location === "/memberships" ||
+    location === "/service-checklist" ||
+    location.startsWith("/cleaning/");
+  const isScrolled = scrolledDown || !hasDarkTop;
   const logo = assets?.logo?.url ?? fallbackLogo;
   const { cart } = useCart();
   const cartCount = cart?.totals?.itemCount ?? 0;
@@ -22,7 +33,8 @@ export function Navigation() {
       setIsScrolled(window.scrollY > 50);
     };
     
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
