@@ -49,6 +49,7 @@ export const servicePackages: ServicePackage[] = [
       "Clean sink and faucet",
       "Clean common areas",
       "Spot-clean high-touch areas",
+      "Luxury scent finish",
       "Final room reset",
     ],
     addOns: [
@@ -107,12 +108,13 @@ export const servicePackages: ServicePackage[] = [
     shortName: "VIP Signature",
     emoji: "👑",
     description:
-      "Our flagship experience: a complete deep reset with the inside of your oven and fridge, windows, and VIP detailing.",
+      "Our flagship experience: a complete deep reset with the inside of your fridge and cabinets, windows, VIP detailing, and a free add-on every month.",
     bestFor: "Best for clients who want the complete, white-glove Millan experience.",
     includedIntro: "Everything in Luxury Deep Reset, plus:",
     included: [
-      "Inside oven",
+      "One free add-on every month: inside oven, inside fridge, cabinets, or any other add-on",
       "Inside refrigerator",
+      "Inside cabinets, up to 6 (must be empty or at least 70% empty)",
       "Up to 4 interior windows and window tracks",
       "Couch vacuuming",
       "Detailed baseboards",
@@ -125,8 +127,9 @@ export const servicePackages: ServicePackage[] = [
       "Final VIP quality-control walkthrough",
     ],
     addOns: [
+      "Inside oven",
       "Additional windows",
-      "Full cabinet interiors",
+      "More than 6 cabinets",
       "Full wall washing",
       "Garage cleaning",
       "Patio cleaning",
@@ -138,7 +141,7 @@ export const servicePackages: ServicePackage[] = [
     ],
     cta: "Upgrade to VIP",
     featured: true,
-    hideAddOns: [/^inside oven/i, /inside fridge w\/o food/i, /blinds/i, /baseboard/i],
+    hideAddOns: [/inside fridge w\/o food/i, /inside cabinets/i, /blinds/i, /baseboard/i],
   },
   {
     key: "move",
@@ -153,6 +156,9 @@ export const servicePackages: ServicePackage[] = [
       "Wet-dust baseboards",
       "Detail doors and door frames",
       "Detail blinds and shutters",
+      "High vents dusted",
+      "Light fixtures detailed",
+      "Light switches and switch plates",
       "Vacuum and mop floors",
       "Clean inside closets",
       "Clean inside cabinets and drawers",
