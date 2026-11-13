@@ -814,7 +814,18 @@ export default function BookingPage() {
                       // hidden from this list unless it was already chosen there
                       const isBasicCleaning = (s: typeof squareServices[0]) =>
                         /basic cleaning|essential maintenance/.test((s.title ?? s.name ?? "").toLowerCase()) && s.id !== selectedServiceId;
-                      const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? "") && !isBasicCleaning(s));
+                      // Packages in order: Essential Maintenance → Luxury Deep Reset → VIP → Move-In / Move-Out
+                      const packageOrder = ["essential", "deep", "vip", "move"];
+                      const orderOf = (s: typeof squareServices[0]) => {
+                        const i = packageOrder.indexOf(packageForService(s.title ?? s.name) ?? "");
+                        return i === -1 ? 99 : i;
+                      };
+                      void isBasicCleaning;
+                      const residentialServices = squareServices
+                        .filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? ""))
+                        .map((s, i) => ({ s, i }))
+                        .sort((a, b) => orderOf(a.s) - orderOf(b.s) || a.i - b.i)
+                        .map((x) => x.s);
                       const otherServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
                       const chooseService = (id: number) => {
                         setSelectedServiceId(id);
@@ -892,6 +903,11 @@ export default function BookingPage() {
                               : "border-border hover:border-purple-300 hover:shadow-md"
                           }`}
                         >
+                          {packageForService(service.title ?? service.name) === "essential" && (
+                            <span className="mb-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800">
+                              Returning clients only
+                            </span>
+                          )}
                           <div className="flex items-start justify-between">
                             <p className="font-semibold text-lg">{service.title}</p>
                           </div>
@@ -961,6 +977,24 @@ export default function BookingPage() {
                     </p>
                     <p className="mt-1 text-sm text-foreground">{pkg.description}</p>
                     <p className="mt-1 text-sm italic text-muted-foreground">{pkg.bestFor}</p>
+                    {pkg.key === "essential" && (
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        Essential Maintenance is for clients who've already had their first Luxury Deep Reset. New to Millan?
+                        Start with a Luxury Deep Reset.
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowDeepChoice(true);
+                            setActiveStep(STEP_SERVICE);
+                            scrollToStep(STEP_SERVICE);
+                          }}
+                          className="mt-2 block font-semibold text-purple-700 underline underline-offset-4"
+                          data-testid="button-switch-to-deep"
+                        >
+                          Switch to Luxury Deep Reset →
+                        </button>
+                      </div>
+                    )}
                     {pkg.includedIntro && <p className="mt-3 text-sm font-semibold text-purple-700">{pkg.includedIntro}</p>}
                     <ul className={`${pkg.includedIntro ? "mt-1.5" : "mt-3"} grid gap-x-4 gap-y-1.5 text-sm text-muted-foreground sm:grid-cols-2`}>
                       {preview.map((item) => (
