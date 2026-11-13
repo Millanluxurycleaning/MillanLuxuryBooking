@@ -63,9 +63,9 @@ export const seoPages = {
   },
   serviceChecklist: {
     path: "/service-checklist",
-    title: "Service Checklist — What's Included in Each Cleaning",
+    title: "Cleaning Packages & Service Checklist — Compare What's Included",
     description:
-      "See exactly what's included in Millan Luxury Cleaning's home cleaning, deep cleaning, and move-in/move-out services, plus available add-ons.",
+      "Compare Millan Luxury Cleaning's Essential Maintenance, Luxury Deep Reset, VIP Signature, and Move-In/Move-Out Reset packages: what's included and available add-ons.",
     changefreq: "monthly",
     priority: 0.7,
   },

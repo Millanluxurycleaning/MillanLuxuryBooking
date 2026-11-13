@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, Sparkles, Home, ShieldCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Star, Copy, Check } from "lucide-react";
 import { BookingUpsellCarousel } from "@/components/BookingUpsellCarousel";
+import { packageForService, packageByKey, displayServiceName } from "@/data/servicePackages";
 import type { ServiceItem, ServicePricingTier } from "@shared/types";
 
 // Square footage pricing tiers
@@ -86,6 +87,8 @@ const signatureServiceCopyMap: Record<string, string> = {
 const normalizeServiceName = (name: string) => name.replace(/^[^A-Za-z0-9]+/, "").trim();
 
 const getCuratedServiceCopy = (name: string) => {
+  const pkg = packageByKey(packageForService(name));
+  if (pkg) return `${pkg.description} ${pkg.bestFor}`;
   const normalized = normalizeServiceName(name).toLowerCase();
   return signatureServiceCopyMap[normalized] ?? null;
 };
@@ -137,6 +140,8 @@ export default function BookingPage() {
     Number.isFinite(initialServiceId) && initialServiceId > 0 ? initialServiceId : null,
   );
   const [selectedPricingTier, setSelectedPricingTier] = useState<string | null>(null);
+  // Optional extras (e.g. "+ Extra Bedroom") picked on top of the property size, with quantities
+  const [extraQuantities, setExtraQuantities] = useState<Record<string, number>>({});
   const [squareFootage, setSquareFootage] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
@@ -190,9 +195,22 @@ export default function BookingPage() {
     }, 150);
   }, []);
 
-  const { data: services = [], isLoading: servicesLoading } = useQuery<ServiceItem[]>({
+  const { data: rawServices = [], isLoading: servicesLoading } = useQuery<ServiceItem[]>({
     queryKey: ["/api/services"],
   });
+  // Show the new package names (e.g. "Basic Cleaning" -> "Essential Maintenance Cleaning"), whatever Square calls them
+  const services = useMemo(
+    () =>
+      (Array.isArray(rawServices) ? rawServices : []).map((s) => ({
+        ...s,
+        title: s.title ? displayServiceName(s.title) : s.title,
+        name: s.name ? displayServiceName(s.name) : s.name,
+        pricingTiers: Array.isArray(s.pricingTiers)
+          ? (s.pricingTiers as ServicePricingTier[]).map((t) => ({ ...t, name: displayServiceName(t.name) }))
+          : s.pricingTiers,
+      })),
+    [rawServices],
+  );
 
   const isLaundryAddonService = (service: ServiceItem) => {
     const name = (service.title ?? service.name ?? "").toLowerCase();
@@ -224,6 +242,60 @@ export default function BookingPage() {
       return [];
     }
   }, [selectedService]);
+
+  // Size options vs. extras: tiers named like "+ Extra Bedroom" are add-ons, not a property size
+  const isExtraTier = (tier: ServicePricingTier) => /^\s*\+/.test(tier.name) || /\bextra\b/i.test(tier.name);
+  // The "Optional Add-ons" service in Square holds the extras (inside fridge, oven, cabinets...).
+  // Its options are offered on every cleaning booking under "Any add-ons?".
+  const addOnCatalog = useMemo((): ServicePricingTier[] => {
+    const svc = squareServices.find((s) => /optional add/i.test(s.title ?? s.name ?? ""));
+    const tiers = svc?.pricingTiers as ServicePricingTier[] | undefined;
+    return Array.isArray(tiers) ? tiers : [];
+  }, [squareServices]);
+  const { sizeTiers, extraTiers } = useMemo(() => {
+    const extras = pricingTiers.filter(isExtraTier);
+    const sizes = pricingTiers.filter((t) => !isExtraTier(t));
+    // If a service only has "extra" style options, treat them as normal choices
+    if (sizes.length === 0) return { sizeTiers: pricingTiers, extraTiers: [] as ServicePricingTier[] };
+    // Hide add-ons the package's checklist already includes (see data/servicePackages.ts); the rest stay
+    const includedInService = packageByKey(packageForService(selectedService?.title ?? selectedService?.name))?.hideAddOns ?? [];
+    const catalog = addOnCatalog.filter(
+      (t) => !includedInService.some((r) => r.test(t.name)) && !extras.some((e) => e.name === t.name),
+    );
+    // Most-requested extras first so they show without tapping "See all"
+    const priority = (n: string) => {
+      const i = [/inside fridge w\/o/i, /^inside oven/i, /inside cabinets/i, /interior windows/i, /pet hair/i].findIndex((r) => r.test(n));
+      return i === -1 ? 99 : i;
+    };
+    const ordered = catalog.map((t, i) => ({ t, i })).sort((a, b) => priority(a.t.name) - priority(b.t.name) || a.i - b.i).map((x) => x.t);
+    return { sizeTiers: sizes, extraTiers: [...extras, ...ordered] };
+  }, [pricingTiers, addOnCatalog, selectedService]);
+  const [showAllAddOns, setShowAllAddOns] = useState(false);
+  // Shorter labels for the size buttons: when every option starts with the same words
+  // ("🫧 Deep Cleaning- 1BR", "🫧 Deep Cleaning- 2BR"), show just the part that differs ("1BR", "2BR")
+  const cleanLabel = (str: string) => str.replace(/^[^A-Za-z0-9]+/, "").trim();
+  const sizePrefix = useMemo(() => {
+    const names = sizeTiers.map((t) => cleanLabel(t.name));
+    if (names.length < 2) return "";
+    let prefix = names[0];
+    for (const n of names) {
+      while (prefix && !n.startsWith(prefix)) prefix = prefix.slice(0, -1);
+    }
+    // Only cut at a separator so we never split a word
+    const cut = Math.max(prefix.lastIndexOf("- "), prefix.lastIndexOf("– "), prefix.lastIndexOf(": "));
+    return cut > 0 ? prefix.slice(0, cut + 2) : "";
+  }, [sizeTiers]);
+  const sizeLabel = (name: string) => {
+    const label = cleanLabel(name);
+    const rest = sizePrefix && label.startsWith(sizePrefix) ? label.slice(sizePrefix.length).trim() : "";
+    return rest || label;
+  };
+  const extrasTotal = useMemo(
+    () => extraTiers.reduce((sum, t) => sum + t.price * (extraQuantities[t.name] || 0), 0),
+    [extraTiers, extraQuantities],
+  );
+  const updateExtraQuantity = (name: string, qty: number) =>
+    setExtraQuantities((prev) => ({ ...prev, [name]: Math.max(0, Math.min(10, qty)) }));
 
   // Get square footage add-on price
   const sqftAddOn = useMemo(() => {
@@ -275,8 +347,8 @@ export default function BookingPage() {
   const selectedPrice = useMemo(() => {
     if (isLaundryService) return laundryTotal > 0 ? laundryTotal : null;
     if (basePrice === null) return null;
-    return basePrice + sqftAddOn;
-  }, [basePrice, sqftAddOn, isLaundryService, laundryTotal]);
+    return basePrice + sqftAddOn + extrasTotal;
+  }, [basePrice, sqftAddOn, extrasTotal, isLaundryService, laundryTotal]);
 
   const FREQUENCY_DISCOUNTS: Record<string, number> = {
     "one-time": 0,
@@ -288,7 +360,8 @@ export default function BookingPage() {
   // Recurring discounts only apply to home cleaning plans: the first visit is a Deep Cleaning
   // (full price) and the discount starts with the recurring cleanings after it.
   const selectedTitleLower = (selectedService?.title ?? selectedService?.name ?? "").toLowerCase();
-  const isRecurringEligible = selectedTitleLower.includes("deep") || selectedTitleLower.includes("basic cleaning");
+  const isRecurringEligible =
+    selectedTitleLower.includes("deep") || selectedTitleLower.includes("basic cleaning") || selectedTitleLower.includes("essential maintenance");
   const effectiveFrequency = isRecurringEligible ? frequency : "one-time";
   const frequencyDiscount = FREQUENCY_DISCOUNTS[effectiveFrequency] ?? 0;
   const recurringPrice = selectedPrice != null && frequencyDiscount > 0
@@ -302,6 +375,7 @@ export default function BookingPage() {
   // Reset pricing tier, square footage, and laundry selections when service changes
   useEffect(() => {
     setSelectedPricingTier(null);
+    setExtraQuantities({});
     setSquareFootage("");
     setLaundryItemQuantities({});
     setRegularLaundryLbs("");
@@ -498,6 +572,14 @@ export default function BookingPage() {
     }
     if (squareFootage) {
       noteParts.push(`Square Footage: ${squareFootage}`);
+    }
+    const pickedExtras = extraTiers.filter((t) => (extraQuantities[t.name] || 0) > 0);
+    if (pickedExtras.length > 0) {
+      noteParts.push(
+        `Add-ons: ${pickedExtras
+          .map((t) => `${extraQuantities[t.name]}x ${t.name.replace(/^\s*\+\s*/, "")} ($${(t.price * extraQuantities[t.name]).toFixed(2)})`)
+          .join(", ")}`,
+      );
     }
     // Laundry details
     if (isLaundryService) {
@@ -715,6 +797,7 @@ export default function BookingPage() {
                     {servicesLoading && <p className="text-sm text-muted-foreground">Loading services...</p>}
                     {!servicesLoading && (() => {
                       const isAirbnbTurnover = (title: string) => {
+                        if (packageForService(title)) return false;
                         const t = title.toLowerCase();
                         return t.includes("weekly") || t.includes("bi-weekly") || t.includes("biweekly") ||
                           t.includes("reset") || t.includes("monthly") || t.includes("one time") || t.includes("one-time") ||
@@ -724,14 +807,26 @@ export default function BookingPage() {
                         const t = title.toLowerCase();
                         return t.includes("deep") || t.includes("move-in") || t.includes("move in") ||
                           t.includes("move-out") || t.includes("move out") || t.includes("basic") ||
-                          t.includes("vip") || t.includes("signature");
+                          t.includes("essential maintenance") || t.includes("vip") || t.includes("signature");
                       };
                       const airbnbServices = squareServices.filter((s) => isAirbnbTurnover(s.title ?? s.name ?? ""));
                       // Basic Cleaning is for recurring clients only (booked from the Home Cleaning page), so it's
                       // hidden from this list unless it was already chosen there
                       const isBasicCleaning = (s: typeof squareServices[0]) =>
-                        (s.title ?? s.name ?? "").toLowerCase().includes("basic cleaning") && s.id !== selectedServiceId;
-                      const residentialServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? "") && !isBasicCleaning(s));
+                        /basic cleaning|essential maintenance/.test((s.title ?? s.name ?? "").toLowerCase()) && s.id !== selectedServiceId;
+                      // Packages in order: Essential Maintenance → Luxury Deep Reset → VIP → Move-In / Move-Out
+                      // VIP (the flagship) shows first and full width
+                      const packageOrder = ["vip", "essential", "deep", "move"];
+                      const orderOf = (s: typeof squareServices[0]) => {
+                        const i = packageOrder.indexOf(packageForService(s.title ?? s.name) ?? "");
+                        return i === -1 ? 99 : i;
+                      };
+                      void isBasicCleaning;
+                      const residentialServices = squareServices
+                        .filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && isResidential(s.title ?? s.name ?? ""))
+                        .map((s, i) => ({ s, i }))
+                        .sort((a, b) => orderOf(a.s) - orderOf(b.s) || a.i - b.i)
+                        .map((x) => x.s);
                       const otherServices = squareServices.filter((s) => !isAirbnbTurnover(s.title ?? s.name ?? "") && !isResidential(s.title ?? s.name ?? ""));
                       const chooseService = (id: number) => {
                         setSelectedServiceId(id);
@@ -759,7 +854,7 @@ export default function BookingPage() {
                             }`}
                           >
                             <button type="button" className="w-full text-left" onClick={() => setShowDeepChoice((v) => !v)}>
-                              <p className="font-semibold text-lg">🫧 Deep Cleaning</p>
+                              <p className="font-semibold text-lg">🫧 Luxury Deep Reset Cleaning</p>
                               {Number.isFinite(minPrice) && (
                                 <p className="text-purple-600 font-bold mt-1">Starting at ${minPrice.toFixed(2)}</p>
                               )}
@@ -799,24 +894,42 @@ export default function BookingPage() {
                             s.id === deepServices[0].id ? ["deep-cleaning" as const] : deepServices.some((d) => d.id === s.id) ? [] : [s],
                           )
                         : residentialServices;
-                      const renderServiceButton = (service: typeof squareServices[0]) => (
+                      const renderServiceButton = (service: typeof squareServices[0]) => {
+                        const isVip = packageForService(service.title ?? service.name) === "vip";
+                        return (
                         <button
                           key={service.id}
                           onClick={() => chooseService(service.id)}
                           className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
-                            selectedServiceId === service.id
-                              ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
-                              : "border-border hover:border-purple-300 hover:shadow-md"
+                            isVip
+                              ? `bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 shadow-md shadow-amber-200/60 ${
+                                  selectedServiceId === service.id ? "border-amber-500 ring-2 ring-amber-300" : "border-amber-400 hover:border-amber-500"
+                                }`
+                              : selectedServiceId === service.id
+                                ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
+                                : "border-border hover:border-purple-300 hover:shadow-md"
                           }`}
+                          data-testid={isVip ? "button-service-vip" : undefined}
                         >
+                          {isVip && (
+                            <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[0.7rem] font-semibold text-white shadow">
+                              👑 Our Signature Service
+                            </span>
+                          )}
+                          {packageForService(service.title ?? service.name) === "essential" && (
+                            <span className="mb-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800">
+                              Returning clients only
+                            </span>
+                          )}
                           <div className="flex items-start justify-between">
                             <p className="font-semibold text-lg">{service.title}</p>
                           </div>
                           {service.displayPrice && service.price && (
-                            <p className="text-purple-600 font-bold mt-1">Starting at ${Number(service.price).toFixed(2)}</p>
+                            <p className={`font-bold mt-1 ${isVip ? "text-amber-700" : "text-purple-600"}`}>Starting at ${Number(service.price).toFixed(2)}</p>
                           )}
                         </button>
-                      );
+                        );
+                      };
                       return (
                         <>
                           {residentialServices.length > 0 && (
@@ -854,7 +967,73 @@ export default function BookingPage() {
             </div>
 
             {/* Service Description (shows between step 1 and 2 when service selected) */}
-            {selectedService?.description && activeStep >= STEP_DETAILS && (
+            {(() => {
+              if (!selectedService || activeStep < STEP_DETAILS) return null;
+              const pkg = packageByKey(packageForService(selectedService.title ?? selectedService.name));
+              // The four packages use the same description and checklist as the Service Checklist page
+              if (pkg) {
+                const preview = pkg.included.slice(0, 6);
+                return (
+                  <div
+                    className={`rounded-xl border px-5 py-4 bg-gradient-to-br from-purple-50/70 to-pink-50/70 ${
+                      pkg.featured ? "border-amber-300" : "border-border/70"
+                    }`}
+                    data-testid="service-description"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Service Description</p>
+                    {pkg.featured && (
+                      <span className="mt-2 inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                        Our Flagship Service
+                      </span>
+                    )}
+                    <p className="mt-2 font-semibold text-foreground">
+                      {pkg.emoji} {pkg.name}
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">{pkg.description}</p>
+                    <p className="mt-1 text-sm italic text-muted-foreground">{pkg.bestFor}</p>
+                    {pkg.key === "essential" && (
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        Essential Maintenance is for clients who've already had their first Luxury Deep Reset. New to Millan?
+                        Start with a Luxury Deep Reset.
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowDeepChoice(true);
+                            setActiveStep(STEP_SERVICE);
+                            scrollToStep(STEP_SERVICE);
+                          }}
+                          className="mt-2 block font-semibold text-purple-700 underline underline-offset-4"
+                          data-testid="button-switch-to-deep"
+                        >
+                          Switch to Luxury Deep Reset →
+                        </button>
+                      </div>
+                    )}
+                    {pkg.includedIntro && <p className="mt-3 text-sm font-semibold text-purple-700">{pkg.includedIntro}</p>}
+                    <ul className={`${pkg.includedIntro ? "mt-1.5" : "mt-3"} grid gap-x-4 gap-y-1.5 text-sm text-muted-foreground sm:grid-cols-2`}>
+                      {preview.map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <span className="text-emerald-600">✓</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {pkg.included.length > preview.length && (
+                      <p className="mt-1.5 text-xs text-muted-foreground">+ {pkg.included.length - preview.length} more included</p>
+                    )}
+                    <a
+                      href={`/service-checklist#${pkg.key}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="mt-3 inline-block text-sm font-medium text-purple-600 underline underline-offset-4 hover:text-purple-700"
+                    >
+                      See everything included and the add-ons →
+                    </a>
+                  </div>
+                );
+              }
+              if (!selectedService.description) return null;
+              return (
               <div className="rounded-xl border border-border/70 bg-gradient-to-br from-purple-50/70 to-pink-50/70 px-5 py-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Service Description</p>
                 {curatedDescription && (
@@ -879,7 +1058,8 @@ export default function BookingPage() {
                   See what's included and what's not →
                 </a>
               </div>
-            )}
+              );
+            })()}
 
             {/* ───── STEP 2: Property Details / Laundry ───── */}
             {isStep1Complete && (
@@ -929,19 +1109,19 @@ export default function BookingPage() {
                             <>
                               <div>
                                 <Label className="text-sm font-semibold mb-3 block">Select Property Size</Label>
-                                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                  {pricingTiers.map((tier) => (
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+                                  {sizeTiers.map((tier) => (
                                     <button
                                       key={tier.name}
                                       onClick={() => setSelectedPricingTier(tier.name)}
-                                      className={`rounded-xl border-2 px-4 py-4 text-left transition-all ${
+                                      className={`rounded-xl border-2 px-3 py-3 text-left transition-all ${
                                         selectedPricingTier === tier.name
                                           ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg shadow-purple-100"
                                           : "border-border hover:border-purple-300 hover:shadow-md"
                                       }`}
                                     >
-                                      <p className="font-semibold">{tier.name}</p>
-                                      <p className="text-purple-600 font-bold mt-1">${tier.price.toFixed(2)}</p>
+                                      <p className="text-sm font-semibold leading-snug">{sizeLabel(tier.name)}</p>
+                                      <p className="text-sm text-purple-600 font-bold mt-1">${tier.price.toFixed(2)}</p>
                                       {tier.description && (
                                         <p className="text-xs text-muted-foreground mt-1">{tier.description}</p>
                                       )}
@@ -949,6 +1129,88 @@ export default function BookingPage() {
                                   ))}
                                 </div>
                               </div>
+                              {extraTiers.length > 0 && (
+                                <div className="border-t pt-4">
+                                  {(() => {
+                                    const pickedCount = extraTiers.filter((t) => (extraQuantities[t.name] || 0) > 0).length;
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowAllAddOns((v) => !v)}
+                                        aria-expanded={showAllAddOns}
+                                        className={`w-full flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-all ${
+                                          showAllAddOns || pickedCount > 0
+                                            ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50"
+                                            : "border-purple-200 hover:border-purple-400"
+                                        }`}
+                                        data-testid="button-toggle-addons"
+                                      >
+                                        <span>
+                                          <span className="block text-sm font-semibold">
+                                            ✨ Add-ons{pickedCount > 0 ? ` (${pickedCount} added${extrasTotal > 0 ? `, +$${extrasTotal.toFixed(2)}` : ""})` : ""}
+                                          </span>
+                                          <span className="block text-xs text-muted-foreground mt-0.5">
+                                            Inside fridge, oven, cabinets, windows & more
+                                          </span>
+                                        </span>
+                                        <ChevronDown className={`w-5 h-5 text-purple-600 transition-transform ${showAllAddOns ? "rotate-180" : ""}`} />
+                                      </button>
+                                    );
+                                  })()}
+                                  {packageForService(selectedService?.title ?? selectedService?.name) === "vip" && (
+                                    <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                                      👑 VIP perk: one add-on is free every month. Pick it here and note it in Special Requests, and we'll take it off your visit.
+                                    </p>
+                                  )}
+                                  {showAllAddOns && (
+                                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 mt-3">
+                                    {extraTiers.map((tier) => {
+                                      const qty = extraQuantities[tier.name] || 0;
+                                      const label = tier.name.replace(/^\s*\+\s*/, "");
+                                      return (
+                                        <div
+                                          key={tier.name}
+                                          className={`rounded-xl border-2 px-3 py-2.5 transition-all ${
+                                            qty > 0 ? "border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50" : "border-border"
+                                          }`}
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() => updateExtraQuantity(tier.name, qty > 0 ? 0 : 1)}
+                                            className="w-full text-left"
+                                            data-testid={`button-extra-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                                          >
+                                            <p className="text-sm font-semibold leading-snug">{label}</p>
+                                            <p className="text-sm text-purple-600 font-bold mt-0.5">+${tier.price.toFixed(2)}</p>
+                                          </button>
+                                          {qty > 0 && (
+                                            <div className="mt-2 flex items-center gap-3">
+                                              <button
+                                                type="button"
+                                                aria-label={`One less ${label}`}
+                                                onClick={() => updateExtraQuantity(tier.name, qty - 1)}
+                                                className="h-7 w-7 rounded-full border border-purple-300 text-purple-700 font-bold leading-none"
+                                              >
+                                                −
+                                              </button>
+                                              <span className="text-sm font-semibold w-4 text-center">{qty}</span>
+                                              <button
+                                                type="button"
+                                                aria-label={`One more ${label}`}
+                                                onClick={() => updateExtraQuantity(tier.name, qty + 1)}
+                                                className="h-7 w-7 rounded-full border border-purple-300 text-purple-700 font-bold leading-none"
+                                              >
+                                                +
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  )}
+                                </div>
+                              )}
                               {!isAddOnOrStandardService && (
                               <div className="border-t pt-4">
                                 <Label className="text-sm font-medium">Property Square Footage</Label>
@@ -1411,6 +1673,16 @@ export default function BookingPage() {
                       </span>
                     </div>
                   )}
+                  {extraTiers
+                    .filter((t) => (extraQuantities[t.name] || 0) > 0)
+                    .map((t) => (
+                      <div key={t.name} className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          {extraQuantities[t.name]}x {t.name.replace(/^\s*\+\s*/, "")}
+                        </span>
+                        <span className="font-medium">+${(t.price * extraQuantities[t.name]).toFixed(2)}</span>
+                      </div>
+                    ))}
                   {requiresEstimate && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
                       Call for estate estimate
