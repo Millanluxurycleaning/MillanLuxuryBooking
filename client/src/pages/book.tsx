@@ -937,7 +937,55 @@ export default function BookingPage() {
             </div>
 
             {/* Service Description (shows between step 1 and 2 when service selected) */}
-            {selectedService?.description && activeStep >= STEP_DETAILS && (
+            {(() => {
+              if (!selectedService || activeStep < STEP_DETAILS) return null;
+              const pkg = packageByKey(packageForService(selectedService.title ?? selectedService.name));
+              // The four packages use the same description and checklist as the Service Checklist page
+              if (pkg) {
+                const preview = pkg.included.slice(0, 6);
+                return (
+                  <div
+                    className={`rounded-xl border px-5 py-4 bg-gradient-to-br from-purple-50/70 to-pink-50/70 ${
+                      pkg.featured ? "border-amber-300" : "border-border/70"
+                    }`}
+                    data-testid="service-description"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Service Description</p>
+                    {pkg.featured && (
+                      <span className="mt-2 inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                        Our Flagship Service
+                      </span>
+                    )}
+                    <p className="mt-2 font-semibold text-foreground">
+                      {pkg.emoji} {pkg.name}
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">{pkg.description}</p>
+                    <p className="mt-1 text-sm italic text-muted-foreground">{pkg.bestFor}</p>
+                    {pkg.includedIntro && <p className="mt-3 text-sm font-semibold text-purple-700">{pkg.includedIntro}</p>}
+                    <ul className={`${pkg.includedIntro ? "mt-1.5" : "mt-3"} grid gap-x-4 gap-y-1.5 text-sm text-muted-foreground sm:grid-cols-2`}>
+                      {preview.map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <span className="text-emerald-600">✓</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {pkg.included.length > preview.length && (
+                      <p className="mt-1.5 text-xs text-muted-foreground">+ {pkg.included.length - preview.length} more included</p>
+                    )}
+                    <a
+                      href={`/service-checklist#${pkg.key}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="mt-3 inline-block text-sm font-medium text-purple-600 underline underline-offset-4 hover:text-purple-700"
+                    >
+                      See everything included and the add-ons →
+                    </a>
+                  </div>
+                );
+              }
+              if (!selectedService.description) return null;
+              return (
               <div className="rounded-xl border border-border/70 bg-gradient-to-br from-purple-50/70 to-pink-50/70 px-5 py-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Service Description</p>
                 {curatedDescription && (
@@ -962,7 +1010,8 @@ export default function BookingPage() {
                   See what's included and what's not →
                 </a>
               </div>
-            )}
+              );
+            })()}
 
             {/* ───── STEP 2: Property Details / Laundry ───── */}
             {isStep1Complete && (
