@@ -4,10 +4,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, Home, Truck, Shirt, ChevronDown } from "lucide-react";
+import { Sparkles, Home, Truck, Shirt, ChevronDown, Crown, Check } from "lucide-react";
 import type { ServiceItem } from "@shared/types";
 import { normalizeArrayData } from "@/lib/arrayUtils";
 import { useAssets } from "@/hooks/useAssets";
+import { servicePackages, packageForService, displayServiceName, type PackageKey } from "@/data/servicePackages";
 
 const fallbackBg = "https://gwzcdrue1bdrchlh.public.blob.vercel-storage.com/static/dark-botanical-bg.png";
 
@@ -94,7 +95,7 @@ const isFirstTimeCleaningService = (name: string) => {
   return lower.includes("deep") || lower.includes("move-in") || lower.includes("move-out") || lower.includes("move out");
 };
 
-const isBasicCleaningName = (name: string) => normalizeServiceName(name).toLowerCase().includes("basic cleaning");
+const isBasicCleaningName = (name: string) => /basic cleaning|essential maintenance/.test(normalizeServiceName(name).toLowerCase());
 
 const isDeepCleaningName = (name: string) => normalizeServiceName(name).toLowerCase().includes("deep");
 
@@ -106,10 +107,12 @@ const deepCleaningTypeLabel = (name: string) => {
 
 const isHomeCleaningService = (name: string) => {
   const lower = normalizeServiceName(name).toLowerCase();
-  return lower.includes("weekly") || lower.includes("basic");
+  return lower.includes("weekly") || lower.includes("basic") || lower.includes("essential maintenance");
 };
 
 const getCuratedServiceCopy = (name: string) => {
+  const pkg = servicePackages.find((p) => p.key === packageForService(name));
+  if (pkg) return pkg.description;
   const normalized = normalizeServiceName(name).toLowerCase();
   return signatureCopyMap[normalized] ?? null;
 };
@@ -124,7 +127,8 @@ type ServicesProps = {
   groupByCategory?: boolean;
 };
 
-const resolveServiceTitle = (service: ServiceItem) => service.title || service.name || "Service";
+// Website names for the packages (e.g. "Basic Cleaning" shows as "Essential Maintenance Cleaning")
+const resolveServiceTitle = (service: ServiceItem) => displayServiceName(service.title || service.name || "Service");
 
 const normalizeServiceName = (name: string) => name.replace(/^[^A-Za-z0-9]+/, "").trim();
 const isAirbnbServiceName = (name: string) => {
@@ -144,7 +148,7 @@ const coreServiceMatchers = [
   },
   {
     key: "basic",
-    match: (name: string) => name.includes("basic") || name.includes("weekly"),
+    match: (name: string) => name.includes("basic") || name.includes("essential maintenance") || name.includes("weekly"),
   },
   {
     key: "move",
@@ -185,6 +189,8 @@ const isLaundryAddonServiceName = (name: string) => {
 };
 
 const isAirbnbTurnover = (name: string) => {
+  // The four packages are never Airbnb services (e.g. "Luxury Deep Reset" contains "reset")
+  if (packageForService(name)) return false;
   const t = name.toLowerCase();
   return t.includes("weekly") || t.includes("bi-weekly") || t.includes("biweekly") ||
     t.includes("reset") || t.includes("monthly") || t.includes("one time") || t.includes("one-time") ||
@@ -194,7 +200,7 @@ const isAirbnbTurnover = (name: string) => {
 const isResidential = (name: string) => {
   const t = name.toLowerCase();
   return t.includes("deep") || t.includes("move-in") || t.includes("move in") ||
-    t.includes("move-out") || t.includes("move out") || t.includes("basic") ||
+    t.includes("move-out") || t.includes("move out") || t.includes("basic") || t.includes("essential maintenance") ||
     t.includes("vip") || t.includes("signature");
 };
 
@@ -369,7 +375,9 @@ export function Services({
             return !isAirbnbTurnover(name) && !isResidential(name);
           }),
         },
-      ] as { label: string | null; emoji?: string; items: ServiceItem[] }[]).filter((group) => group.items.length > 0)
+      ] as { label: string | null; emoji?: string; items: ServiceItem[] }[]).filter(
+        (group) => group.items.length > 0 || group.label === "🏡 Residential Services",
+      )
     : [{ label: null as string | null, items: limitedServices }];
   const needsRentalGroup =
     showAirbnbOnlyCard && groupByCategory && !groupedServices.some((group) => group.label === "🏠 Airbnb Turnovers");
@@ -456,6 +464,9 @@ export function Services({
                     <div className="mx-auto w-16 h-0.5 bg-white/20 rounded-full" />
                   </div>
                 )}
+                {groupByCategory && group.label === "🏡 Residential Services" ? (
+                  <PackageCards services={squareServices} />
+                ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
                   {group.items.map((service) => {
                     const rawTitle = resolveServiceTitle(service);
@@ -467,7 +478,7 @@ export function Services({
                           ? { ...homeCleaningCard, link: "/home-cleaning" }
                           : null;
                     const isDeepCombined = deepChoices.length > 1 && deepChoices[0].id === service.id;
-                    const serviceTitle = groupCard ? groupCard.title : isDeepCombined ? "🫧 Deep Cleaning" : rawTitle;
+                    const serviceTitle = groupCard ? groupCard.title : isDeepCombined ? "🫧 Luxury Deep Reset Cleaning" : rawTitle;
                     const normalizedTitle = normalizeServiceName(serviceTitle);
                     const serviceType = getServiceType(normalizedTitle);
                     const Icon = iconMap[normalizedTitle] || Sparkles;
@@ -671,6 +682,7 @@ export function Services({
                     (groupByCategory ? group.label === "🏠 Airbnb Turnovers" : group.label === null) &&
                     renderAirbnbOnlyCard()}
                 </div>
+                )}
               </div>
             ))}
           </div>
@@ -704,5 +716,97 @@ export function Services({
         )}
       </div>
     </section>
+  );
+}
+
+// Services page: the four residential packages, from routine upkeep to a full move-out reset
+const packageCta = (key: PackageKey, services: ServiceItem[]) => {
+  if (key === "essential") return "/home-cleaning";
+  if (key === "deep") return "/book?choose=deep-cleaning";
+  const svc = services.find((s) => packageForService(s.title || s.name) === key);
+  return svc ? `/book?serviceId=${svc.id}` : "/book";
+};
+
+const packageFromPrice = (key: PackageKey, services: ServiceItem[]) => {
+  const prices = services
+    .filter((s) => packageForService(s.title || s.name) === key && s.displayPrice !== false)
+    .flatMap((s) => {
+      const tiers = Array.isArray(s.pricingTiers) ? (s.pricingTiers as { price: number }[]) : [];
+      const tierPrices = tiers.map((t) => Number(t.price)).filter((n) => n > 0);
+      return tierPrices.length ? tierPrices : s.price != null ? [Number(s.price)] : [];
+    })
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return prices.length ? Math.min(...prices) : null;
+};
+
+function PackageCards({ services }: { services: ServiceItem[] }) {
+  return (
+    <div className="max-w-6xl mx-auto space-y-6">
+      <p className="text-center text-white/75 text-sm md:text-base max-w-2xl mx-auto">
+        Essential Maintenance → Luxury Deep Reset → Millan VIP Signature → Luxury Move-In / Move-Out Reset
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        {servicePackages.map((pkg) => {
+          const from = packageFromPrice(pkg.key, services);
+          const preview = pkg.included.slice(0, 5);
+          return (
+            <Card
+              key={pkg.key}
+              className={`relative overflow-hidden text-white backdrop-blur-2xl ${
+                pkg.featured
+                  ? "bg-gradient-to-br from-black/60 via-[rgba(20,45,30,0.55)] to-black/60 border-2 border-primary shadow-[0_30px_80px_rgba(212,175,55,0.25)]"
+                  : "bg-black/25 border border-white/20 ring-1 ring-white/10 shadow-[0_24px_70px_rgba(0,0,0,0.35)]"
+              }`}
+              data-testid={`card-package-${pkg.key}`}
+            >
+              {pkg.featured && (
+                <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-lg">
+                  <Crown className="w-3.5 h-3.5" /> Flagship
+                </span>
+              )}
+              <CardHeader className="space-y-3 pb-3">
+                <p className="text-3xl leading-none">{pkg.emoji}</p>
+                <CardTitle className={`text-xl md:text-2xl font-serif text-white ${pkg.featured ? "pr-24" : ""}`}>
+                  {pkg.name}
+                </CardTitle>
+                {from != null && <p className="text-sm font-semibold text-primary">From ${from.toFixed(2)}</p>}
+                <p className="text-white/80 text-sm md:text-base">{pkg.description}</p>
+                <p className="text-sm text-white/65 italic">{pkg.bestFor}</p>
+              </CardHeader>
+              <CardContent className="space-y-2 pb-4">
+                {pkg.includedIntro && <p className="text-sm font-semibold text-primary">{pkg.includedIntro}</p>}
+                <ul className="space-y-1.5">
+                  {preview.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm text-white/85">
+                      <Check className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                {pkg.included.length > preview.length && (
+                  <p className="text-xs text-white/60">+ {pkg.included.length - preview.length} more included</p>
+                )}
+              </CardContent>
+              <CardFooter className="flex-col items-stretch gap-3">
+                <Button asChild className="w-full h-auto min-h-10 whitespace-normal py-2.5 tracking-wide">
+                  <a href={packageCta(pkg.key, services)}>{pkg.cta}</a>
+                </Button>
+                <a
+                  href={`/service-checklist#${pkg.key}`}
+                  className="text-center text-sm text-white/70 underline underline-offset-4 hover:text-primary"
+                >
+                  See everything included & add-ons
+                </a>
+              </CardFooter>
+            </Card>
+          );
+        })}
+      </div>
+      <div className="text-center">
+        <Button asChild variant="outline" className="border-white/40 text-white bg-white/5 hover:bg-white/10 hover:text-white">
+          <a href="/service-checklist#compare">Compare all packages</a>
+        </Button>
+      </div>
+    </div>
   );
 }
